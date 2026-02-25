@@ -1,0 +1,544 @@
+
+import React, { useState } from 'react';
+import { 
+  Plus, Trash2, Edit3, Save, X, Database, ShieldCheck, 
+  AlertCircle, BarChart, Settings, Sliders, ChevronRight, 
+  ArrowRight, Activity, Target, Zap, Layers 
+} from 'lucide-react';
+import { 
+  TradingStrategy, StrategyCondition, IndicatorType, OperatorType 
+} from '../types';
+
+interface AdminPanelProps {
+  strategies: TradingStrategy[];
+  setStrategies: React.Dispatch<React.SetStateAction<TradingStrategy[]>>;
+}
+
+const INDICATORS: IndicatorType[] = ['PRICE', 'RSI', 'SMA', 'EMA', 'MACD', 'VOLUME', 'BOLLINGER_UPPER', 'BOLLINGER_LOWER'];
+const OPERATORS: { value: OperatorType; label: string }[] = [
+  { value: '>', label: 'Greater Than' },
+  { value: '<', label: 'Less Than' },
+  { value: '==', label: 'Equal To' },
+  { value: 'CROSSOVER', label: 'Crosses Above' },
+  { value: 'CROSSUNDER', label: 'Crosses Below' }
+];
+
+const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies }) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  
+  const [newStrategy, setNewStrategy] = useState<Partial<TradingStrategy>>({
+    name: '',
+    description: '',
+    timeframe: '5m',
+    entryConditions: [],
+    exitConditions: [],
+    riskConfig: {
+      stopLossPct: 1.5,
+      takeProfitPct: 3.0,
+      trailingStopLoss: false
+    },
+    qty: 100,
+    productType: 'MIS',
+    isActive: true
+  });
+
+  const handleAddCondition = (type: 'entry' | 'exit') => {
+    const cond: StrategyCondition = {
+      id: Math.random().toString(36).substr(2, 5),
+      source: 'PRICE',
+      sourceParams: { period: 14 },
+      operator: '>',
+      targetType: 'VALUE',
+      targetValue: 0
+    };
+    
+    if (type === 'entry') {
+      setNewStrategy(s => ({ ...s, entryConditions: [...(s.entryConditions || []), cond] }));
+    } else {
+      setNewStrategy(s => ({ ...s, exitConditions: [...(s.exitConditions || []), cond] }));
+    }
+  };
+
+  const removeCondition = (type: 'entry' | 'exit', id: string) => {
+    if (type === 'entry') {
+      setNewStrategy(s => ({ ...s, entryConditions: s.entryConditions?.filter(c => c.id !== id) }));
+    } else {
+      setNewStrategy(s => ({ ...s, exitConditions: s.exitConditions?.filter(c => c.id !== id) }));
+    }
+  };
+
+  const updateCondition = (type: 'entry' | 'exit', id: string, updates: Partial<StrategyCondition>) => {
+    const updateFn = (conds: StrategyCondition[]) => conds.map(c => c.id === id ? { ...c, ...updates } : c);
+    if (type === 'entry') {
+      setNewStrategy(s => ({ ...s, entryConditions: updateFn(s.entryConditions || []) }));
+    } else {
+      setNewStrategy(s => ({ ...s, exitConditions: updateFn(s.exitConditions || []) }));
+    }
+  };
+
+  const saveStrategy = () => {
+    if (!newStrategy.name) return;
+    const strategy: TradingStrategy = {
+      id: editingId || Math.random().toString(36).substr(2, 9),
+      name: newStrategy.name || '',
+      description: newStrategy.description || '',
+      timeframe: newStrategy.timeframe || '5m',
+      entryConditions: newStrategy.entryConditions as StrategyCondition[],
+      exitConditions: newStrategy.exitConditions as StrategyCondition[],
+      riskConfig: newStrategy.riskConfig || { stopLossPct: 1, takeProfitPct: 2, trailingStopLoss: false },
+      qty: newStrategy.qty || 1,
+      productType: (newStrategy.productType as 'MIS' | 'CNC') || 'MIS',
+      isActive: newStrategy.isActive ?? true,
+      createdBy: 'admin'
+    };
+
+    if (editingId) {
+      setStrategies(prev => prev.map(s => s.id === editingId ? strategy : s));
+    } else {
+      setStrategies(prev => [...prev, strategy]);
+    }
+
+    setIsAdding(false);
+    setEditingId(null);
+    setNewStrategy({
+      name: '',
+      description: '',
+      timeframe: '5m',
+      entryConditions: [],
+      exitConditions: [],
+      riskConfig: { stopLossPct: 1.5, takeProfitPct: 3.0, trailingStopLoss: false },
+      qty: 100,
+      productType: 'MIS',
+      isActive: true
+    });
+  };
+
+  const handleEdit = (s: TradingStrategy) => {
+    setNewStrategy(s);
+    setEditingId(s.id);
+    setIsAdding(true);
+  };
+
+  const toggleStrategyActive = (id: string) => {
+    setStrategies(prev => prev.map(s => s.id === id ? { ...s, isActive: !s.isActive } : s));
+  };
+
+  return (
+    <div className="h-full overflow-y-auto p-8 space-y-8 max-w-[1600px] mx-auto transition-colors duration-300">
+      <div className="flex justify-between items-end border-b border-slate-200 dark:border-white/5 pb-8">
+        <div>
+          <h2 className="text-4xl font-black text-slate-900 dark:text-white flex items-center gap-4">
+             <div className="w-12 h-12 rounded-2xl bg-samp-primary/10 flex items-center justify-center text-samp-primary">
+                <Sliders size={32} />
+             </div>
+             Strategy Architect
+          </h2>
+          <p className="text-slate-500 dark:text-gray-500 mt-2 text-lg font-medium max-w-2xl leading-relaxed">
+            Design limitless automated execution flows. Combine institutional indicators with advanced price action logic.
+          </p>
+        </div>
+        {!isAdding && (
+          <button 
+            onClick={() => setIsAdding(true)}
+            className="flex items-center gap-3 bg-samp-primary hover:bg-indigo-500 text-white px-8 py-4 rounded-[20px] shadow-2xl shadow-samp-primary/30 transition-all transform hover:-translate-y-1 active:scale-95 font-bold text-lg"
+          >
+            <Plus size={24} /> New Architect Draft
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-12 gap-8">
+        <div className={`transition-all duration-500 ease-in-out ${isAdding ? 'col-span-12' : 'col-span-8'}`}>
+          {isAdding ? (
+            <div className="bg-white dark:bg-samp-surface border-2 border-slate-200 dark:border-samp-primary/20 rounded-[48px] p-10 shadow-3xl animate-in fade-in zoom-in-95 duration-500 relative overflow-hidden group/board">
+               <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-samp-primary/5 blur-[120px] rounded-full -mr-48 -mt-48 pointer-events-none"></div>
+
+               <div className="flex justify-between items-center mb-12">
+                  <div className="flex items-center gap-4">
+                     <div className="p-3 bg-samp-primary/10 rounded-2xl text-samp-primary">
+                        <Layers size={28} />
+                     </div>
+                     <div>
+                        <h3 className="text-3xl font-bold text-slate-900 dark:text-white">Flow Architect</h3>
+                        <p className="text-sm text-slate-500 font-mono tracking-widest uppercase mt-1">Status: Drafting System Logic</p>
+                     </div>
+                  </div>
+                  <div className="flex gap-3">
+                     <button onClick={() => setIsAdding(false)} className="px-6 py-3 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold transition-colors">Discard</button>
+                     <button 
+                        onClick={saveStrategy}
+                        className="flex items-center gap-2 bg-samp-primary hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl font-bold shadow-xl shadow-samp-primary/20 transition-all"
+                     >
+                        <Save size={20} /> Deploy {editingId ? 'Updates' : 'Strategy'}
+                     </button>
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-12 gap-10">
+                  <div className="col-span-4 space-y-10">
+                     <div className="space-y-6">
+                        <div className="group/field">
+                           <label className="text-[11px] text-slate-400 dark:text-gray-500 uppercase font-black tracking-widest ml-1 mb-2 block group-focus-within/field:text-samp-primary transition-colors">Strategy Identity</label>
+                           <input 
+                              type="text" 
+                              placeholder="e.g. NIFTY_MEAN_REVERSION_V2"
+                              value={newStrategy.name}
+                              onChange={e => setNewStrategy(s => ({...s, name: e.target.value}))}
+                              className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl py-4 px-5 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all font-bold text-lg"
+                           />
+                        </div>
+
+                        <div>
+                           <label className="text-[11px] text-slate-400 dark:text-gray-500 uppercase font-black tracking-widest ml-1 mb-2 block">Executive Summary</label>
+                           <textarea 
+                              placeholder="Describe the logic core for institutional review..."
+                              value={newStrategy.description}
+                              onChange={e => setNewStrategy(s => ({...s, description: e.target.value}))}
+                              className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl py-4 px-5 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all h-32 resize-none text-sm font-medium leading-relaxed"
+                           />
+                        </div>
+                     </div>
+
+                     <div className="p-8 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-[32px] space-y-8">
+                        <div className="flex items-center gap-3">
+                           <div className="w-10 h-10 rounded-xl bg-samp-danger/10 flex items-center justify-center text-samp-danger">
+                              <ShieldCheck size={20} />
+                           </div>
+                           <h4 className="font-bold text-slate-900 dark:text-white text-lg">Risk Guardian</h4>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-6">
+                           <div className="space-y-2">
+                              <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Stop Loss %</label>
+                              <input 
+                                 type="number" 
+                                 step="0.1"
+                                 value={newStrategy.riskConfig?.stopLossPct}
+                                 onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, stopLossPct: parseFloat(e.target.value) }}))}
+                                 className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-danger transition-colors"
+                              />
+                           </div>
+                           <div className="space-y-2">
+                              <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Take Profit %</label>
+                              <input 
+                                 type="number" 
+                                 step="0.1"
+                                 value={newStrategy.riskConfig?.takeProfitPct}
+                                 onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, takeProfitPct: parseFloat(e.target.value) }}))}
+                                 className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-success transition-colors"
+                              />
+                           </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-samp-surface rounded-2xl border border-slate-200 dark:border-white/10">
+                           <div className="flex items-center gap-3">
+                              <div className={`w-4 h-4 rounded-full border-2 ${newStrategy.riskConfig?.trailingStopLoss ? 'bg-samp-primary border-samp-primary' : 'border-slate-300 dark:border-white/20'}`}></div>
+                              <span className="text-sm font-bold text-slate-700 dark:text-gray-300">Trailing Stop Loss</span>
+                           </div>
+                           <button 
+                              onClick={() => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, trailingStopLoss: !s.riskConfig!.trailingStopLoss }}))}
+                              className={`w-12 h-6 rounded-full transition-all relative ${newStrategy.riskConfig?.trailingStopLoss ? 'bg-samp-primary' : 'bg-slate-300 dark:bg-gray-700'}`}
+                           >
+                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${newStrategy.riskConfig?.trailingStopLoss ? 'right-1' : 'left-1'}`}></div>
+                           </button>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="col-span-8 space-y-10">
+                     <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                           <h4 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-samp-success/10 flex items-center justify-center text-samp-success">
+                                 <Zap size={20} />
+                              </div>
+                              Entry Condition Logic
+                              <span className="text-[10px] bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-gray-400 px-2 py-1 rounded font-mono font-bold">MODE: ALL MUST PASS (AND)</span>
+                           </h4>
+                           <button 
+                              onClick={() => handleAddCondition('entry')}
+                              className="text-xs font-bold text-samp-primary flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+                           >
+                              <Plus size={16} /> ADD LOGIC BLOCK
+                           </button>
+                        </div>
+
+                        <div className="space-y-4">
+                           {newStrategy.entryConditions?.map((cond, i) => (
+                             <LogicBlock 
+                                key={cond.id} 
+                                index={i} 
+                                condition={cond} 
+                                onRemove={() => removeCondition('entry', cond.id)}
+                                onUpdate={(u) => updateCondition('entry', cond.id, u)}
+                             />
+                           ))}
+                           {newStrategy.entryConditions?.length === 0 && (
+                             <div className="py-12 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-[32px] flex flex-col items-center justify-center text-slate-400">
+                                <Activity size={32} className="mb-2 opacity-30" />
+                                <p className="text-sm font-medium">No entry rules defined. Strategy will never trigger.</p>
+                             </div>
+                           )}
+                        </div>
+                     </div>
+
+                     <div className="space-y-6">
+                        <div className="flex justify-between items-center">
+                           <h4 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-samp-danger/10 flex items-center justify-center text-samp-danger">
+                                 <Target size={20} />
+                              </div>
+                              Exit Signal logic
+                              <span className="text-[10px] bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-gray-400 px-2 py-1 rounded font-mono font-bold">MODE: ANY TRIGGERS (OR)</span>
+                           </h4>
+                           <button 
+                              onClick={() => handleAddCondition('exit')}
+                              className="text-xs font-bold text-samp-primary flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+                           >
+                              <Plus size={16} /> ADD LOGIC BLOCK
+                           </button>
+                        </div>
+
+                        <div className="space-y-4">
+                           {newStrategy.exitConditions?.map((cond, i) => (
+                             <LogicBlock 
+                                key={cond.id} 
+                                index={i} 
+                                condition={cond} 
+                                onRemove={() => removeCondition('exit', cond.id)}
+                                onUpdate={(u) => updateCondition('exit', cond.id, u)}
+                             />
+                           ))}
+                           {newStrategy.exitConditions?.length === 0 && (
+                             <div className="py-12 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-[32px] flex flex-col items-center justify-center text-slate-400">
+                                <p className="text-sm font-medium">Standard Exit: Stop Loss / Take Profit only.</p>
+                             </div>
+                           )}
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {strategies.map(s => (
+                <div key={s.id} className={`bg-white dark:bg-samp-surface border rounded-[40px] p-8 transition-all group/card shadow-xl relative overflow-hidden ${s.isActive ? 'border-slate-200 dark:border-white/5' : 'opacity-60 border-slate-300 dark:border-white/10 saturate-[0.5]'}`}>
+                   <div className="flex justify-between items-start mb-8">
+                      <div className="flex items-center gap-5">
+                         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover/card:scale-110 group-hover/card:rotate-3 ${s.isActive ? 'bg-slate-100 dark:bg-white/5 text-samp-primary' : 'bg-slate-200 dark:bg-white/5 text-slate-400'}`}>
+                            <Activity size={28} />
+                         </div>
+                         <div>
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white">{s.name}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.timeframe} TIMEFRAME</span>
+                               <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-gray-700"></span>
+                               <span className={`text-[10px] font-black uppercase tracking-widest ${s.isActive ? 'text-samp-success' : 'text-slate-500'}`}>{s.isActive ? 'ACTIVE NODE' : 'INACTIVE'}</span>
+                            </div>
+                         </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="flex gap-2">
+                          <button onClick={() => handleEdit(s)} className="p-3 text-slate-400 dark:text-gray-500 hover:text-samp-primary hover:bg-samp-primary/10 rounded-2xl transition-all"><Edit3 size={20} /></button>
+                          <button onClick={() => setStrategies(prev => prev.filter(st => st.id !== s.id))} className="p-3 text-slate-400 dark:text-gray-500 hover:text-samp-danger hover:bg-samp-danger/10 rounded-2xl transition-all"><Trash2 size={20} /></button>
+                        </div>
+                        {/* Status Toggle Switch */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{s.isActive ? 'ENABLED' : 'DISABLED'}</span>
+                          <button 
+                            onClick={() => toggleStrategyActive(s.id)}
+                            className={`w-10 h-5 rounded-full transition-all relative ${s.isActive ? 'bg-samp-success shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-slate-300 dark:bg-gray-700'}`}
+                          >
+                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${s.isActive ? 'right-0.5' : 'left-0.5'}`}></div>
+                          </button>
+                        </div>
+                      </div>
+                   </div>
+
+                   <p className="text-sm text-slate-500 dark:text-gray-400 font-medium mb-8 leading-relaxed line-clamp-2">
+                      {s.description || "No system documentation provided."}
+                   </p>
+
+                   <div className="grid grid-cols-3 gap-4 py-6 border-y border-slate-100 dark:border-white/5 mb-8">
+                      <div className="text-center">
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Conditions</p>
+                         <p className="text-xl font-bold text-slate-900 dark:text-white font-mono">{s.entryConditions.length + s.exitConditions.length}</p>
+                      </div>
+                      <div className="text-center border-x border-slate-100 dark:border-white/5 px-2">
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Lot Units</p>
+                         <p className="text-xl font-bold text-slate-900 dark:text-white font-mono">{s.qty}</p>
+                      </div>
+                      <div className="text-center">
+                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target P&L</p>
+                         <p className={`text-xl font-bold font-mono ${s.isActive ? 'text-samp-success' : 'text-slate-400'}`}>+{s.riskConfig.takeProfitPct}%</p>
+                      </div>
+                   </div>
+
+                   <button 
+                      onClick={() => handleEdit(s)}
+                      className="w-full py-4 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-gray-300 font-bold rounded-2xl border border-slate-200 dark:border-white/5 hover:border-samp-primary/50 hover:text-samp-primary transition-all flex items-center justify-center gap-2 group/btn"
+                   >
+                      Modify Architecture <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                   </button>
+                </div>
+              ))}
+              
+              <button 
+                onClick={() => setIsAdding(true)}
+                className="bg-white/40 dark:bg-samp-surface/20 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[40px] p-12 flex flex-col items-center justify-center text-slate-400 hover:border-samp-primary/30 hover:text-samp-primary transition-all group/add"
+              >
+                 <div className="w-20 h-20 rounded-[32px] bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-6 group-hover/add:scale-110 transition-transform">
+                    <Plus size={40} />
+                 </div>
+                 <h4 className="text-xl font-black uppercase tracking-[0.2em]">New Logic Node</h4>
+                 <p className="text-sm font-medium mt-2">Scale your quant factory</p>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {!isAdding && (
+          <div className="col-span-4 space-y-8">
+             <div className="bg-samp-primary rounded-[40px] p-10 text-white shadow-3xl relative overflow-hidden group">
+                <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/10 blur-[60px] rounded-full group-hover:scale-125 transition-transform duration-700"></div>
+                <h3 className="text-2xl font-black mb-4 flex items-center gap-3">
+                   <BarChart size={28} />
+                   Live Fleet Status
+                </h3>
+                <div className="space-y-6">
+                   <div className="flex justify-between items-center py-4 border-b border-white/10">
+                      <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Total Nodes</span>
+                      <span className="text-2xl font-bold font-mono">{strategies.length}</span>
+                   </div>
+                   <div className="flex justify-between items-center py-4 border-b border-white/10">
+                      <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Automated Liquidity</span>
+                      <span className="text-2xl font-bold font-mono">₹{strategies.reduce((a,b)=> a+b.qty, 0)*25000}</span>
+                   </div>
+                   <div className="flex justify-between items-center py-4">
+                      <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Handshake Status</span>
+                      <span className="flex items-center gap-2 font-bold text-xs">
+                         <div className="w-2 h-2 rounded-full bg-samp-success animate-pulse"></div>
+                         OPTIMIZED
+                      </span>
+                   </div>
+                </div>
+             </div>
+
+             <div className="bg-slate-100 dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-8 space-y-6">
+                <div className="flex items-center gap-3 mb-2">
+                   <div className="p-2 bg-samp-accent/10 rounded-lg text-samp-accent">
+                      <Settings size={20} />
+                   </div>
+                   <h4 className="font-bold text-slate-900 dark:text-white text-lg">Platform Compliance</h4>
+                </div>
+                <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed font-medium">
+                   All strategies deployed here are instantly propagated to the user market terminal. Administrators must perform backtesting before committing logic to production.
+                </p>
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-5 flex gap-4">
+                   <AlertCircle className="text-amber-500 shrink-0" size={18} />
+                   <p className="text-[11px] text-amber-700 dark:text-amber-500/80 font-bold uppercase leading-tight">
+                      Modification of active lot sizes affects real-time margin requirements for all connected users.
+                   </p>
+                </div>
+             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+interface LogicBlockProps {
+  index: number;
+  condition: StrategyCondition;
+  onRemove: () => void;
+  onUpdate: (updates: Partial<StrategyCondition>) => void;
+}
+
+const LogicBlock: React.FC<LogicBlockProps> = ({ index, condition, onRemove, onUpdate }) => {
+  return (
+    <div className="bg-white dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-[24px] p-6 hover:border-samp-primary/30 transition-all group/block relative">
+       <button 
+         onClick={onRemove}
+         className="absolute top-4 right-4 p-2 text-slate-300 dark:text-gray-700 hover:text-samp-danger transition-colors opacity-0 group-hover/block:opacity-100"
+       >
+         <Trash2 size={16} />
+       </button>
+       
+       <div className="grid grid-cols-12 gap-6 items-center">
+          <div className="col-span-1">
+             <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-[11px] font-black text-slate-400 dark:text-gray-600 border border-slate-200 dark:border-white/10">
+                #{index + 1}
+             </div>
+          </div>
+
+          <div className="col-span-3 space-y-1.5">
+             <label className="text-[9px] font-black text-slate-400 dark:text-gray-600 uppercase tracking-widest ml-1">Source</label>
+             <select 
+               value={condition.source}
+               onChange={e => onUpdate({ source: e.target.value as IndicatorType })}
+               className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-colors"
+             >
+                {INDICATORS.map(i => <option key={i} value={i} className="bg-white dark:bg-[#151725]">{i}</option>)}
+             </select>
+          </div>
+
+          <div className="col-span-3 space-y-1.5">
+             <label className="text-[9px] font-black text-slate-400 dark:text-gray-600 uppercase tracking-widest ml-1">Logic Operator</label>
+             <select 
+               value={condition.operator}
+               onChange={e => onUpdate({ operator: e.target.value as OperatorType })}
+               className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-colors"
+             >
+                {OPERATORS.map(o => <option key={o.value} value={o.value} className="bg-white dark:bg-[#151725]">{o.label}</option>)}
+             </select>
+          </div>
+
+          <div className="col-span-5 flex gap-4">
+             <div className="flex-1 space-y-1.5">
+                <label className="text-[9px] font-black text-slate-400 dark:text-gray-600 uppercase tracking-widest ml-1 flex justify-between">
+                   Target
+                   <button 
+                     onClick={() => onUpdate({ targetType: condition.targetType === 'VALUE' ? 'INDICATOR' : 'VALUE' })}
+                     className="text-samp-primary hover:underline lowercase italic text-[8px]"
+                   >
+                      to {condition.targetType === 'VALUE' ? 'indicator' : 'value'}
+                   </button>
+                </label>
+                {condition.targetType === 'VALUE' ? (
+                  <input 
+                    type="number"
+                    value={condition.targetValue}
+                    onChange={e => onUpdate({ targetValue: parseFloat(e.target.value) })}
+                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-colors font-mono"
+                  />
+                ) : (
+                  <select 
+                    value={condition.targetIndicator}
+                    onChange={e => onUpdate({ targetIndicator: e.target.value as IndicatorType })}
+                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-colors"
+                  >
+                     {INDICATORS.map(i => <option key={i} value={i} className="bg-white dark:bg-[#151725]">{i}</option>)}
+                  </select>
+                )}
+             </div>
+             
+             {(condition.source !== 'PRICE' || condition.targetType === 'INDICATOR') && (
+                <div className="w-20 space-y-1.5">
+                   <label className="text-[9px] font-black text-slate-400 dark:text-gray-600 uppercase tracking-widest ml-1">Period</label>
+                   <input 
+                      type="number"
+                      value={condition.sourceParams.period || 14}
+                      onChange={e => onUpdate({ sourceParams: { ...condition.sourceParams, period: parseInt(e.target.value) } })}
+                      className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-3 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-colors font-mono"
+                   />
+                </div>
+             )}
+          </div>
+       </div>
+    </div>
+  );
+};
+
+export default AdminPanel;
