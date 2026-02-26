@@ -1,5 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import RegistrationModal from './RegistrationModal';
+import FloatingButtons from './FloatingButtons';
 import {
   Play, Users, TrendingUp, ShieldCheck,
   ArrowRight, Star, CheckCircle2, MonitorPlay,
@@ -14,6 +16,7 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [isEnrollOpen, setIsEnrollOpen] = React.useState(false);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -58,7 +61,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <button onClick={onLogin} className="text-sm font-bold text-slate-900 hover:text-blue-900 transition-colors">
               Student Portal
             </button>
-            <button onClick={onLogin} className="px-6 py-2.5 bg-blue-900 text-white rounded-full text-sm font-bold hover:bg-blue-800 transition-all active:scale-95">
+            <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-2.5 bg-blue-900 text-white rounded-full text-sm font-bold hover:bg-blue-800 transition-all active:scale-95">
               Enroll Now
             </button>
           </div>
@@ -124,7 +127,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex flex-col sm:flex-row items-center gap-4"
             >
-              <button onClick={onLogin} className="w-full sm:w-auto px-8 py-4 bg-blue-900 hover:bg-blue-800 text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 transition-all active:scale-95 flex items-center justify-center gap-2 group">
+              <button onClick={() => setIsEnrollOpen(true)} className="w-full sm:w-auto px-8 py-4 bg-blue-900 hover:bg-blue-800 text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 transition-all active:scale-95 flex items-center justify-center gap-2 group">
                 Enroll for Free Demo
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>
@@ -335,7 +338,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     <p className="text-xs text-slate-400 font-bold uppercase">Course Fee</p>
                     <p className="text-3xl font-black text-blue-900">{course.price}</p>
                   </div>
-                  <button onClick={onLogin} className={`px-6 py-3 rounded-2xl font-bold transition-all ${course.popular ? 'bg-blue-900 text-white hover:bg-blue-800' : 'bg-slate-100 text-blue-900 hover:bg-slate-200'}`}>
+                  <button onClick={() => setIsEnrollOpen(true)} className={`px-6 py-3 rounded-2xl font-bold transition-all ${course.popular ? 'bg-blue-900 text-white hover:bg-blue-800' : 'bg-slate-100 text-blue-900 hover:bg-slate-200'}`}>
                     Enroll Now
                   </button>
                 </div>
@@ -412,6 +415,117 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
         </div>
       </section>
+      {/* Our Process Section */}
+      <section className="py-24 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Our Trading Process</h2>
+            <p className="text-slate-600 max-w-2xl mx-auto">A systematic approach to help you become an independent trader.</p>
+          </div>
+          <div className="grid md:grid-cols-4 gap-8">
+            {[
+              { step: '01', title: 'Learn the Basics', desc: 'Understand how the market works from scratch.' },
+              { step: '02', title: 'Master Strategy', desc: 'Learn institutional price action and advanced concepts.' },
+              { step: '03', title: 'Live Practice', desc: 'Trade in live markets under our expert guidance.' },
+              { step: '04', title: 'Profit Consistently', desc: 'Apply risk management to achieve consistent returns.' }
+            ].map((s, idx) => (
+              <div key={idx} className="relative p-8 rounded-3xl bg-blue-50 border border-blue-100 flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-full bg-blue-900 text-white flex items-center justify-center font-black text-2xl mb-6 shadow-lg shadow-blue-900/20">{s.step}</div>
+                <h3 className="text-xl font-bold mb-3 text-blue-900">{s.title}</h3>
+                <p className="text-slate-600 text-sm leading-relaxed">{s.desc}</p>
+                {idx < 3 && <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-[2px] bg-blue-200"></div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-24 px-6 bg-slate-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Success Stories</h2>
+            <p className="text-slate-600 max-w-2xl mx-auto">Hear from our students who transformed their trading journey.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative pt-12">
+                <div className="absolute -top-6 left-8">
+                  <img src={`https://i.pravatar.cc/100?img=${i + 20}`} alt="Student" className="w-16 h-16 rounded-full border-4 border-white shadow-md bg-white" />
+                </div>
+                <div className="flex gap-1 mb-4 text-yellow-400">
+                  <Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" />
+                </div>
+                <p className="text-slate-600 italic mb-6">"Joining Lakshita Academy was the best decision. The way Sampangi explains complex concepts in Telugu is outstanding. I am now trading profitably every month."</p>
+                <div>
+                  <h4 className="font-bold text-blue-950">Student Name {i}</h4>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mt-1">Full Stock Market Course</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="py-24 px-6">
+        <div className="max-w-7xl mx-auto bg-white rounded-[40px] border border-slate-200 shadow-xl overflow-hidden flex flex-col md:flex-row">
+          <div className="md:w-1/2 p-12 lg:p-16 bg-blue-900 text-white flex flex-col justify-center">
+            <h2 className="text-4xl font-black mb-6">Get In Touch</h2>
+            <p className="text-blue-200 mb-10 text-lg leading-relaxed">Have questions about our courses? Reach out to our team, and we'll be happy to help you.</p>
+
+            <div className="space-y-8">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-blue-800 rounded-xl flex items-center justify-center shrink-0">
+                  <MapPin size={24} className="text-blue-300" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg mb-1">Office Location</h4>
+                  <p className="text-blue-200 text-sm leading-relaxed">Lakshita Trading Academy,<br />Hyderabad, Telangana</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-blue-800 rounded-xl flex items-center justify-center shrink-0">
+                  <Phone size={24} className="text-blue-300" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg mb-1">Phone & WhatsApp</h4>
+                  <p className="text-blue-200 text-sm">+91 9948157156</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-blue-800 rounded-xl flex items-center justify-center shrink-0">
+                  <Mail size={24} className="text-blue-300" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg mb-1">Email Address</h4>
+                  <p className="text-blue-200 text-sm">info@lakshitaacademy.in</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="md:w-1/2 p-12 lg:p-16">
+            <h3 className="text-2xl font-black mb-8 text-blue-950">Send us a Message</h3>
+            <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); alert('Message sent!'); }}>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Your Name</label>
+                <input type="text" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="John Doe" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
+                <input type="tel" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="+91 999999999" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Message</label>
+                <textarea required rows={4} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none resize-none" placeholder="How can we help you?"></textarea>
+              </div>
+              <button type="submit" className="w-full py-4 bg-blue-900 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all active:scale-[0.98]">
+                Send Message
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
 
       {/* CTA Section */}
       <section className="py-24 px-6">
@@ -420,7 +534,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           <div className="relative z-10">
             <h2 className="text-4xl md:text-6xl font-black mb-6 text-white">Start Your Success Story Today</h2>
             <p className="text-xl text-white/80 mb-10 max-w-2xl mx-auto">Join Lakshita Trading Academy and master the markets with Sampangi.</p>
-            <button onClick={onLogin} className="px-10 py-5 bg-white text-blue-900 rounded-2xl font-black text-lg hover:bg-slate-100 transition-all active:scale-95 shadow-xl">
+            <button onClick={() => setIsEnrollOpen(true)} className="px-10 py-5 bg-white text-blue-900 rounded-2xl font-black text-lg hover:bg-slate-100 transition-all active:scale-95 shadow-xl">
               Enroll for Free Demo Class
             </button>
             <div className="mt-8 flex items-center justify-center gap-8 text-white/60">
@@ -475,7 +589,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
 
           <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-blue-200/40">© 2024 Lakshita Trading Academy. All rights reserved.</p>
+            <div>
+              <p className="text-sm text-blue-200/40">© 2024 Lakshita Trading Academy. All rights reserved.</p>
+              <p className="text-sm text-blue-200/40 mt-1">Built with love by <a href="https://www.rajugariventures.com" target="_blank" rel="noopener noreferrer" className="text-blue-200 hover:text-white underline transition-colors">Rajugari Ventures</a></p>
+            </div>
             <div className="flex items-center gap-6">
               <a href="#" className="text-blue-200/40 hover:text-white transition-colors"><Globe size={20} /></a>
               <a href="#" className="text-blue-200/40 hover:text-white transition-colors"><MessageCircle size={20} /></a>
