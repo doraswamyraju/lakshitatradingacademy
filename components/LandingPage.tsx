@@ -5,7 +5,7 @@ import FloatingButtons from './FloatingButtons';
 import {
   Play, Users, TrendingUp, ShieldCheck,
   ArrowRight, Star, CheckCircle2, MonitorPlay,
-  Award, Globe, Zap, ChevronRight, Menu, X,
+  Award, Globe, Zap, ChevronRight, ChevronDown, ChevronUp, Menu, X,
   MessageCircle, BookOpen, GraduationCap, Phone, Mail, MapPin,
   Clock, Heart, Target, Sparkles
 } from 'lucide-react';
@@ -17,6 +17,7 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isEnrollOpen, setIsEnrollOpen] = React.useState(false);
+  const [activeFaq, setActiveFaq] = React.useState<number | null>(null);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -226,7 +227,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 </div>
               ))}
             </div>
-            <button className="px-8 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-blue-900 hover:bg-slate-50 transition-all">
+            <button onClick={() => setIsEnrollOpen(true)} className="px-8 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-blue-900 hover:bg-slate-50 transition-all active:scale-95 shadow-sm hover:shadow-md">
               Learn More About My Journey
             </button>
           </div>
@@ -280,13 +281,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 desc: 'Learn everything from scratch to institutional level in just one month.'
               }
             ].map((item, idx) => (
-              <div key={idx} className="p-8 rounded-3xl bg-white border border-slate-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-xl">
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ y: -5 }} key={idx} className="p-8 rounded-3xl bg-white border border-slate-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-xl">
                 <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-6">
                   {item.icon}
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-blue-900">{item.title}</h3>
                 <p className="text-slate-600 leading-relaxed text-sm">{item.desc}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -377,7 +378,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 textColor: 'text-green-900'
               }
             ].map((broker, idx) => (
-              <div key={idx} className={`p-8 rounded-3xl ${broker.color} border border-transparent hover:border-slate-200 transition-all`}>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ y: -8 }} key={idx} className={`p-8 rounded-3xl ${broker.color} border border-transparent hover:border-slate-200 transition-all shadow-sm hover:shadow-xl`}>
                 <h3 className={`text-2xl font-black mb-6 ${broker.textColor}`}>{broker.name}</h3>
                 <ul className="space-y-3 mb-8">
                   {broker.benefits.map((b, i) => (
@@ -387,10 +388,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     </li>
                   ))}
                 </ul>
-                <button className="w-full py-3 bg-white rounded-xl font-bold text-slate-900 shadow-sm hover:shadow-md transition-all">
+                <button className="w-full py-3 bg-white rounded-xl font-bold text-slate-900 shadow-sm hover:shadow-md transition-all active:scale-95">
                   Open Account
                 </button>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -407,9 +408,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               { q: "Do you provide live market support?", a: "Yes, we conduct live market trading sessions and have daily doubt clarification sessions." },
               { q: "How long is the course duration?", a: "Most of our comprehensive modules are designed to be completed in one month of intensive learning." }
             ].map((faq, i) => (
-              <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200">
-                <h4 className="font-bold text-blue-900 mb-2">{faq.q}</h4>
-                <p className="text-slate-600 text-sm leading-relaxed">{faq.a}</p>
+              <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 cursor-pointer hover:shadow-md transition-all duration-300" onClick={() => setActiveFaq(activeFaq === i ? null : i)}>
+                <div className="flex justify-between items-center">
+                  <h4 className={`font-bold transition-colors ${activeFaq === i ? 'text-blue-600' : 'text-blue-900'}`}>{faq.q}</h4>
+                  {activeFaq === i ? <ChevronUp size={20} className="text-blue-600" /> : <ChevronDown size={20} className="text-blue-400" />}
+                </div>
+                {activeFaq === i && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 pt-4 border-t border-slate-100">
+                    <p className="text-slate-600 text-sm leading-relaxed">{faq.a}</p>
+                  </motion.div>
+                )}
               </div>
             ))}
           </div>
@@ -429,12 +437,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               { step: '03', title: 'Live Practice', desc: 'Trade in live markets under our expert guidance.' },
               { step: '04', title: 'Profit Consistently', desc: 'Apply risk management to achieve consistent returns.' }
             ].map((s, idx) => (
-              <div key={idx} className="relative p-8 rounded-3xl bg-blue-50 border border-blue-100 flex flex-col items-center text-center">
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ scale: 1.05 }} key={idx} className="relative p-8 rounded-3xl bg-blue-50 border border-blue-100 flex flex-col items-center text-center hover:shadow-lg transition-all">
                 <div className="w-16 h-16 rounded-full bg-blue-900 text-white flex items-center justify-center font-black text-2xl mb-6 shadow-lg shadow-blue-900/20">{s.step}</div>
                 <h3 className="text-xl font-bold mb-3 text-blue-900">{s.title}</h3>
                 <p className="text-slate-600 text-sm leading-relaxed">{s.desc}</p>
                 {idx < 3 && <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-[2px] bg-blue-200"></div>}
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -448,20 +456,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <p className="text-slate-600 max-w-2xl mx-auto">Hear from our students who transformed their trading journey.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative pt-12">
+            {[
+              { name: "Ramesh P.", course: "Full Stock Market Course", text: "Joining Lakshita Academy was the best decision. The way Sampangi explains complex concepts in Telugu is outstanding." },
+              { name: "Suresh K.", course: "Advanced Technicals", text: "I struggled with risk management for years. The institutional concepts taught here transformed my approach completely." },
+              { name: "Lakshmi M.", course: "Options Specialization", text: "Sampangi's options buying strategies are a game changer! I am finally trading profitably and understand the market deeply." }
+            ].map((testimonial, i) => (
+              <motion.div whileHover={{ y: -10 }} transition={{ type: "spring", stiffness: 300 }} key={i} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-md hover:shadow-xl transition-shadow relative pt-12">
                 <div className="absolute -top-6 left-8">
                   <img src={`https://i.pravatar.cc/100?img=${i + 20}`} alt="Student" className="w-16 h-16 rounded-full border-4 border-white shadow-md bg-white" />
                 </div>
                 <div className="flex gap-1 mb-4 text-yellow-400">
                   <Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" />
                 </div>
-                <p className="text-slate-600 italic mb-6">"Joining Lakshita Academy was the best decision. The way Sampangi explains complex concepts in Telugu is outstanding. I am now trading profitably every month."</p>
+                <p className="text-slate-600 italic mb-6">"{testimonial.text}"</p>
                 <div>
-                  <h4 className="font-bold text-blue-950">Student Name {i}</h4>
-                  <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mt-1">Full Stock Market Course</p>
+                  <h4 className="font-bold text-blue-950">{testimonial.name}</h4>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mt-1">{testimonial.course}</p>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -570,20 +582,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <div>
               <h4 className="font-bold text-white mb-6">Courses</h4>
               <ul className="space-y-4 text-sm text-blue-200/60">
-                <li><a href="#" className="hover:text-white transition-colors">Full Market Course</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Advanced Technicals</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Options Specialization</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Free Demo Class</a></li>
+                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Full Market Course</a></li>
+                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Advanced Technicals</a></li>
+                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Options Specialization</a></li>
+                <li><button onClick={() => setIsEnrollOpen(true)} className="hover:text-white hover:translate-x-1 inline-block transition-transform">Free Demo Class</button></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-bold text-white mb-6">Support</h4>
               <ul className="space-y-4 text-sm text-blue-200/60">
-                <li><a href="#" className="hover:text-white transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms of Use</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">SEBI Disclaimer</a></li>
+                <li><a href="#contact" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Contact Us</a></li>
+                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Privacy Policy</a></li>
+                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Terms of Use</a></li>
+                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">SEBI Disclaimer</a></li>
               </ul>
             </div>
           </div>
@@ -594,8 +606,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <p className="text-sm text-blue-200/40 mt-1">Built with love by <a href="https://www.rajugariventures.com" target="_blank" rel="noopener noreferrer" className="text-blue-200 hover:text-white underline transition-colors">Rajugari Ventures</a></p>
             </div>
             <div className="flex items-center gap-6">
-              <a href="#" className="text-blue-200/40 hover:text-white transition-colors"><Globe size={20} /></a>
-              <a href="#" className="text-blue-200/40 hover:text-white transition-colors"><MessageCircle size={20} /></a>
+              <a href="#" className="text-blue-200/40 hover:text-white hover:scale-110 transition-all"><Globe size={24} /></a>
+              <a href="#" className="text-blue-200/40 hover:text-[#25D366] hover:scale-110 transition-all"><MessageCircle size={24} /></a>
             </div>
           </div>
         </div>
