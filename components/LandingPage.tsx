@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { 
-  Play, Users, TrendingUp, ShieldCheck, 
+import {
+  Play, Users, TrendingUp, ShieldCheck,
   ArrowRight, Star, CheckCircle2, MonitorPlay,
   Award, Globe, Zap, ChevronRight, Menu, X,
   MessageCircle, BookOpen, GraduationCap, Phone, Mail, MapPin,
@@ -35,7 +35,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans overflow-x-hidden selection:bg-blue-100">
-      
+
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -85,7 +85,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {/* Unique Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 px-6 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-blue-600/5 blur-[160px] rounded-full pointer-events-none opacity-50"></div>
-        
+
         <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center">
           <div className="text-left">
             <motion.div
@@ -98,7 +98,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <span className="text-xs font-bold tracking-widest uppercase text-blue-900/60">Learn Stock Market From Zero</span>
             </motion.div>
 
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
@@ -109,7 +109,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               Trading Journey
             </motion.h1>
 
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -118,7 +118,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               Master the stock market with **Sampangi**. We provide institutional-grade training in Telugu, designed to make you a consistently profitable trader.
             </motion.p>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
@@ -130,8 +130,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </button>
               <div className="flex items-center gap-4 px-4">
                 <div className="flex -space-x-3">
-                  {[1,2,3,4].map(i => (
-                    <img key={i} src={`https://i.pravatar.cc/100?img=${i+10}`} className="w-10 h-10 rounded-full border-2 border-white shadow-sm" alt="Student" />
+                  {[1, 2, 3, 4].map(i => (
+                    <img key={i} src={`https://i.pravatar.cc/100?img=${i + 10}`} className="w-10 h-10 rounded-full border-2 border-white shadow-sm" alt="Student" />
                   ))}
                 </div>
                 <div className="text-sm font-medium text-slate-500">
@@ -142,30 +142,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
 
           {/* Unique Founder Image Display */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="relative"
           >
             <div className="relative z-10 rounded-[60px] overflow-hidden border-[12px] border-white shadow-2xl aspect-[4/5] bg-blue-50">
-              <img 
-                src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=800" 
-                alt="Founder Sampangi" 
-                className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
+              <img
+                src="/founder.png"
+                alt="Founder Sampangi"
+                className="w-full h-full object-contain transition-all duration-700"
               />
               <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-blue-950/90 to-transparent">
                 <h3 className="text-2xl font-bold text-white">Sampangi</h3>
                 <p className="text-blue-200 text-sm font-medium">Founder & Head Mentor</p>
               </div>
             </div>
-            
+
             {/* Decorative Elements */}
             <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl animate-pulse"></div>
             <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-blue-900/10 rounded-full blur-3xl animate-pulse-slow"></div>
-            
+
             {/* Floating Stats Card */}
-            <motion.div 
+            <motion.div
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 4, repeat: Infinity }}
               className="absolute top-1/4 -right-8 z-20 bg-white p-4 rounded-2xl shadow-xl border border-blue-50"
@@ -181,7 +181,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               animate={{ y: [0, 10, 0] }}
               transition={{ duration: 5, repeat: Infinity, delay: 1 }}
               className="absolute bottom-1/4 -left-8 z-20 bg-white p-4 rounded-2xl shadow-xl border border-blue-50"
@@ -452,7 +452,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 Empowering retail traders with institutional-grade education in Telugu. Founded by Sampangi.
               </p>
             </div>
-            
+
             <div>
               <h4 className="font-bold text-white mb-6">Courses</h4>
               <ul className="space-y-4 text-sm text-blue-200/60">
