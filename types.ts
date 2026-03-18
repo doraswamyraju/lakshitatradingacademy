@@ -59,8 +59,8 @@ export interface UserFunds {
   total: number;
 }
 
-export type IndicatorType = 'PRICE' | 'RSI' | 'SMA' | 'EMA' | 'MACD' | 'VOLUME' | 'BOLLINGER_UPPER' | 'BOLLINGER_LOWER';
-export type OperatorType = '>' | '<' | '==' | '>=' | '<=' | 'CROSSOVER' | 'CROSSUNDER';
+export type IndicatorType = 'PRICE' | 'RSI' | 'SMA' | 'EMA' | 'MACD' | 'VOLUME' | 'BOLLINGER_UPPER' | 'BOLLINGER_LOWER' | 'BOLLINGER_MIDDLE' | 'ADX' | 'DI_PLUS' | 'DI_MINUS' | 'HEIKIN_ASHI_CANDLE';
+export type OperatorType = '>' | '<' | '==' | '>=' | '<=' | 'CROSSOVER' | 'CROSSUNDER' | 'NEAR' | 'BETWEEN' | 'PATTERN_MATCH';
 
 export interface StrategyCondition {
   id: string;

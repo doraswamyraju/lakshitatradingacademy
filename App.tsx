@@ -47,6 +47,28 @@ const App: React.FC = () => {
       isActive: true,
       createdBy: 'admin',
       isMaster: true
+    },
+    {
+      id: 'm3',
+      name: 'HA Trend Continuation',
+      description: 'Trade continuation moves near mid-band using strong HA candles with ADX-confirmed trend.',
+      entryConditions: [
+        { id: 'c5', source: 'ADX', operator: 'BETWEEN', targetType: 'VALUE', targetValue: 50, sourceParams: { period: 14, min: 18 } },
+        { id: 'c6', source: 'DI_PLUS', operator: '>', targetType: 'INDICATOR', targetIndicator: 'DI_MINUS', sourceParams: {} },
+        { id: 'c7', source: 'PRICE', operator: 'NEAR', targetType: 'INDICATOR', targetIndicator: 'BOLLINGER_MIDDLE', sourceParams: { period: 20, stdDev: 2, tolerancePct: 1 } },
+        { id: 'c8', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', targetValue: 1, sourceParams: { pattern: 'STRONG_BULLISH_BREAKOUT' } }
+      ],
+      exitConditions: [
+        { id: 'c9', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', targetValue: 1, sourceParams: { pattern: 'STRONG_BEARISH' } },
+        { id: 'c10', source: 'PRICE', operator: '<=', targetType: 'VALUE', targetValue: 0, sourceParams: { type: 'STRUCTURAL_SL' } }
+      ],
+      timeframe: '5m',
+      qty: 1,
+      productType: 'MIS',
+      riskConfig: { stopLossPct: 30, takeProfitPct: 0, trailingStopLoss: false }, // Represents SL fallback. Target handled fundamentally by RR 1:3 rules in backend
+      isActive: true,
+      createdBy: 'admin',
+      isMaster: true
     }
   ]);
 
