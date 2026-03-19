@@ -83,8 +83,8 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    // Fetch external config from our Node server
-    fetch('http://localhost:4000/api/config')
+    // Fetch external config from our Node server using relative path for production Nginx proxy
+    fetch('/api/config')
       .then(res => res.json())
       .then(data => {
         if (data && !data.error) {

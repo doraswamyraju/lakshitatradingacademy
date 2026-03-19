@@ -15,7 +15,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
       setConfig(newConfig);
       
       try {
-        await fetch('http://localhost:4000/api/config', {
+        await fetch('/api/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(newConfig)
@@ -31,7 +31,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
     setConfig(newConfig);
     
     try {
-      await fetch('http://localhost:4000/api/config', {
+      await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig)
