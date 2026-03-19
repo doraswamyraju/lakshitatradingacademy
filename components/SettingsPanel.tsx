@@ -9,14 +9,36 @@ interface SettingsPanelProps {
 }
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (config.apiKey && config.clientCode) {
-      setConfig(prev => ({ ...prev, isConnected: true }));
+      const newConfig = { ...config, isConnected: true };
+      setConfig(newConfig);
+      
+      try {
+        await fetch('http://localhost:4000/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newConfig)
+        });
+      } catch (err) {
+        console.error("Failed to save to backend", err);
+      }
     }
   };
 
-  const handleDisconnect = () => {
-    setConfig(prev => ({ ...prev, isConnected: false }));
+  const handleDisconnect = async () => {
+    const newConfig = { ...config, isConnected: false };
+    setConfig(newConfig);
+    
+    try {
+      await fetch('http://localhost:4000/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig)
+      });
+    } catch (err) {
+      console.error("Failed to save to backend", err);
+    }
   };
 
   return (

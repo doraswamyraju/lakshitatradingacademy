@@ -83,6 +83,18 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
+    // Fetch external config from our Node server
+    fetch('http://localhost:4000/api/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) {
+           setBrokerConfig(data);
+        }
+      })
+      .catch(err => console.log('Backend not reachable:', err));
+  }, []);
+
+  useEffect(() => {
     const root = window.document.documentElement;
     if (theme === 'dark') root.classList.add('dark');
     else root.classList.remove('dark');

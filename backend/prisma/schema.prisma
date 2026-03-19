@@ -1,0 +1,41 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+
+  // Broker Credentials
+  brokerName  String?
+  apiKey      String?
+  apiSecret   String?
+  clientCode  String?
+  
+  // Strategy Subscription Logs
+  StrategyLog StrategyLog[]
+}
+
+model StrategyLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  strategyId String
+  action     String   // "ENTRY_CALL", "ENTRY_PUT", "EXIT_TARGET", "EXIT_SL"
+  symbol     String
+  price      Float
+  qty        Int
+  status     String   // "SUCCESS", "FAILED"
+  message    String?
+  timestamp  DateTime @default(now())
+}
