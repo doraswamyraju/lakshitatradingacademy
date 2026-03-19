@@ -10,10 +10,12 @@ import BacktestPanel from './components/BacktestPanel';
 import StrategyHub from './components/StrategyHub';
 import LearnPanel from './components/LearnPanel';
 import LandingPage from './components/LandingPage';
-import { UserRole, TradingStrategy, BrokerConfig, User as UserType } from './types';
+import { UserRole, TradingStrategy, BrokerConfig } from './types';
+import { useAuth } from './context/AuthContext';
+import { AuthModal } from './components/AuthModal';
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const { user: currentUser, isAuthenticated, token, logout } = useAuth();
   const [showLanding, setShowLanding] = useState(true);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'admin' | 'settings' | 'backtest' | 'hub' | 'learn'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -83,8 +85,11 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    // Fetch external config from our Node server using relative path for production Nginx proxy
-    fetch('/api/config')
+    if (!token) return;
+    
+    fetch('/api/config', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then(res => res.json())
       .then(data => {
         if (data && !data.error) {
@@ -92,7 +97,7 @@ const App: React.FC = () => {
         }
       })
       .catch(err => console.log('Backend not reachable:', err));
-  }, []);
+  }, [token]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -102,17 +107,9 @@ const App: React.FC = () => {
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
-  const handleLogin = (role: UserRole) => {
-    setCurrentUser({
-      id: Math.random().toString(),
-      username: role === 'ADMIN' ? 'Admin_Master' : 'Retail_Trader',
-      role: role
-    });
-    setActiveTab(role === 'ADMIN' ? 'admin' : 'learn');
-  };
-
   const handleLogout = () => {
-    setCurrentUser(null);
+    logout();
+    setShowLanding(true);
   };
 
   const copyToUserNamespace = (strategy: TradingStrategy, units: number) => {
@@ -132,12 +129,17 @@ const App: React.FC = () => {
     setUserStrategies(prev => prev.filter(s => s.id !== id));
   };
 
-  if (showLanding && !currentUser) {
+  if (showLanding && !isAuthenticated) {
     return <LandingPage onLogin={() => setShowLanding(false)} />;
   }
 
-  if (!currentUser) {
-    return <LoginPage onLogin={handleLogin} onBack={() => setShowLanding(true)} />;
+  if (!isAuthenticated) {
+    return (
+      <div className="relative min-h-screen">
+        <LandingPage onLogin={() => {}} />
+        <AuthModal onClose={() => setShowLanding(true)} />
+      </div>
+    );
   }
 
   return (

@@ -2,6 +2,7 @@
 import React from 'react';
 import { Key, Shield, Globe, Power, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { BrokerConfig } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 interface SettingsPanelProps {
   config: BrokerConfig;
@@ -9,6 +10,7 @@ interface SettingsPanelProps {
 }
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
+  const { token } = useAuth();
   const handleConnect = async () => {
     if (config.apiKey && config.clientCode) {
       const newConfig = { ...config, isConnected: true };
@@ -17,7 +19,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
       try {
         await fetch('/api/config', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+             'Content-Type': 'application/json',
+             'Authorization': `Bearer ${token}` 
+          },
           body: JSON.stringify(newConfig)
         });
       } catch (err) {
@@ -33,7 +38,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
     try {
       await fetch('/api/config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+           'Content-Type': 'application/json',
+           'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(newConfig)
       });
     } catch (err) {
