@@ -2,8 +2,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIAnalysisResult, Candle, AlgorithmType } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+const getAIClient = () => {
+  try {
+    return new GoogleGenAI({ apiKey: import.meta.env?.VITE_GEMINI_API_KEY || "dummy_key_to_prevent_browser_crash" });
+  } catch (e) {
+    console.warn("GoogleGenAI offline mode");
+    return null as any;
+  }
+};
 export const analyzeMarket = async (
   symbol: string,
   candles: Candle[]
@@ -27,6 +33,8 @@ export const analyzeMarket = async (
       Calculate support and resistance levels.
     `;
 
+    const ai = getAIClient();
+    if (!ai) throw new Error("AI Client offline");
     const response = await ai.models.generateContent({
       model,
       contents: prompt,
@@ -68,6 +76,8 @@ export const analyzeMarket = async (
 
 export const sendChatMessage = async (history: {role: string, parts: {text: string}[]}[], newMessage: string) => {
     try {
+        const ai = getAIClient();
+        if (!ai) return "AI connection offline.";
         const chat = ai.chats.create({
             model: "gemini-3-pro-preview",
             history: history,
