@@ -14,13 +14,22 @@ interface AdminPanelProps {
   setStrategies: React.Dispatch<React.SetStateAction<TradingStrategy[]>>;
 }
 
-const INDICATORS: IndicatorType[] = ['PRICE', 'RSI', 'SMA', 'EMA', 'MACD', 'VOLUME', 'BOLLINGER_UPPER', 'BOLLINGER_LOWER'];
+const INDICATORS: IndicatorType[] = [
+  'PRICE', 'RSI', 'SMA', 'EMA', 'MACD', 'VOLUME', 
+  'BOLLINGER_UPPER', 'BOLLINGER_LOWER', 'BOLLINGER_MIDDLE', 
+  'ADX', 'DI_PLUS', 'DI_MINUS', 'HEIKIN_ASHI_CANDLE'
+];
 const OPERATORS: { value: OperatorType; label: string }[] = [
   { value: '>', label: 'Greater Than' },
   { value: '<', label: 'Less Than' },
+  { value: '>=', label: 'Greater or Equal' },
+  { value: '<=', label: 'Less or Equal' },
   { value: '==', label: 'Equal To' },
   { value: 'CROSSOVER', label: 'Crosses Above' },
-  { value: 'CROSSUNDER', label: 'Crosses Below' }
+  { value: 'CROSSUNDER', label: 'Crosses Below' },
+  { value: 'NEAR', label: 'Near / Touching' },
+  { value: 'BETWEEN', label: 'Is Between' },
+  { value: 'PATTERN_MATCH', label: 'Matches Pattern' }
 ];
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies }) => {
