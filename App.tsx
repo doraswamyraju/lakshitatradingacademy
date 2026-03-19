@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, ShieldCheck, Activity, LineChart, Code2, Settings, User, LogOut, Bell, Menu, X, Sun, Moon, FlaskConical, BookOpen, GraduationCap } from 'lucide-react';
 import MarketDashboard from './components/MarketDashboard';
-import AILab from './components/AILab';
+// import AILab from './components/AILab';
 import AdminPanel from './components/AdminPanel';
 import SettingsPanel from './components/SettingsPanel';
 import LoginPage from './components/LoginPage';
@@ -175,8 +175,8 @@ const App: React.FC = () => {
              <NavItem icon={<BookOpen size={20} />} label="Strategy Hub" active={activeTab === 'hub'} onClick={() => setActiveTab('hub')} collapsed={!isSidebarOpen} accent="warning" />
              <NavItem icon={<GraduationCap size={20} />} label="Lakshita Academy" active={activeTab === 'learn'} onClick={() => setActiveTab('learn')} collapsed={!isSidebarOpen} accent="primary" />
              <NavItem icon={<FlaskConical size={20} />} label="Backtesting" active={activeTab === 'backtest'} onClick={() => setActiveTab('backtest')} collapsed={!isSidebarOpen} accent="accent" />
-             <NavItem icon={<Code2 size={20} />} label="Quant Lab" active={activeTab === 'strategy'} onClick={() => setActiveTab('strategy')} collapsed={!isSidebarOpen} />
-             {currentUser.role === 'ADMIN' && (
+             {/* <NavItem icon={<Code2 size={20} />} label="Quant Lab" active={activeTab === 'strategy'} onClick={() => setActiveTab('strategy')} collapsed={!isSidebarOpen} /> */}
+             {currentUser?.role === 'ADMIN' && (
                <NavItem icon={<ShieldCheck size={20} />} label="Master Panel" active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} accent="warning" collapsed={!isSidebarOpen} />
              )}
              <NavItem icon={<Settings size={20} />} label="API Gateway" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} accent="primary" collapsed={!isSidebarOpen} />
@@ -218,8 +218,8 @@ const App: React.FC = () => {
         </header>
 
         <div className="flex-1 overflow-hidden">
-           {activeTab === 'dashboard' && <MarketDashboard strategies={userStrategies} brokerConfig={brokerConfig} userRole={currentUser.role} onRemoveStrategy={removeUserStrategy} />}
-           {activeTab === 'strategy' && <AILab />}
+           {activeTab === 'dashboard' && <MarketDashboard strategies={userStrategies} brokerConfig={brokerConfig} userRole={currentUser?.role || 'USER'} onRemoveStrategy={removeUserStrategy} />}
+           {/* {activeTab === 'strategy' && <AILab />} */}
            {activeTab === 'admin' && <AdminPanel strategies={masterStrategies} setStrategies={setMasterStrategies} />}
            {activeTab === 'settings' && <SettingsPanel config={brokerConfig} setConfig={setBrokerConfig} />}
            {activeTab === 'backtest' && <BacktestPanel strategies={masterStrategies} />}
