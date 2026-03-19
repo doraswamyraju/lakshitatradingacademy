@@ -67,8 +67,9 @@ export class AliceBlueService {
         }
       });
       
-      console.log(`[AliceBlue] Order Placed:`, res.data);
-      return res.data;
+      const data = res.data as any;
+      console.log(`[AliceBlue] Order Placed:`, data);
+      return data;
     } catch (error) {
       console.error(`[AliceBlue] Order Placement error:`, error);
       throw error;

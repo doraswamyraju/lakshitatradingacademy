@@ -62,10 +62,11 @@ export class AngelOneService {
         }
       });
 
-      if (res.data.status) {
-        this.jwtToken = res.data.data.jwtToken;
-        this.refreshToken = res.data.data.refreshToken;
-        this.feedToken = res.data.data.feedToken;
+      const data = res.data as any;
+      if (data.status) {
+        this.jwtToken = data.data.jwtToken;
+        this.refreshToken = data.data.refreshToken;
+        this.feedToken = data.data.feedToken;
         console.log(`[Broker] Login Successful for ${this.config.clientCode}`);
         return true;
       }
@@ -96,8 +97,9 @@ export class AngelOneService {
           'X-PrivateKey': this.config.apiKey
         }
       });
-      console.log(`[Broker] Order Placed:`, res.data);
-      return res.data;
+      const data = res.data as any;
+      console.log(`[Broker] Order Placed:`, data);
+      return data;
     } catch (error) {
       console.error(`[Broker] Order Placement error:`, error);
       throw error;
