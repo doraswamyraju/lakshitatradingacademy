@@ -109,7 +109,7 @@ export class ExecutionLoop {
              qty: user.qty,
              status: "SUCCESS"
            }
-        }).catch(e => console.log("[DB] Prisma log skipped during mock run"));
+        }).catch((e: any) => console.log("[DB] Prisma log skipped during mock run"));
 
       } catch (err) {
         console.error(`[Engine] Order failed for User: ${user.name}`);
