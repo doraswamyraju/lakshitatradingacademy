@@ -57,12 +57,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
              <h3 className="font-bold text-white">Select Broker</h3>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-             {['AngelOne', 'Zerodha', 'Upstox'].map(b => (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+             {['AngelOne', 'Zerodha', 'Upstox', 'AliceBlue'].map(b => (
                <button 
                  key={b}
                  onClick={() => setConfig(prev => ({ ...prev, brokerName: b as any }))}
-                 className={`py-3 rounded-xl border text-xs font-bold transition-all ${
+                 className={`py-3 px-2 rounded-xl border text-[11px] font-bold transition-all ${
                    config.brokerName === b 
                    ? 'bg-samp-primary/20 border-samp-primary text-white' 
                    : 'bg-black/20 border-white/5 text-gray-500 hover:border-white/20'

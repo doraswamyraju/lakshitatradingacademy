@@ -93,7 +93,7 @@ export interface TradingStrategy {
 }
 
 export interface BrokerConfig {
-  brokerName: 'AngelOne' | 'Zerodha' | 'Upstox';
+  brokerName: 'AngelOne' | 'Zerodha' | 'Upstox' | 'AliceBlue';
   apiKey: string;
   apiSecret: string;
   clientCode: string;
