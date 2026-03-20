@@ -52,11 +52,13 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
        aggregated.push({ ...chunk[0], open, high, low, close, volume });
     }
 
-    // Assign Chronological Unix Timestamps
+    // Assign Chronological Unix Timestamps shifted to IST (+5 hours 30 mins)
     const nowSecs = Math.floor(Date.now() / 1000);
+    const IST_OFFSET_SECONDS = 19800; // 5.5 hours * 3600
+    
     const result = aggregated.map((d, index) => {
         const minutesAgo = (aggregated.length - 1 - index) * factor;
-        const ts = nowSecs - (minutesAgo * 60);
+        const ts = nowSecs - (minutesAgo * 60) + IST_OFFSET_SECONDS;
 
         let o = d.open; let c = d.close; let h = d.high; let l = d.low;
 
