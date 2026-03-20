@@ -18,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 // Basic health check route
-app.get('/api/health', (req: Request, res: Response) => {
+app.get(['/api/health', '/health'], (req: Request, res: Response) => {
   res.json({ status: 'live', message: 'Lakshita Trading Academy Engine Running' });
 });
 
@@ -39,7 +39,7 @@ const authenticateToken = (req: Request, res: Response, next: any) => {
 // --- AUTHENTICATION ROUTES ---
 
 // Register
-app.post('/api/auth/register', async (req: Request, res: Response) => {
+app.post(['/api/auth/register', '/auth/register'], async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
@@ -61,7 +61,7 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
 });
 
 // Login
-app.post('/api/auth/login', async (req: Request, res: Response) => {
+app.post(['/api/auth/login', '/auth/login'], async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
     const user = await prisma.user.findUnique({ where: { username } });
@@ -84,7 +84,7 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
 // --- PROTECTED ROUTES ---
 
 // Get User Broker Config
-app.get('/api/config', authenticateToken, async (req: Request, res: Response) => {
+app.get(['/api/config', '/config'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -104,7 +104,7 @@ app.get('/api/config', authenticateToken, async (req: Request, res: Response) =>
 });
 
 // Save User Broker Config
-app.post('/api/config', authenticateToken, async (req: Request, res: Response) => {
+app.post(['/api/config', '/config'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const { brokerName, apiKey, apiSecret, clientCode, isConnected } = req.body;
