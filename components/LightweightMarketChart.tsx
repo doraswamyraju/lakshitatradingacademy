@@ -53,7 +53,15 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     }
 
     // Assign Chronological Unix Timestamps shifted to IST (+5 hours 30 mins)
-    const nowSecs = Math.floor(Date.now() / 1000);
+    const now = new Date();
+    // Force Market Freeze at 15:30 IST on the UI clock mathematically
+    const currentHourIST = now.getUTCHours() + 5 + Math.floor((now.getUTCMinutes() + 30) / 60);
+    const currentMinuteIST = (now.getUTCMinutes() + 30) % 60;
+    const isMarketClosed = currentHourIST > 15 || (currentHourIST === 15 && currentMinuteIST >= 30) || currentHourIST < 9;
+    
+    const uiTime = isMarketClosed ? (() => { const d = new Date(now); d.setUTCHours(10, 0, 0, 0); return d; })() : now;
+    
+    const nowSecs = Math.floor(uiTime.getTime() / 1000);
     const IST_OFFSET_SECONDS = 19800; // 5.5 hours * 3600
     
     const result = aggregated.map((d, index) => {

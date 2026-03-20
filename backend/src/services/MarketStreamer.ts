@@ -27,11 +27,17 @@ export class MarketStreamer {
   }
 
   private initSimulation() {
-    // Generate 60 initial candles leading up to the current price
+    // Generate 60 initial candles, locking the clock to 15:30 IST if the market is closed
     let basePrice = 53800.00;
     const now = new Date();
+    const currentHourIST = now.getUTCHours() + 5 + Math.floor((now.getUTCMinutes() + 30) / 60);
+    const currentMinuteIST = (now.getUTCMinutes() + 30) % 60;
+    const isMarketClosed = currentHourIST > 15 || (currentHourIST === 15 && currentMinuteIST >= 30) || currentHourIST < 9;
+    
+    const simTime = isMarketClosed ? (() => { const d = new Date(now); d.setUTCHours(10, 0, 0, 0); return d; })() : now;
+
     for (let i = 60; i >= 0; i--) {
-      const time = new Date(now.getTime() - i * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const time = new Date(simTime.getTime() - i * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const volatility = basePrice * 0.0005;
       const change = (Math.random() - 0.5) * volatility;
       
@@ -49,16 +55,21 @@ export class MarketStreamer {
   private generateNextTick(isTrueLiveTick: boolean = false) {
     const lastCandle = this.candles[this.candles.length - 1];
     
-    if (!isTrueLiveTick) {
-        // Only drift the price if we are simulating
+    const now = new Date();
+    const currentHourIST = now.getUTCHours() + 5 + Math.floor((now.getUTCMinutes() + 30) / 60);
+    const currentMinuteIST = (now.getUTCMinutes() + 30) % 60;
+    const isMarketClosed = currentHourIST > 15 || (currentHourIST === 15 && currentMinuteIST >= 30) || currentHourIST < 9;
+
+    if (!isTrueLiveTick && !isMarketClosed) {
+        // Only drift the price if we are simulating AND the market is actively open
         const volatility = this.currentPrice * 0.00015; 
         const change = (Math.random() - 0.49) * volatility; 
         this.currentPrice = parseFloat((this.currentPrice + change).toFixed(2));
     }
     
-    // Update the last candle or create a new one every minute
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Lock the clock to exactly 15:30 IST if after-hours
+    const simTime = isMarketClosed ? (() => { const d = new Date(now); d.setUTCHours(10, 0, 0, 0); return d; })() : now;
+    const timeStr = simTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     
     if (lastCandle.time === timeStr) {
        lastCandle.close = this.currentPrice;
