@@ -18,6 +18,7 @@ export class MarketStreamer {
   private io: Server;
   public currentPrice: number = 53841.40;
   private candles: Candle[] = [];
+  private intervalId: NodeJS.Timeout | null = null;
   
   constructor(io: Server) {
     this.io = io;
@@ -78,6 +79,15 @@ export class MarketStreamer {
     }
   }
 
+  public async rebootFeed() {
+    console.log(`[MarketStreamer] Executing zero-downtime feed injection for new AliceBlue credentials...`);
+    if (this.intervalId) {
+       clearInterval(this.intervalId);
+       this.intervalId = null;
+    }
+    await this.startStreaming();
+  }
+
   private async startStreaming() {
     try {
         const user = await prisma.user.findFirst({
@@ -123,8 +133,10 @@ export class MarketStreamer {
              console.log(`[MarketStreamer] Live Market API offline, defaulting to high-fidelity local simulation at ₹${this.currentPrice}`);
          });
 
+    if (this.intervalId) clearInterval(this.intervalId);
+
     // 2. Broadcast High-Frequency Ticks (1000ms / 1 second)
-    setInterval(() => {
+    this.intervalId = setInterval(() => {
       this.generateNextTick();
       
       const bidBase = this.currentPrice - 0.5;

@@ -119,6 +119,8 @@ app.post('/api/config', authenticateToken, async (req: Request, res: Response) =
       }
     });
 
+    marketStreamer?.rebootFeed();
+
     res.json({ success: true, message: 'Configuration saved' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to save configuration' });
