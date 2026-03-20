@@ -99,6 +99,7 @@ app.get(['/api/config', '/config'], authenticateToken, async (req: Request, res:
       isConnected: !!user.apiKey
     });
   } catch (error) {
+    console.error('[API Config GET] Fatal Error:', error);
     res.status(500).json({ error: 'Database error' });
   }
 });
@@ -123,6 +124,7 @@ app.post(['/api/config', '/config'], authenticateToken, async (req: Request, res
 
     res.json({ success: true, message: 'Configuration saved' });
   } catch (error) {
+    console.error('[API Config POST] Fatal Error during Broker saving:', error);
     res.status(500).json({ error: 'Failed to save configuration' });
   }
 });
