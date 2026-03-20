@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, Time, LineData, CandlestickSeries, LineSeries } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, ISeriesApi, Time, LineData, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
 import { Candle, ChartType } from '../types';
 
 interface LightweightMarketChartProps {
@@ -7,42 +7,64 @@ interface LightweightMarketChartProps {
   height: number;
   chartType?: ChartType;
   showSMA?: boolean;
+  showEMA?: boolean;
+  timeframe?: string;
 }
 
 const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({ 
   data, 
   height, 
   chartType = 'CANDLE',
-  showSMA = false
+  showSMA = false,
+  showEMA = false,
+  timeframe = '1m'
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<any> | null>(null);
   const smaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const emaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
 
-  // Transform our generic string-based Candle[] into strict TradingView format
+  // Transform and aggregate data based on Timeframe
   const formattedData = useMemo(() => {
-    // Because backend `time` is a string like "02:30 PM", we cleanly generate strict chronological Unix timestamps
-    // by anchoring the most recent candle to NOW, and subtracting 1 minute backward for each.
+    if (!data || data.length === 0) return [];
+    
+    // Determine compression factor
+    let factor = 1;
+    if (timeframe === '5m') factor = 5;
+    if (timeframe === '15m') factor = 15;
+    if (timeframe === '1h') factor = 60;
+    if (timeframe === 'D') factor = 60 * 24;
+
+    const aggregated = [];
+    // Aggregate from oldest to newest
+    for (let i = 0; i < data.length; i += factor) {
+       const chunk = data.slice(i, i + factor);
+       if (chunk.length === 0) break;
+       
+       const open = chunk[0].open;
+       const close = chunk[chunk.length - 1].close;
+       const high = Math.max(...chunk.map(c => c.high));
+       const low = Math.min(...chunk.map(c => c.low));
+       const volume = chunk.reduce((sum, c) => sum + c.volume, 0);
+       
+       aggregated.push({ ...chunk[0], open, high, low, close, volume });
+    }
+
+    // Assign Chronological Unix Timestamps
     const nowSecs = Math.floor(Date.now() / 1000);
-    const result = data.map((d, index) => {
-        // Distance from end of the array inside a 1m chart = (data.length - 1 - index) minutes
-        const minutesAgo = data.length - 1 - index;
+    const result = aggregated.map((d, index) => {
+        const minutesAgo = (aggregated.length - 1 - index) * factor;
         const ts = nowSecs - (minutesAgo * 60);
 
-        // Calculate Heikin Ashi values dynamically if requested
-        let o = d.open;
-        let c = d.close;
-        let h = d.high;
-        let l = d.low;
+        let o = d.open; let c = d.close; let h = d.high; let l = d.low;
 
         return {
            time: ts as Time, 
-           open: o, 
-           high: h, 
-           low: l, 
-           close: c,
-           value: c // for line charts
+           open: o, high: h, low: l, close: c,
+           value: c, // for line charts
+           volume: d.volume
         };
     });
 
@@ -87,12 +109,36 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         if (i < period - 1) continue;
         let sum = 0;
         for (let j = 0; j < period; j++) {
-            sum += formattedData[i - j].close; // HA close or normal close
+            sum += formattedData[i - j].close; 
         }
         result.push({ time: formattedData[i].time, value: sum / period });
     }
     return result;
   }, [formattedData, showSMA]);
+
+  const emaData = useMemo(() => {
+    if (!showEMA || formattedData.length === 0) return [];
+    const period = 9; 
+    const result: LineData[] = [];
+    const k = 2 / (period + 1);
+    let ema = formattedData[0].close;
+
+    for (let i = 0; i < formattedData.length; i++) {
+        if (i > 0) {
+            ema = (formattedData[i].close * k) + (ema * (1 - k));
+        }
+        result.push({ time: formattedData[i].time, value: ema });
+    }
+    return result;
+  }, [formattedData, showEMA]);
+
+  const volumeData = useMemo(() => {
+    return formattedData.map(d => ({
+        time: d.time,
+        value: d.volume,
+        color: d.close >= d.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+    }));
+  }, [formattedData]);
 
   // Handle Chart Destruction & Creation natively
   useEffect(() => {
@@ -148,6 +194,25 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       smaSeriesRef.current = smaSeries;
     }
 
+    if (showEMA) {
+      const emaSeries = chart.addSeries(LineSeries, {
+        color: '#8B5CF6',
+        lineWidth: 2,
+        title: 'EMA 9',
+      });
+      emaSeriesRef.current = emaSeries;
+    }
+
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      color: '#26a69a',
+      priceFormat: { type: 'volume' },
+      priceScaleId: '', 
+    });
+    volumeSeries.priceScale().applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0 },
+    });
+    volumeSeriesRef.current = volumeSeries;
+
     const handleResize = () => {
       if (chartContainerRef.current) {
          chart.applyOptions({ width: chartContainerRef.current.clientWidth });
@@ -166,10 +231,16 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     if (seriesRef.current && formattedData.length > 0) {
       seriesRef.current.setData(formattedData as any);
     }
-    if (showSMA && smaSeriesRef.current && smaData.length > 0) {
+    if (volumeSeriesRef.current && volumeData.length > 0) {
+      volumeSeriesRef.current.setData(volumeData as any);
+    }
+    if (showSMA && smaSeriesRef.current && smaData?.length > 0) {
       smaSeriesRef.current.setData(smaData);
     }
-  }, [formattedData, showSMA, smaData]);
+    if (showEMA && emaSeriesRef.current && emaData?.length > 0) {
+      emaSeriesRef.current.setData(emaData);
+    }
+  }, [formattedData, showSMA, smaData, showEMA, emaData, volumeData]);
 
   return (
     <div 

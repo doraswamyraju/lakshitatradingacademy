@@ -29,8 +29,10 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   const [isAutomationOn, setIsAutomationOn] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [timeframe, setTimeframe] = useState<'1m'|'5m'|'15m'|'1h'|'D'>('1m');
   const [chartType, setChartType] = useState<ChartType>('HEIKIN_ASHI');
   const [showSMA, setShowSMA] = useState(false);
+  const [showEMA, setShowEMA] = useState(false);
   const [logs, setLogs] = useState<string[]>(["[SYSTEM] Kernel active...", "[SYSTEM] Listening for user triggers..."]);
 
   const [funds, setFunds] = useState<UserFunds>({ available: 500000.00, used: 0, total: 500000.00 });
@@ -203,7 +205,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
               <div className="flex items-center justify-between mb-4">
                 <div className="flex gap-2">
                   {['1m', '5m', '15m', '1h', 'D'].map(tf => (
-                    <button key={tf} className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${tf === '1m' ? 'bg-samp-primary text-white' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-white/5'}`}>{tf}</button>
+                    <button key={tf} onClick={() => setTimeframe(tf as any)} className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${tf === timeframe ? 'bg-samp-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-white/5'}`}>{tf}</button>
                   ))}
                   <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-2 self-center"></div>
                   <div className="flex p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5">
@@ -227,6 +229,13 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                     >
                       <Activity size={12} /> SMA 20
                     </button>
+                    <div className="w-px h-3 bg-slate-200 dark:bg-white/10 mx-1 self-center"></div>
+                    <button 
+                      onClick={() => setShowEMA(!showEMA)}
+                      className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 ${showEMA ? 'bg-white dark:bg-samp-surface text-samp-primary shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                    >
+                      <Zap size={12} /> EMA 9
+                    </button>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -235,7 +244,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                 </div>
               </div>
               <div className="flex-1">
-                <LightweightMarketChart data={market.candles} height={380} chartType={chartType} showSMA={showSMA} />
+                <LightweightMarketChart data={market.candles} height={380} chartType={chartType} showSMA={showSMA} showEMA={showEMA} timeframe={timeframe} />
               </div>
             </div>
             <div className="flex-[2] min-h-0">
