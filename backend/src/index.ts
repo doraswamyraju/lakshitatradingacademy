@@ -4,6 +4,9 @@ import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import { MarketStreamer } from './services/MarketStreamer';
 
 dotenv.config();
 
@@ -122,6 +125,17 @@ app.post('/api/config', authenticateToken, async (req: Request, res: Response) =
   }
 });
 
-app.listen(port, () => {
+const server = createServer(app);
+const io = new Server(server, { cors: { origin: '*' }, path: '/api/socket.io' });
+
+// Mount the realtime ticker daemon
+const marketStreamer = new MarketStreamer(io);
+
+io.on('connection', (socket) => {
+  console.log(`[WebSocket] Terminal Connected: ${socket.id}`);
+  socket.on('disconnect', () => console.log(`[WebSocket] Terminal Disconnected: ${socket.id}`));
+});
+
+server.listen(port, () => {
   console.log(`[Server] Execution Engine started at http://localhost:${port}`);
 });

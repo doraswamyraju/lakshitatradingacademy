@@ -13,15 +13,15 @@ export const analyzeMarket = async (
   };
 };
 
-export const sendChatMessage = async (history: {role: string, parts: {text: string}[]}[], newMessage: string) => {
-    return "AI Chat is currently offline.";
+export const sendChatMessage = async (history: { role: string, parts: { text: string }[] }[], newMessage: string) => {
+  return "AI Chat is currently offline.";
 }
 
 export const analyzeAlgorithm = async (algorithm: AlgorithmType, arraySize: number) => {
-    return {
-      timeComplexity: "O(n)",
-      spaceComplexity: "O(1)",
-      explanation: "Algorithm analysis currently disabled.",
-      optimizationTips: "AI Offline"
-    };
+  return {
+    timeComplexity: "O(n)",
+    spaceComplexity: "O(1)",
+    explanation: "Algorithm analysis currently disabled.",
+    optimizationTips: "AI Offline"
+  };
 };
