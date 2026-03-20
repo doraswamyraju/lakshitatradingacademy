@@ -161,6 +161,12 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         rightOffset: 5,
         shiftVisibleRangeOnNewBar: true,
       },
+      localization: {
+        timeFormatter: (timestamp: number) => {
+          const date = new Date(timestamp * 1000);
+          return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+      },
       crosshair: { mode: 1 },
       rightPriceScale: { borderColor: 'rgba(255, 255, 255, 0.1)' }
     });
