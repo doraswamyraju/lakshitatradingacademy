@@ -33,6 +33,8 @@ export class AliceBlueService {
          userId: this.config.clientCode
       });
       
+      console.log(`[AliceBlue] getAPIEncpkey Response:`, JSON.stringify(keyRes.data));
+      
       const encKey = (keyRes.data as any)?.encKey;
       if (!encKey) throw new Error("Failed to retrieve encryption key from AliceBlue");
 
@@ -55,7 +57,7 @@ export class AliceBlueService {
       
       throw new Error(data?.Emsg || "Invalid API Credentials");
     } catch (error: any) {
-       console.error(`[AliceBlue] Login Handshake Failed:`, error.message);
+       console.error(`[AliceBlue] Login Handshake Failed:`, error.response?.data || error.message);
        return false;
     }
   }
