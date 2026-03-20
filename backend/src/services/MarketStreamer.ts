@@ -1,5 +1,9 @@
 import { Server } from 'socket.io';
 import axios from 'axios';
+import { PrismaClient } from '@prisma/client';
+import { AliceBlueService } from './AliceBlueService';
+
+const prisma = new PrismaClient();
 
 export interface Candle {
   time: string;
@@ -41,12 +45,15 @@ export class MarketStreamer {
     this.currentPrice = basePrice;
   }
 
-  private generateNextTick() {
+  private generateNextTick(isTrueLiveTick: boolean = false) {
     const lastCandle = this.candles[this.candles.length - 1];
-    const volatility = this.currentPrice * 0.00015; // Realistic Bank Nifty 1-second volatility
-    const change = (Math.random() - 0.49) * volatility; // slight upward drift
     
-    this.currentPrice = parseFloat((this.currentPrice + change).toFixed(2));
+    if (!isTrueLiveTick) {
+        // Only drift the price if we are simulating
+        const volatility = this.currentPrice * 0.00015; 
+        const change = (Math.random() - 0.49) * volatility; 
+        this.currentPrice = parseFloat((this.currentPrice + change).toFixed(2));
+    }
     
     // Update the last candle or create a new one every minute
     const now = new Date();
@@ -71,11 +78,42 @@ export class MarketStreamer {
     }
   }
 
-  private startStreaming() {
-    // 1. Fetch live BankNifty benchmark from Yahoo Finance
+  private async startStreaming() {
+    try {
+        const user = await prisma.user.findFirst({
+            where: { apiKey: { not: null } }
+        });
+
+        if (user && user.apiKey && user.clientCode && user.apiSecret) {
+            console.log(`[MarketStreamer] Found AliceBlue Configuration: ${user.clientCode}`);
+            const ab = new AliceBlueService({
+                brokerName: 'AliceBlue',
+                apiKey: user.apiKey,
+                apiSecret: user.apiSecret,
+                clientCode: user.clientCode
+            });
+
+            // Attempt True API Handshake
+            const success = await ab.generateSession();
+            if (success) {
+                ab.initWebSocket((tick: any) => {
+                    // Inject raw exchange ticks directly into the pipeline
+                    if (tick.lp) {
+                        this.currentPrice = parseFloat(tick.lp);
+                        this.generateNextTick(true);
+                    }
+                });
+                console.log(`[MarketStreamer] AliceBlue Native Data Stream Authorized.`);
+            }
+        }
+    } catch (error) {
+        console.error(`[MarketStreamer] AliceBlue Native Connection Failed. Falling back to robust Yahoo API.`);
+    }
+
+    // 1. Fetch live BankNifty benchmark from Yahoo Finance as a resilient fallback base
     axios.get('https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEBANK')
          .then(res => {
-             const meta = res.data?.chart?.result?.[0]?.meta;
+             const meta = (res.data as any)?.chart?.result?.[0]?.meta;
              if (meta && meta.regularMarketPrice) {
                  this.currentPrice = meta.regularMarketPrice;
                  console.log(`[MarketStreamer] Synced Bank Nifty with Live Market: ₹${this.currentPrice}`);

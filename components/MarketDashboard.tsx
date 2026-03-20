@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown, RefreshCw, Zap, IndianRupee, Search, Activity
 import { Candle, MarketState, AIAnalysisResult, UserFunds, Position, Order, TradingStrategy, BrokerConfig, UserRole, ChartType } from '../types';
 import { generateOrderBook } from '../services/market';
 import { io } from 'socket.io-client';
-import MarketChart from './MarketChart';
+import LightweightMarketChart from './LightweightMarketChart';
 import TradingPanel from './TradingPanel';
 import PortfolioPanel from './PortfolioPanel';
 
@@ -29,7 +29,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   const [isAutomationOn, setIsAutomationOn] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [chartType, setChartType] = useState<ChartType>('CANDLE');
+  const [chartType, setChartType] = useState<ChartType>('HEIKIN_ASHI');
+  const [showSMA, setShowSMA] = useState(false);
   const [logs, setLogs] = useState<string[]>(["[SYSTEM] Kernel active...", "[SYSTEM] Listening for user triggers..."]);
 
   const [funds, setFunds] = useState<UserFunds>({ available: 500000.00, used: 0, total: 500000.00 });
@@ -219,6 +220,14 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                       <Layers size={12} /> Heikin Ashi
                     </button>
                   </div>
+                  <div className="flex bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-xl ml-2 text-[10px] font-bold">
+                    <button 
+                      onClick={() => setShowSMA(!showSMA)}
+                      className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 ${showSMA ? 'bg-white dark:bg-samp-surface text-samp-primary shadow-sm' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                    >
+                      <Activity size={12} /> SMA 20
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono"><Globe size={12} className="text-samp-accent" />SERVERS: UP</div>
@@ -226,7 +235,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                 </div>
               </div>
               <div className="flex-1">
-                <MarketChart data={market.candles} height={380} chartType={chartType} />
+                <LightweightMarketChart data={market.candles} height={380} chartType={chartType} showSMA={showSMA} />
               </div>
             </div>
             <div className="flex-[2] min-h-0">

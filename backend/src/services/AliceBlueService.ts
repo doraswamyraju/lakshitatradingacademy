@@ -1,12 +1,19 @@
 import axios from 'axios';
-import { BrokerCredentials, PlaceOrderParams } from './BrokerService';
+import crypto from 'crypto';
+import WebSocket from 'ws';
 
-/**
- * Alice Blue (Ant API v2) Integration Service
- */
+export interface BrokerCredentials {
+  brokerName: string;
+  apiKey: string;
+  apiSecret: string;
+  clientCode: string;
+}
+
 export class AliceBlueService {
   private config: BrokerCredentials;
   private sessionId: string | null = null;
+  private ws: WebSocket | null = null;
+  private listeners: ((tick: any) => void)[] = [];
 
   private static BASE_URL = 'https://ant.aliceblueonline.com/rest/AliceBlueAPIService/api';
 
@@ -15,71 +22,100 @@ export class AliceBlueService {
   }
 
   /**
-   * 1. Get Session ID (Login)
-   * Detailed Alice Blue login flow requires exchanging user data and an encrypted payload.
+   * 1. Get Session ID via SHA-256 Handshake
    */
   async generateSession() {
     try {
-      console.log(`[AliceBlue] Attempting login for ${this.config.clientCode}`);
+      console.log(`[AliceBlue] Initializing API v2 Handshake for ${this.config.clientCode}...`);
       
-      // In AliceBlue ANT API, login is often a two-step process:
-      // Step 1: Encrytpion request
-      // Step 2: Session generation with API parameters
+      // Step 1: Get Encryption Key
+      const keyRes = await axios.post(`${AliceBlueService.BASE_URL}/customer/getAPIEncpkey`, {
+         userId: this.config.clientCode
+      });
       
-      // Placeholder simulating the generated session token
-      this.sessionId = "mock_alice_session_12345";
+      const encKey = (keyRes.data as any)?.encKey;
+      if (!encKey) throw new Error("Failed to retrieve encryption key from AliceBlue");
+
+      // Step 2: Generate SHA-256 Checksum
+      const hashStr = this.config.clientCode + this.config.apiKey + encKey;
+      const chksum = crypto.createHash('sha256').update(hashStr).digest('hex');
+
+      // Step 3: Get Session ID
+      const authRes = await axios.post(`${AliceBlueService.BASE_URL}/customer/getUserSID`, {
+         userId: this.config.clientCode,
+         userData: chksum
+      });
+      const data = authRes.data as any;
+
+      if (data?.stat === 'Ok' && data?.sessionID) {
+         this.sessionId = data.sessionID;
+         console.log(`[AliceBlue] Authentication Successful. Session ID retrieved.`);
+         return true;
+      }
       
-      console.log(`[AliceBlue] Session successfully generated for ${this.config.clientCode}`);
-      return true;
-    } catch (error) {
-       console.error(`[AliceBlue] Login failed:`, error);
+      throw new Error(data?.Emsg || "Invalid API Credentials");
+    } catch (error: any) {
+       console.error(`[AliceBlue] Login Handshake Failed:`, error.message);
        return false;
     }
   }
 
   /**
-   * 2. Place Order Payload for Alice Blue
+   * 2. Initialize NorenWS Socket Feed
    */
-  async placeOrder(params: PlaceOrderParams) {
-    if (!this.sessionId) throw new Error("Not logged in to Alice Blue");
+  initWebSocket(onTick: (data: any) => void) {
+      if (!this.sessionId) {
+          console.error(`[AliceBlue] Cannot start WebSocket cleanly: No valid Session ID.`);
+          return;
+      }
 
-    try {
-      // Data mapping from generic interface to Alice Blue specific REST payload
-      const payload = {
-         complexcity: 'regular',
-         discqty: '0',
-         exch: params.exchange,
-         pCode: params.producttype === 'INTRADAY' ? 'MIS' : 'NRML',
-         price: params.price?.toString() || '0',
-         prctyp: params.ordertype === 'MARKET' ? 'MKT' : 'L',
-         qty: params.quantity.toString(),
-         ret: params.duration,
-         symbol_id: params.symboltoken, // AliceBlue requires specific instrument token
-         trading_symbol: params.tradingsymbol,
-         transtype: params.transactiontype,
-         trigPrice: '0',
-      };
+      this.listeners.push(onTick);
+      console.log(`[AliceBlue] Connecting to NorenWS wss://ws1.aliceblueonline.com/NorenWS/ ...`);
 
-      const res = await axios.post(`${AliceBlueService.BASE_URL}/placeOrder/executePlaceOrder`, [payload], {
-        headers: {
-          'Authorization': `Bearer ${this.config.clientCode} ${this.sessionId}`,
-          'Content-Type': 'application/json'
-        }
+      this.ws = new WebSocket('wss://ws1.aliceblueonline.com/NorenWS/');
+
+      this.ws.on('open', () => {
+          console.log(`[AliceBlue] NorenWS Connected. Sending Authentication payload...`);
+          
+          const initPayload = {
+             susertoken: this.sessionId,
+             t: "c",
+             actid: this.config.clientCode,
+             uid: this.config.clientCode,
+             source: "API"
+          };
+          this.ws?.send(JSON.stringify(initPayload));
       });
-      
-      const data = res.data as any;
-      console.log(`[AliceBlue] Order Placed:`, data);
-      return data;
-    } catch (error) {
-      console.error(`[AliceBlue] Order Placement error:`, error);
-      throw error;
-    }
-  }
 
-  /**
-   * 3. WebSocket Data Feed Boilerplate
-   */
-  initWebSocket() {
-     console.log(`[AliceBlue] WebSocket stream initializing for ${this.config.clientCode}...`);
+      this.ws.on('message', (data: WebSocket.Data) => {
+          try {
+             const message = JSON.parse(data.toString());
+             
+             // Check if connection acknowledged
+             if (message.t === 'ck' && message.s === 'OK') {
+                 console.log(`[AliceBlue] WebSocket Authorized. Subscribing to NSE:BANKNIFTY (Token: 26009)`);
+                 
+                 // Subscribe to Bank Nifty Touchline (Token 26009 or 26000 depending on Noren symbol map)
+                 const subPayload = { k: "NSE|26009", t: "t" };
+                 this.ws?.send(JSON.stringify(subPayload));
+             }
+
+             // Parse incoming Touchline Ticks
+             if (message.t === 'tk' || message.t === 'tf') {
+                 // Forward the raw tick to MarketStreamer
+                 this.listeners.forEach(cb => cb(message));
+             }
+          } catch (e) {
+             // Ignore malformed heartbeats
+          }
+      });
+
+      this.ws.on('error', (err) => {
+          console.error(`[AliceBlue WS Error]:`, err);
+      });
+
+      this.ws.on('close', () => {
+          console.log(`[AliceBlue] WebSocket Disconnected`);
+      });
   }
 }
