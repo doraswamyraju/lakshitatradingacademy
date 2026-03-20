@@ -16,7 +16,7 @@ export interface Candle {
 
 export class MarketStreamer {
   private io: Server;
-  public currentPrice: number = 53841.40;
+  public currentPrice: number = 53427.05;
   private candles: Candle[] = [];
   private intervalId: NodeJS.Timeout | null = null;
   
@@ -28,7 +28,7 @@ export class MarketStreamer {
 
   private initSimulation() {
     // Generate 60 initial candles, locking the clock to 15:30 IST if the market is closed
-    let basePrice = 53800.00;
+    let basePrice = 53427.05;
     const now = new Date();
     const currentHourIST = now.getUTCHours() + 5 + Math.floor((now.getUTCMinutes() + 30) / 60);
     const currentMinuteIST = (now.getUTCMinutes() + 30) % 60;
