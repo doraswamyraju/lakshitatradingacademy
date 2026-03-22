@@ -29,11 +29,13 @@ export class AliceBlueService {
     try {
       console.log(`[AliceBlue] Initializing API v2 Handshake for ${this.config.clientCode}...`);
       
-      // Step 1: Get Encryption Key
-      // NorenWS API requires the exact casing for apikey parameter to successfully identify the Developer App
+      console.log(`[AliceBlue] Sending Handshake for User: ${this.config.clientCode.length} chars, Key: ${this.config.apiKey.length} chars`);
+      
       const keyRes = await axios.post(`${AliceBlueService.BASE_URL}/customer/getAPIEncpkey`, {
-         userId: this.config.clientCode,
-         apikey: this.config.apiKey
+          userId: this.config.clientCode,
+          apikey: this.config.apiKey
+      }, {
+          headers: { 'Content-Type': 'application/json' }
       });
       
       console.log(`[AliceBlue] getAPIEncpkey Response:`, JSON.stringify(keyRes.data));
