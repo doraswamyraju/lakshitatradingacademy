@@ -1,6 +1,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import WebSocket from 'ws';
+import { systemErrors } from '../index';
 
 export interface BrokerCredentials {
   brokerName: string;
@@ -59,7 +60,9 @@ export class AliceBlueService {
       
       throw new Error(data?.Emsg || "Invalid API Credentials");
     } catch (error: any) {
-       console.error(`[AliceBlue] Login Handshake Failed:`, error.response?.data || error.message);
+       const errorMessage = error.response?.data?.Emsg || error.message;
+       console.error(`[AliceBlue] Login Handshake Failed:`, errorMessage);
+       systemErrors.push({ timestamp: new Date(), context: 'AliceBlue Auth', error: errorMessage });
        return false;
     }
   }
