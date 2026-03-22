@@ -9,7 +9,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string, user: User) => void;
+  login: (token: string, user: any) => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
+  const login = (newToken: string, newUser: any) => {
     localStorage.setItem('lakshita_token', newToken);
     localStorage.setItem('lakshita_user', JSON.stringify(newUser));
     setToken(newToken);

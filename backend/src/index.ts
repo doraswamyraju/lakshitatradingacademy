@@ -77,9 +77,9 @@ app.post(['/api/auth/login', '/auth/login'], async (req: Request, res: Response)
     const validPassword = await bcrypt.compare(password, user.passwordHash);
     if (!validPassword) return res.status(400).json({ error: 'Invalid username or password' });
 
-    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
     
-    res.json({ success: true, token, user: { id: user.id, username: user.username } });
+    res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role } });
   } catch (error) {
     res.status(500).json({ error: 'Login failed' });
   }
