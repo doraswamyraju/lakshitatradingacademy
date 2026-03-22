@@ -90,13 +90,22 @@ const App: React.FC = () => {
     fetch('/api/config', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-      .then(res => res.json())
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.error || `Failed to fetch broker config (${res.status})`);
+        }
+        return data;
+      })
       .then(data => {
         if (data && !data.error) {
            setBrokerConfig(data);
         }
       })
-      .catch(err => console.log('Backend not reachable:', err));
+      .catch(err => {
+        console.log('Backend config fetch failed:', err);
+        setBrokerConfig(prev => ({ ...prev, isConnected: false }));
+      });
   }, [token]);
 
   useEffect(() => {

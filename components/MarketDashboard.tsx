@@ -22,7 +22,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     candles: [],
     bids: [],
     asks: [],
-    trend: 'neutral'
+    trend: 'neutral',
+    feedSource: 'SIMULATED'
   });
 
   const [activeStrategyId, setActiveStrategyId] = useState<string | null>(null);
@@ -34,6 +35,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   const [showSMA, setShowSMA] = useState(false);
   const [showEMA, setShowEMA] = useState(false);
   const [logs, setLogs] = useState<string[]>(["[SYSTEM] Kernel active...", "[SYSTEM] Listening for user triggers..."]);
+  const [feedSourceLabel, setFeedSourceLabel] = useState<'BROKER_WS' | 'YAHOO_HTTP' | 'SIMULATED'>('SIMULATED');
 
   const [funds, setFunds] = useState<UserFunds>({ available: 500000.00, used: 0, total: 500000.00 });
   const [positions, setPositions] = useState<Position[]>([]);
@@ -44,6 +46,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
 
   useEffect(() => { automationRef.current = isAutomationOn; }, [isAutomationOn]);
   useEffect(() => { strategyRef.current = activeStrategyId; }, [activeStrategyId]);
+  useEffect(() => { addLog(`[FEED] Source switched to ${feedSourceLabel}`); }, [feedSourceLabel]);
 
   useEffect(() => {
     // Connect to the Live Trading Engine securely through the Nginx Reverse Proxy
@@ -51,6 +54,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
 
     socket.on('market_tick', (data: MarketState) => {
         setMarket(data);
+        const source = data.feedSource || 'SIMULATED';
+        setFeedSourceLabel(source);
         
         // Automated Execution Gateway Logic
         if (automationRef.current && strategyRef.current) {
@@ -67,7 +72,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
         }
     });
 
-    socket.on('connect', () => addLog(`[SOCKET] Handshake successful. Live feed acquired.`));
+    socket.on('connect', () => addLog(`[SOCKET] Handshake successful.`));
     socket.on('disconnect', () => addLog(`[SOCKET] Connection dropped. Recovering...`));
 
     return () => { socket.disconnect(); };
@@ -239,7 +244,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono"><Globe size={12} className="text-samp-accent" />SERVERS: UP</div>
+                  <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono"><Globe size={12} className="text-samp-accent" />FEED: {feedSourceLabel}</div>
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono"><Clock size={12} className="text-samp-accent" />SESSION: {new Date().toLocaleTimeString()}</div>
                 </div>
               </div>

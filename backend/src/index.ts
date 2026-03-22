@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { MarketStreamer } from './services/MarketStreamer';
+import { AliceBlueService } from './services/AliceBlueService';
 
 dotenv.config();
 
@@ -96,7 +97,7 @@ app.get(['/api/config', '/config'], authenticateToken, async (req: Request, res:
       apiKey: user.apiKey || '',
       apiSecret: user.apiSecret || '',
       clientCode: user.clientCode || '',
-      isConnected: !!user.apiKey
+      isConnected: Boolean(user.apiKey && user.apiSecret && user.clientCode)
     });
   } catch (error) {
     console.error('[API Config GET] Fatal Error:', error);
@@ -109,8 +110,27 @@ app.post(['/api/config', '/config'], authenticateToken, async (req: Request, res
   try {
     const userId = (req as any).user.id;
     const { brokerName, apiKey, apiSecret, clientCode, isConnected } = req.body;
+
+    if (isConnected) {
+      if (!brokerName || !apiKey || !apiSecret || !clientCode) {
+        return res.status(400).json({ error: 'brokerName, apiKey, apiSecret and clientCode are required.' });
+      }
+
+      if (brokerName === 'AliceBlue') {
+        const verifier = new AliceBlueService({
+          brokerName,
+          apiKey,
+          apiSecret,
+          clientCode
+        });
+        const verified = await verifier.generateSession();
+        if (!verified) {
+          return res.status(400).json({ error: 'Broker authentication failed. Invalid API credentials or broker session unavailable.' });
+        }
+      }
+    }
     
-    const updated = await prisma.user.update({
+    await prisma.user.update({
       where: { id: userId },
       data: {
         brokerName,
@@ -122,7 +142,7 @@ app.post(['/api/config', '/config'], authenticateToken, async (req: Request, res
 
     marketStreamer?.rebootFeed();
 
-    res.json({ success: true, message: 'Configuration saved' });
+    res.json({ success: true, message: isConnected ? 'Broker connected and verified.' : 'Broker disconnected.' });
   } catch (error) {
     console.error('[API Config POST] Fatal Error during Broker saving:', error);
     res.status(500).json({ error: 'Failed to save configuration' });

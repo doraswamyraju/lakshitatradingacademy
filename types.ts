@@ -23,6 +23,7 @@ export interface MarketState {
   bids: OrderBookItem[];
   asks: OrderBookItem[];
   trend: 'bullish' | 'bearish' | 'neutral';
+  feedSource?: 'BROKER_WS' | 'YAHOO_HTTP' | 'SIMULATED';
 }
 
 export interface AIAnalysisResult {
