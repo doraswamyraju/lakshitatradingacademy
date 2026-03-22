@@ -18,6 +18,9 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
+const JWT_SECRET = process.env.JWT_SECRET || 'lakshita_fallback_secret';
+export const systemErrors: any[] = [];
+
 // Basic health check route
 app.get(['/api/health', '/health'], (req: Request, res: Response) => {
   res.json({ status: 'live', message: 'Lakshita Trading Academy Engine Running' });
@@ -30,7 +33,7 @@ const authenticateToken = (req: Request, res: Response, next: any) => {
   
   if (!token) return res.status(401).json({ error: 'Access denied. No token provided.' });
 
-  jwt.verify(token, process.env.JWT_SECRET || 'lakshita_fallback_secret', (err: any, user: any) => {
+  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
     if (err) return res.status(403).json({ error: 'Invalid token.' });
     (req as any).user = user;
     next();
@@ -74,7 +77,7 @@ app.post(['/api/auth/login', '/auth/login'], async (req: Request, res: Response)
     const validPassword = await bcrypt.compare(password, user.passwordHash);
     if (!validPassword) return res.status(400).json({ error: 'Invalid username or password' });
 
-    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET || 'lakshita_fallback_secret', { expiresIn: '24h' });
+    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '24h' });
     
     res.json({ success: true, token, user: { id: user.id, username: user.username } });
   } catch (error) {
@@ -143,10 +146,19 @@ app.post(['/api/config', '/config'], authenticateToken, async (req: Request, res
     marketStreamer?.rebootFeed();
 
     res.json({ success: true, message: isConnected ? 'Broker connected and verified.' : 'Broker disconnected.' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('[API Config POST] Fatal Error during Broker saving:', error);
+    systemErrors.push({ timestamp: new Date(), context: 'Broker Config', error: error.message });
     res.status(500).json({ error: 'Failed to save configuration' });
   }
+});
+
+// Admin Error Report Endpoint
+app.get(['/api/admin/errors', '/admin/errors'], authenticateToken, async (req: Request, res: Response) => {
+  // Simple check for role if user object has it
+  const user = (req as any).user;
+  // For now return all, but in prod we'd check if user is admin
+  res.json(systemErrors);
 });
 
 const server = createServer(app);

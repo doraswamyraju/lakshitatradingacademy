@@ -74,6 +74,10 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
 
     socket.on('connect', () => addLog(`[SOCKET] Handshake successful.`));
     socket.on('disconnect', () => addLog(`[SOCKET] Connection dropped. Recovering...`));
+    
+    socket.on('system_log', (data: { message: string, type: 'success' | 'error' | 'warning' | 'info' }) => {
+        addLog(data.message);
+    });
 
     return () => { socket.disconnect(); };
   }, [strategies]); // Strategy deps required for closure parity
@@ -171,9 +175,15 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
         <div className="flex items-center gap-8">
            <div className="flex flex-col min-w-[220px]">
               <div className="flex items-center gap-2 mb-1"><div className="w-2 h-2 rounded-full bg-samp-success animate-pulse"></div><span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold font-mono">Real-time Feed</span></div>
-              <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3"><IndianRupee className="text-samp-primary" size={24} />{market.symbol}<button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-slate-900 dark:hover:text-white"><Search size={18} /></button></h2>
-           </div>
-           <div className="flex flex-col"><span className={`text-3xl font-mono font-bold tracking-tighter ${market.trend === 'bullish' ? 'text-samp-success' : 'text-samp-danger'}`}>{market.price.toFixed(2)}</span><span className={`text-xs font-mono font-medium ${market.trend === 'bullish' ? 'text-samp-success/70' : 'text-samp-danger/70'}`}>{market.trend === 'bullish' ? '▲' : '▼'} 0.84% (+187.20)</span></div>
+               <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                  <IndianRupee className="text-samp-primary" size={24} />{market.symbol}
+                  <button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-slate-900 dark:hover:text-white"><Search size={18} /></button>
+                  <span className={`text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider ${market.feedSource === 'BROKER_WS' ? 'bg-samp-success/20 text-samp-success border border-samp-success/30' : 'bg-samp-warning/20 text-samp-warning border border-samp-warning/30'}`}>
+                    {market.feedSource === 'BROKER_WS' ? 'LIVE' : 'SIMULATED'}
+                  </span>
+               </h2>
+            </div>
+            <div className="flex flex-col"><span className={`text-3xl font-mono font-bold tracking-tighter ${market.trend === 'bullish' ? 'text-samp-success' : 'text-samp-danger'}`}>{market.price.toFixed(2)}</span><span className={`text-xs font-mono font-medium ${market.trend === 'bullish' ? 'text-samp-success/70' : 'text-samp-danger/70'}`}>{market.trend === 'bullish' ? '▲' : '▼'} 0.84% (+187.20)</span></div>
         </div>
 
         <div className="flex items-center gap-4 px-6 py-3 bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl shadow-inner transition-colors duration-300">

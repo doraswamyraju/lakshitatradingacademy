@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
 import { AliceBlueService } from './AliceBlueService';
+import { systemErrors } from '../index';
 
 const prisma = new PrismaClient();
 
@@ -107,29 +108,41 @@ export class MarketStreamer {
       });
 
       if (user && user.apiKey && user.clientCode && user.apiSecret) {
-        console.log(`[MarketStreamer] Found AliceBlue Configuration: ${user.clientCode}`);
-        const ab = new AliceBlueService({
-          brokerName: 'AliceBlue',
-          apiKey: user.apiKey,
-          apiSecret: user.apiSecret,
-          clientCode: user.clientCode
-        });
-
-        const success = await ab.generateSession();
-        if (success) {
-          this.feedSource = 'BROKER_WS';
-          ab.initWebSocket((tick: any) => {
-            if (tick.lp) {
-              this.currentPrice = parseFloat(tick.lp);
-              this.generateNextTick(false);
-            }
+        console.log(`[MarketStreamer] Found Broker Configuration: ${user.brokerName} for ${user.clientCode}`);
+        
+        if (user.brokerName === 'AliceBlue') {
+          const ab = new AliceBlueService({
+            brokerName: 'AliceBlue',
+            apiKey: user.apiKey,
+            apiSecret: user.apiSecret,
+            clientCode: user.clientCode
           });
-          console.log('[MarketStreamer] AliceBlue native WebSocket stream authorized.');
+
+          const success = await ab.generateSession();
+          if (success) {
+            this.feedSource = 'BROKER_WS';
+            ab.initWebSocket((tick: any) => {
+              if (tick.lp) {
+                this.currentPrice = parseFloat(tick.lp);
+                this.generateNextTick(false);
+              }
+            });
+            console.log('[MarketStreamer] AliceBlue native WebSocket stream authorized.');
+            this.io.emit('system_log', { message: '[FEED] LIVE Data active via AliceBlue WS', type: 'success' });
+          } else {
+            throw new Error('AliceBlue session generation failed.');
+          }
+        } else {
+          // Fallback or placeholder for other brokers
+          console.log(`[MarketStreamer] Broker ${user.brokerName} selected. WebSocket integration pending.`);
+          this.io.emit('system_log', { message: `[FEED] ${user.brokerName} selected. Using Simulated data while integration is finalized.`, type: 'warning' });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       this.feedSource = 'SIMULATED';
-      console.error('[MarketStreamer] AliceBlue native connection failed. Falling back.');
+      console.error('[MarketStreamer] Broker connection failed. Falling back to Simulation.');
+      systemErrors.push({ timestamp: new Date(), context: 'MarketStreamer', error: error.message });
+      this.io.emit('system_log', { message: '[FEED] Connection failed. Falling back to SIMULATED data.', type: 'error' });
     }
 
     axios.get('https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEBANK')

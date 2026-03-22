@@ -229,7 +229,9 @@ const App: React.FC = () => {
         <div className="flex-1 overflow-hidden">
            {activeTab === 'dashboard' && <MarketDashboard strategies={userStrategies} brokerConfig={brokerConfig} userRole={currentUser?.role || 'USER'} onRemoveStrategy={removeUserStrategy} />}
            {/* {activeTab === 'strategy' && <AILab />} */}
-           {activeTab === 'admin' && <AdminPanel strategies={masterStrategies} setStrategies={setMasterStrategies} />}
+           {activeTab === 'admin' && (
+            <AdminPanel strategies={masterStrategies} setStrategies={setMasterStrategies} token={token} />
+          )}
            {activeTab === 'settings' && <SettingsPanel config={brokerConfig} setConfig={setBrokerConfig} />}
            {activeTab === 'backtest' && <BacktestPanel strategies={masterStrategies} />}
            {activeTab === 'hub' && <StrategyHub strategies={masterStrategies} onCopy={copyToUserNamespace} />}

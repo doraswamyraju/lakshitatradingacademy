@@ -12,6 +12,7 @@ import {
 interface AdminPanelProps {
   strategies: TradingStrategy[];
   setStrategies: React.Dispatch<React.SetStateAction<TradingStrategy[]>>;
+  token: string | null;
 }
 
 const INDICATORS: IndicatorType[] = [
@@ -32,7 +33,11 @@ const OPERATORS: { value: OperatorType; label: string }[] = [
   { value: 'PATTERN_MATCH', label: 'Matches Pattern' }
 ];
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, token }) => {
+  const [activeSubTab, setActiveSubTab] = useState<'architect' | 'errors'>('architect');
+  const [systemErrors, setSystemErrors] = useState<any[]>([]);
+  const [isLoadingErrors, setIsLoadingErrors] = useState(false);
+
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -133,21 +138,60 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies }) =>
     setStrategies(prev => prev.map(s => s.id === id ? { ...s, isActive: !s.isActive } : s));
   };
 
+  const fetchErrors = async () => {
+    if (!token) return;
+    setIsLoadingErrors(true);
+    try {
+      const res = await fetch('/api/admin/errors', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setSystemErrors(data);
+    } catch (err) {
+      console.error('Failed to fetch system errors:', err);
+    } finally {
+      setIsLoadingErrors(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeSubTab === 'errors') {
+      fetchErrors();
+    }
+  }, [activeSubTab]);
+
   return (
     <div className="h-full overflow-y-auto p-8 space-y-8 max-w-[1600px] mx-auto transition-colors duration-300">
       <div className="flex justify-between items-end border-b border-slate-200 dark:border-white/5 pb-8">
-        <div>
-          <h2 className="text-4xl font-black text-slate-900 dark:text-white flex items-center gap-4">
-             <div className="w-12 h-12 rounded-2xl bg-samp-primary/10 flex items-center justify-center text-samp-primary">
-                <Sliders size={32} />
-             </div>
-             Strategy Architect
-          </h2>
-          <p className="text-slate-500 dark:text-gray-500 mt-2 text-lg font-medium max-w-2xl leading-relaxed">
-            Design limitless automated execution flows. Combine institutional indicators with advanced price action logic.
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center gap-6">
+            <button 
+              onClick={() => setActiveSubTab('architect')}
+              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'architect' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
+            >
+               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'architect' ? 'bg-samp-primary/10 text-samp-primary' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                  <Sliders size={32} />
+               </div>
+               Strategy Architect
+            </button>
+            <div className="w-px h-10 bg-slate-200 dark:bg-white/10"></div>
+            <button 
+              onClick={() => setActiveSubTab('errors')}
+              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'errors' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
+            >
+               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'errors' ? 'bg-samp-danger/10 text-samp-danger' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                  <AlertCircle size={32} />
+               </div>
+               Error Reports
+            </button>
+          </div>
+          <p className="text-slate-500 dark:text-gray-500 text-lg font-medium max-w-2xl leading-relaxed">
+            {activeSubTab === 'architect' 
+              ? "Design limitless automated execution flows. Combine institutional indicators with advanced price action logic."
+              : "Monitor real-time system health and connectivity failures across the unified execution engine."}
           </p>
         </div>
-        {!isAdding && (
+        {!isAdding && activeSubTab === 'architect' && (
           <button 
             onClick={() => setIsAdding(true)}
             className="flex items-center gap-3 bg-samp-primary hover:bg-indigo-500 text-white px-8 py-4 rounded-[20px] shadow-2xl shadow-samp-primary/30 transition-all transform hover:-translate-y-1 active:scale-95 font-bold text-lg"
@@ -155,303 +199,348 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies }) =>
             <Plus size={24} /> New Architect Draft
           </button>
         )}
+        {activeSubTab === 'errors' && (
+          <button 
+            onClick={fetchErrors}
+            className="flex items-center gap-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-white px-8 py-4 rounded-[20px] border border-slate-200 dark:border-white/10 transition-all active:scale-95 font-bold text-lg"
+          >
+            <Activity className={isLoadingErrors ? 'animate-spin' : ''} size={24} /> Refresh Logs
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-12 gap-8">
-        <div className={`transition-all duration-500 ease-in-out ${isAdding ? 'col-span-12' : 'col-span-8'}`}>
-          {isAdding ? (
-            <div className="bg-white dark:bg-samp-surface border-2 border-slate-200 dark:border-samp-primary/20 rounded-[48px] p-10 shadow-3xl animate-in fade-in zoom-in-95 duration-500 relative overflow-hidden group/board">
-               <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-samp-primary/5 blur-[120px] rounded-full -mr-48 -mt-48 pointer-events-none"></div>
+        {activeSubTab === 'architect' ? (
+          <div className={`transition-all duration-500 ease-in-out ${isAdding ? 'col-span-12' : 'col-span-8'}`}>
+            {isAdding ? (
+              <div className="bg-white dark:bg-samp-surface border-2 border-slate-200 dark:border-samp-primary/20 rounded-[48px] p-10 shadow-3xl animate-in fade-in zoom-in-95 duration-500 relative overflow-hidden group/board">
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-samp-primary/5 blur-[120px] rounded-full -mr-48 -mt-48 pointer-events-none"></div>
 
-               <div className="flex justify-between items-center mb-12">
-                  <div className="flex items-center gap-4">
-                     <div className="p-3 bg-samp-primary/10 rounded-2xl text-samp-primary">
-                        <Layers size={28} />
-                     </div>
-                     <div>
-                        <h3 className="text-3xl font-bold text-slate-900 dark:text-white">Flow Architect</h3>
-                        <p className="text-sm text-slate-500 font-mono tracking-widest uppercase mt-1">Status: Drafting System Logic</p>
-                     </div>
-                  </div>
-                  <div className="flex gap-3">
-                     <button onClick={() => setIsAdding(false)} className="px-6 py-3 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold transition-colors">Discard</button>
-                     <button 
-                        onClick={saveStrategy}
-                        className="flex items-center gap-2 bg-samp-primary hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl font-bold shadow-xl shadow-samp-primary/20 transition-all"
-                     >
-                        <Save size={20} /> Deploy {editingId ? 'Updates' : 'Strategy'}
-                     </button>
-                  </div>
-               </div>
+                <div className="flex justify-between items-center mb-12">
+                   <div className="flex items-center gap-4">
+                      <div className="p-3 bg-samp-primary/10 rounded-2xl text-samp-primary">
+                         <Layers size={28} />
+                      </div>
+                      <div>
+                         <h3 className="text-3xl font-bold text-slate-900 dark:text-white">Flow Architect</h3>
+                         <p className="text-sm text-slate-500 font-mono tracking-widest uppercase mt-1">Status: Drafting System Logic</p>
+                      </div>
+                   </div>
+                   <div className="flex gap-3">
+                      <button onClick={() => setIsAdding(false)} className="px-6 py-3 text-slate-500 hover:text-slate-900 dark:hover:text-white font-bold transition-colors">Discard</button>
+                      <button 
+                         onClick={saveStrategy}
+                         className="flex items-center gap-2 bg-samp-primary hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl font-bold shadow-xl shadow-samp-primary/20 transition-all"
+                      >
+                         <Save size={20} /> Deploy {editingId ? 'Updates' : 'Strategy'}
+                      </button>
+                   </div>
+                </div>
 
-               <div className="grid grid-cols-12 gap-10">
-                  <div className="col-span-4 space-y-10">
-                     <div className="space-y-6">
-                        <div className="group/field">
-                           <label className="text-[11px] text-slate-400 dark:text-gray-500 uppercase font-black tracking-widest ml-1 mb-2 block group-focus-within/field:text-samp-primary transition-colors">Strategy Identity</label>
-                           <input 
-                              type="text" 
-                              placeholder="e.g. NIFTY_MEAN_REVERSION_V2"
-                              value={newStrategy.name}
-                              onChange={e => setNewStrategy(s => ({...s, name: e.target.value}))}
-                              className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl py-4 px-5 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all font-bold text-lg"
-                           />
-                        </div>
-
-                        <div>
-                           <label className="text-[11px] text-slate-400 dark:text-gray-500 uppercase font-black tracking-widest ml-1 mb-2 block">Executive Summary</label>
-                           <textarea 
-                              placeholder="Describe the logic core for institutional review..."
-                              value={newStrategy.description}
-                              onChange={e => setNewStrategy(s => ({...s, description: e.target.value}))}
-                              className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl py-4 px-5 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all h-32 resize-none text-sm font-medium leading-relaxed"
-                           />
-                        </div>
-                     </div>
-
-                     <div className="p-8 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-[32px] space-y-8">
-                        <div className="flex items-center gap-3">
-                           <div className="w-10 h-10 rounded-xl bg-samp-danger/10 flex items-center justify-center text-samp-danger">
-                              <ShieldCheck size={20} />
-                           </div>
-                           <h4 className="font-bold text-slate-900 dark:text-white text-lg">Risk Guardian</h4>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-6">
-                           <div className="space-y-2">
-                              <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Stop Loss %</label>
-                              <input 
-                                 type="number" 
-                                 step="0.1"
-                                 value={newStrategy.riskConfig?.stopLossPct}
-                                 onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, stopLossPct: parseFloat(e.target.value) }}))}
-                                 className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-danger transition-colors"
-                              />
-                           </div>
-                           <div className="space-y-2">
-                              <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Take Profit %</label>
-                              <input 
-                                 type="number" 
-                                 step="0.1"
-                                 value={newStrategy.riskConfig?.takeProfitPct}
-                                 onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, takeProfitPct: parseFloat(e.target.value) }}))}
-                                 className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-success transition-colors"
-                              />
-                           </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 bg-white dark:bg-samp-surface rounded-2xl border border-slate-200 dark:border-white/10">
-                           <div className="flex items-center gap-3">
-                              <div className={`w-4 h-4 rounded-full border-2 ${newStrategy.riskConfig?.trailingStopLoss ? 'bg-samp-primary border-samp-primary' : 'border-slate-300 dark:border-white/20'}`}></div>
-                              <span className="text-sm font-bold text-slate-700 dark:text-gray-300">Trailing Stop Loss</span>
-                           </div>
-                           <button 
-                              onClick={() => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, trailingStopLoss: !s.riskConfig!.trailingStopLoss }}))}
-                              className={`w-12 h-6 rounded-full transition-all relative ${newStrategy.riskConfig?.trailingStopLoss ? 'bg-samp-primary' : 'bg-slate-300 dark:bg-gray-700'}`}
-                           >
-                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${newStrategy.riskConfig?.trailingStopLoss ? 'right-1' : 'left-1'}`}></div>
-                           </button>
-                        </div>
-                     </div>
-                  </div>
-
-                  <div className="col-span-8 space-y-10">
-                     <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                           <h4 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-samp-success/10 flex items-center justify-center text-samp-success">
-                                 <Zap size={20} />
-                              </div>
-                              Entry Condition Logic
-                              <span className="text-[10px] bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-gray-400 px-2 py-1 rounded font-mono font-bold">MODE: ALL MUST PASS (AND)</span>
-                           </h4>
-                           <button 
-                              onClick={() => handleAddCondition('entry')}
-                              className="text-xs font-bold text-samp-primary flex items-center gap-1.5 hover:opacity-70 transition-opacity"
-                           >
-                              <Plus size={16} /> ADD LOGIC BLOCK
-                           </button>
-                        </div>
-
-                        <div className="space-y-4">
-                           {newStrategy.entryConditions?.map((cond, i) => (
-                             <LogicBlock 
-                                key={cond.id} 
-                                index={i} 
-                                condition={cond} 
-                                onRemove={() => removeCondition('entry', cond.id)}
-                                onUpdate={(u) => updateCondition('entry', cond.id, u)}
-                             />
-                           ))}
-                           {newStrategy.entryConditions?.length === 0 && (
-                             <div className="py-12 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-[32px] flex flex-col items-center justify-center text-slate-400">
-                                <Activity size={32} className="mb-2 opacity-30" />
-                                <p className="text-sm font-medium">No entry rules defined. Strategy will never trigger.</p>
-                             </div>
-                           )}
-                        </div>
-                     </div>
-
-                     <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                           <h4 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-samp-danger/10 flex items-center justify-center text-samp-danger">
-                                 <Target size={20} />
-                              </div>
-                              Exit Signal logic
-                              <span className="text-[10px] bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-gray-400 px-2 py-1 rounded font-mono font-bold">MODE: ANY TRIGGERS (OR)</span>
-                           </h4>
-                           <button 
-                              onClick={() => handleAddCondition('exit')}
-                              className="text-xs font-bold text-samp-primary flex items-center gap-1.5 hover:opacity-70 transition-opacity"
-                           >
-                              <Plus size={16} /> ADD LOGIC BLOCK
-                           </button>
-                        </div>
-
-                        <div className="space-y-4">
-                           {newStrategy.exitConditions?.map((cond, i) => (
-                             <LogicBlock 
-                                key={cond.id} 
-                                index={i} 
-                                condition={cond} 
-                                onRemove={() => removeCondition('exit', cond.id)}
-                                onUpdate={(u) => updateCondition('exit', cond.id, u)}
-                             />
-                           ))}
-                           {newStrategy.exitConditions?.length === 0 && (
-                             <div className="py-12 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-[32px] flex flex-col items-center justify-center text-slate-400">
-                                <p className="text-sm font-medium">Standard Exit: Stop Loss / Take Profit only.</p>
-                             </div>
-                           )}
-                        </div>
-                     </div>
-                  </div>
-               </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {strategies.map(s => (
-                <div key={s.id} className={`bg-white dark:bg-samp-surface border rounded-[40px] p-8 transition-all group/card shadow-xl relative overflow-hidden ${s.isActive ? 'border-slate-200 dark:border-white/5' : 'opacity-60 border-slate-300 dark:border-white/10 saturate-[0.5]'}`}>
-                   <div className="flex justify-between items-start mb-8">
-                      <div className="flex items-center gap-5">
-                         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover/card:scale-110 group-hover/card:rotate-3 ${s.isActive ? 'bg-slate-100 dark:bg-white/5 text-samp-primary' : 'bg-slate-200 dark:bg-white/5 text-slate-400'}`}>
-                            <Activity size={28} />
+                <div className="grid grid-cols-12 gap-10">
+                   <div className="col-span-4 space-y-10">
+                      <div className="space-y-6">
+                         <div className="group/field">
+                            <label className="text-[11px] text-slate-400 dark:text-gray-500 uppercase font-black tracking-widest ml-1 mb-2 block group-focus-within/field:text-samp-primary transition-colors">Strategy Identity</label>
+                            <input 
+                               type="text" 
+                               placeholder="e.g. NIFTY_MEAN_REVERSION_V2"
+                               value={newStrategy.name}
+                               onChange={e => setNewStrategy(s => ({...s, name: e.target.value}))}
+                               className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl py-4 px-5 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all font-bold text-lg"
+                            />
                          </div>
+
                          <div>
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white">{s.name}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.timeframe} TIMEFRAME</span>
-                               <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-gray-700"></span>
-                               <span className={`text-[10px] font-black uppercase tracking-widest ${s.isActive ? 'text-samp-success' : 'text-slate-500'}`}>{s.isActive ? 'ACTIVE NODE' : 'INACTIVE'}</span>
+                            <label className="text-[11px] text-slate-400 dark:text-gray-500 uppercase font-black tracking-widest ml-1 mb-2 block">Executive Summary</label>
+                            <textarea 
+                               placeholder="Describe the logic core for institutional review..."
+                               value={newStrategy.description}
+                               onChange={e => setNewStrategy(s => ({...s, description: e.target.value}))}
+                               className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl py-4 px-5 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all h-32 resize-none text-sm font-medium leading-relaxed"
+                            />
+                         </div>
+                      </div>
+
+                      <div className="p-8 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-[32px] space-y-8">
+                         <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-samp-danger/10 flex items-center justify-center text-samp-danger">
+                               <ShieldCheck size={20} />
+                            </div>
+                            <h4 className="font-bold text-slate-900 dark:text-white text-lg">Risk Guardian</h4>
+                         </div>
+                         
+                         <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                               <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Stop Loss %</label>
+                               <input 
+                                  type="number" 
+                                  step="0.1"
+                                  value={newStrategy.riskConfig?.stopLossPct}
+                                  onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, stopLossPct: parseFloat(e.target.value) }}))}
+                                  className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-danger transition-colors"
+                               />
+                            </div>
+                            <div className="space-y-2">
+                               <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Take Profit %</label>
+                               <input 
+                                  type="number" 
+                                  step="0.1"
+                                  value={newStrategy.riskConfig?.takeProfitPct}
+                                  onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, takeProfitPct: parseFloat(e.target.value) }}))}
+                                  className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-success transition-colors"
+                               />
                             </div>
                          </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-3">
-                        <div className="flex gap-2">
-                          <button onClick={() => handleEdit(s)} className="p-3 text-slate-400 dark:text-gray-500 hover:text-samp-primary hover:bg-samp-primary/10 rounded-2xl transition-all"><Edit3 size={20} /></button>
-                          <button onClick={() => setStrategies(prev => prev.filter(st => st.id !== s.id))} className="p-3 text-slate-400 dark:text-gray-500 hover:text-samp-danger hover:bg-samp-danger/10 rounded-2xl transition-all"><Trash2 size={20} /></button>
-                        </div>
-                        {/* Status Toggle Switch */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{s.isActive ? 'ENABLED' : 'DISABLED'}</span>
-                          <button 
-                            onClick={() => toggleStrategyActive(s.id)}
-                            className={`w-10 h-5 rounded-full transition-all relative ${s.isActive ? 'bg-samp-success shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-slate-300 dark:bg-gray-700'}`}
-                          >
-                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${s.isActive ? 'right-0.5' : 'left-0.5'}`}></div>
-                          </button>
-                        </div>
+
+                         <div className="flex items-center justify-between p-4 bg-white dark:bg-samp-surface rounded-2xl border border-slate-200 dark:border-white/10">
+                            <div className="flex items-center gap-3">
+                               <div className={`w-4 h-4 rounded-full border-2 ${newStrategy.riskConfig?.trailingStopLoss ? 'bg-samp-primary border-samp-primary' : 'border-slate-300 dark:border-white/20'}`}></div>
+                               <span className="text-sm font-bold text-slate-700 dark:text-gray-300">Trailing Stop Loss</span>
+                            </div>
+                            <button 
+                               onClick={() => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, trailingStopLoss: !s.riskConfig!.trailingStopLoss }}))}
+                               className={`w-12 h-6 rounded-full transition-all relative ${newStrategy.riskConfig?.trailingStopLoss ? 'bg-samp-primary' : 'bg-slate-300 dark:bg-gray-700'}`}
+                            >
+                               <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${newStrategy.riskConfig?.trailingStopLoss ? 'right-1' : 'left-1'}`}></div>
+                            </button>
+                         </div>
                       </div>
                    </div>
 
-                   <p className="text-sm text-slate-500 dark:text-gray-400 font-medium mb-8 leading-relaxed line-clamp-2">
-                      {s.description || "No system documentation provided."}
-                   </p>
+                   <div className="col-span-8 space-y-10">
+                      <div className="space-y-6">
+                         <div className="flex justify-between items-center">
+                            <h4 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                               <div className="w-10 h-10 rounded-xl bg-samp-success/10 flex items-center justify-center text-samp-success">
+                                  <Zap size={20} />
+                               </div>
+                               Entry Condition Logic
+                               <span className="text-[10px] bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-gray-400 px-2 py-1 rounded font-mono font-bold">MODE: ALL MUST PASS (AND)</span>
+                            </h4>
+                            <button 
+                               onClick={() => handleAddCondition('entry')}
+                               className="text-xs font-bold text-samp-primary flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+                            >
+                               <Plus size={16} /> ADD LOGIC BLOCK
+                            </button>
+                         </div>
 
-                   <div className="grid grid-cols-3 gap-4 py-6 border-y border-slate-100 dark:border-white/5 mb-8">
-                      <div className="text-center">
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Conditions</p>
-                         <p className="text-xl font-bold text-slate-900 dark:text-white font-mono">{s.entryConditions.length + s.exitConditions.length}</p>
+                         <div className="space-y-4">
+                            {newStrategy.entryConditions?.map((cond, i) => (
+                              <LogicBlock 
+                                 key={cond.id} 
+                                 index={i} 
+                                 condition={cond} 
+                                 onRemove={() => removeCondition('entry', cond.id)}
+                                 onUpdate={(u) => updateCondition('entry', cond.id, u)}
+                              />
+                            ))}
+                            {newStrategy.entryConditions?.length === 0 && (
+                              <div className="py-12 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-[32px] flex flex-col items-center justify-center text-slate-400">
+                                 <Activity size={32} className="mb-2 opacity-30" />
+                                 <p className="text-sm font-medium">No entry rules defined. Strategy will never trigger.</p>
+                              </div>
+                            )}
+                         </div>
                       </div>
-                      <div className="text-center border-x border-slate-100 dark:border-white/5 px-2">
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Lot Units</p>
-                         <p className="text-xl font-bold text-slate-900 dark:text-white font-mono">{s.qty}</p>
+
+                      <div className="space-y-6">
+                         <div className="flex justify-between items-center">
+                            <h4 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                               <div className="w-10 h-10 rounded-xl bg-samp-danger/10 flex items-center justify-center text-samp-danger">
+                                  <Target size={20} />
+                               </div>
+                               Exit Signal logic
+                               <span className="text-[10px] bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-gray-400 px-2 py-1 rounded font-mono font-bold">MODE: ANY TRIGGERS (OR)</span>
+                            </h4>
+                            <button 
+                               onClick={() => handleAddCondition('exit')}
+                               className="text-xs font-bold text-samp-primary flex items-center gap-1.5 hover:opacity-70 transition-opacity"
+                            >
+                               <Plus size={16} /> ADD LOGIC BLOCK
+                            </button>
+                         </div>
+
+                         <div className="space-y-4">
+                            {newStrategy.exitConditions?.map((cond, i) => (
+                              <LogicBlock 
+                                 key={cond.id} 
+                                 index={i} 
+                                 condition={cond} 
+                                 onRemove={() => removeCondition('exit', cond.id)}
+                                 onUpdate={(u) => updateCondition('exit', cond.id, u)}
+                              />
+                            ))}
+                            {newStrategy.exitConditions?.length === 0 && (
+                              <div className="py-12 border-2 border-dashed border-slate-200 dark:border-white/5 rounded-[32px] flex flex-col items-center justify-center text-slate-400">
+                                 <p className="text-sm font-medium">Standard Exit: Stop Loss / Take Profit only.</p>
+                              </div>
+                            )}
+                         </div>
                       </div>
-                      <div className="text-center">
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target P&L</p>
-                         <p className={`text-xl font-bold font-mono ${s.isActive ? 'text-samp-success' : 'text-slate-400'}`}>+{s.riskConfig.takeProfitPct}%</p>
-                      </div>
                    </div>
-
-                   <button 
-                      onClick={() => handleEdit(s)}
-                      className="w-full py-4 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-gray-300 font-bold rounded-2xl border border-slate-200 dark:border-white/5 hover:border-samp-primary/50 hover:text-samp-primary transition-all flex items-center justify-center gap-2 group/btn"
-                   >
-                      Modify Architecture <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
-                   </button>
-                </div>
-              ))}
-              
-              <button 
-                onClick={() => setIsAdding(true)}
-                className="bg-white/40 dark:bg-samp-surface/20 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[40px] p-12 flex flex-col items-center justify-center text-slate-400 hover:border-samp-primary/30 hover:text-samp-primary transition-all group/add"
-              >
-                 <div className="w-20 h-20 rounded-[32px] bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-6 group-hover/add:scale-110 transition-transform">
-                    <Plus size={40} />
-                 </div>
-                 <h4 className="text-xl font-black uppercase tracking-[0.2em]">New Logic Node</h4>
-                 <p className="text-sm font-medium mt-2">Scale your quant factory</p>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {!isAdding && (
-          <div className="col-span-4 space-y-8">
-             <div className="bg-samp-primary rounded-[40px] p-10 text-white shadow-3xl relative overflow-hidden group">
-                <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/10 blur-[60px] rounded-full group-hover:scale-125 transition-transform duration-700"></div>
-                <h3 className="text-2xl font-black mb-4 flex items-center gap-3">
-                   <BarChart size={28} />
-                   Live Fleet Status
-                </h3>
-                <div className="space-y-6">
-                   <div className="flex justify-between items-center py-4 border-b border-white/10">
-                      <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Total Nodes</span>
-                      <span className="text-2xl font-bold font-mono">{strategies.length}</span>
-                   </div>
-                   <div className="flex justify-between items-center py-4 border-b border-white/10">
-                      <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Automated Liquidity</span>
-                      <span className="text-2xl font-bold font-mono">₹{strategies.reduce((a,b)=> a+b.qty, 0)*25000}</span>
-                   </div>
-                   <div className="flex justify-between items-center py-4">
-                      <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Handshake Status</span>
-                      <span className="flex items-center gap-2 font-bold text-xs">
-                         <div className="w-2 h-2 rounded-full bg-samp-success animate-pulse"></div>
-                         OPTIMIZED
-                      </span>
-                   </div>
-                </div>
-             </div>
-
-             <div className="bg-slate-100 dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-8 space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                   <div className="p-2 bg-samp-accent/10 rounded-lg text-samp-accent">
-                      <Settings size={20} />
-                   </div>
-                   <h4 className="font-bold text-slate-900 dark:text-white text-lg">Platform Compliance</h4>
-                </div>
-                <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed font-medium">
-                   All strategies deployed here are instantly propagated to the user market terminal. Administrators must perform backtesting before committing logic to production.
-                </p>
-                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-5 flex gap-4">
-                   <AlertCircle className="text-amber-500 shrink-0" size={18} />
-                   <p className="text-[11px] text-amber-700 dark:text-amber-500/80 font-bold uppercase leading-tight">
-                      Modification of active lot sizes affects real-time margin requirements for all connected users.
-                   </p>
                 </div>
              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {strategies.map(s => (
+                  <div key={s.id} className={`bg-white dark:bg-samp-surface border rounded-[40px] p-8 transition-all group/card shadow-xl relative overflow-hidden ${s.isActive ? 'border-slate-200 dark:border-white/5' : 'opacity-60 border-slate-300 dark:border-white/10 saturate-[0.5]'}`}>
+                     <div className="flex justify-between items-start mb-8">
+                        <div className="flex items-center gap-5">
+                           <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover/card:scale-110 group-hover/card:rotate-3 ${s.isActive ? 'bg-slate-100 dark:bg-white/5 text-samp-primary' : 'bg-slate-200 dark:bg-white/5 text-slate-400'}`}>
+                              <Activity size={28} />
+                           </div>
+                           <div>
+                              <h3 className="text-xl font-black text-slate-900 dark:text-white">{s.name}</h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.timeframe} TIMEFRAME</span>
+                                 <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-gray-700"></span>
+                                 <span className={`text-[10px] font-black uppercase tracking-widest ${s.isActive ? 'text-samp-success' : 'text-slate-500'}`}>{s.isActive ? 'ACTIVE NODE' : 'INACTIVE'}</span>
+                              </div>
+                           </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-3">
+                          <div className="flex gap-2">
+                            <button onClick={() => handleEdit(s)} className="p-3 text-slate-400 dark:text-gray-500 hover:text-samp-primary hover:bg-samp-primary/10 rounded-2xl transition-all"><Edit3 size={20} /></button>
+                            <button onClick={() => setStrategies(prev => prev.filter(st => st.id !== s.id))} className="p-3 text-slate-400 dark:text-gray-500 hover:text-samp-danger hover:bg-samp-danger/10 rounded-2xl transition-all"><Trash2 size={20} /></button>
+                          </div>
+                          {/* Status Toggle Switch */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{s.isActive ? 'ENABLED' : 'DISABLED'}</span>
+                            <button 
+                              onClick={() => toggleStrategyActive(s.id)}
+                              className={`w-10 h-5 rounded-full transition-all relative ${s.isActive ? 'bg-samp-success shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-slate-300 dark:bg-gray-700'}`}
+                            >
+                              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${s.isActive ? 'right-0.5' : 'left-0.5'}`}></div>
+                            </button>
+                          </div>
+                        </div>
+                     </div>
+
+                     <p className="text-sm text-slate-500 dark:text-gray-400 font-medium mb-8 leading-relaxed line-clamp-2">
+                        {s.description || "No system documentation provided."}
+                     </p>
+
+                     <div className="grid grid-cols-3 gap-4 py-6 border-y border-slate-100 dark:border-white/5 mb-8">
+                        <div className="text-center">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Conditions</p>
+                           <p className="text-xl font-bold text-slate-900 dark:text-white font-mono">{s.entryConditions.length + s.exitConditions.length}</p>
+                        </div>
+                        <div className="text-center border-x border-slate-100 dark:border-white/5 px-2">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Lot Units</p>
+                           <p className="text-xl font-bold text-slate-900 dark:text-white font-mono">{s.qty}</p>
+                        </div>
+                        <div className="text-center">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target P&L</p>
+                           <p className={`text-xl font-bold font-mono ${s.isActive ? 'text-samp-success' : 'text-slate-400'}`}>+{s.riskConfig.takeProfitPct}%</p>
+                        </div>
+                     </div>
+
+                     <button 
+                        onClick={() => handleEdit(s)}
+                        className="w-full py-4 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-gray-300 font-bold rounded-2xl border border-slate-200 dark:border-white/5 hover:border-samp-primary/50 hover:text-samp-primary transition-all flex items-center justify-center gap-2 group/btn"
+                     >
+                        Modify Architecture <ArrowRight size={18} className="group-hover/btn:translate-x-1 transition-transform" />
+                     </button>
+                  </div>
+                ))}
+                
+                <button 
+                  onClick={() => setIsAdding(true)}
+                  className="bg-white/40 dark:bg-samp-surface/20 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[40px] p-12 flex flex-col items-center justify-center text-slate-400 hover:border-samp-primary/30 hover:text-samp-primary transition-all group/add"
+                >
+                   <div className="w-20 h-20 rounded-[32px] bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-6 group-hover/add:scale-110 transition-transform">
+                      <Plus size={40} />
+                   </div>
+                   <h4 className="text-xl font-black uppercase tracking-[0.2em]">New Logic Node</h4>
+                   <p className="text-sm font-medium mt-2">Scale your quant factory</p>
+                </button>
+              </div>
+            )}
           </div>
+        ) : (
+          <div className="col-span-12 space-y-6">
+            <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-10 overflow-hidden relative">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">System Logs</h3>
+                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">{systemErrors.length} entries captured</span>
+              </div>
+              
+              <div className="space-y-4">
+                {systemErrors.length > 0 ? (
+                  systemErrors.slice().reverse().map((err, i) => (
+                    <div key={i} className="flex gap-6 p-6 bg-slate-50 dark:bg-black/20 rounded-[32px] border border-slate-100 dark:border-white/5 items-start group hover:border-samp-danger/30 transition-all">
+                      <div className="w-12 h-12 rounded-2xl bg-samp-danger/10 flex items-center justify-center text-samp-danger shrink-0">
+                        <AlertCircle size={24} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                         <div className="flex justify-between items-center mb-2">
+                           <h4 className="font-bold text-slate-900 dark:text-white text-lg">{err.context || 'System Error'}</h4>
+                           <span className="text-xs font-mono text-slate-400">{new Date(err.timestamp).toLocaleString()}</span>
+                         </div>
+                         <p className="text-slate-600 dark:text-gray-400 font-mono text-sm break-all bg-white dark:bg-black/40 p-4 rounded-2xl border border-slate-200 dark:border-white/5 mt-3">
+                           {err.error}
+                         </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-24 flex flex-col items-center justify-center text-slate-400 bg-slate-50 dark:bg-black/10 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-white/5">
+                    <ShieldCheck size={48} className="mb-4 text-samp-success opacity-50" />
+                    <p className="text-lg font-bold">No system errors reported. System is healthy.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {!isAdding && activeSubTab === 'architect' && (
+           <div className="col-span-4 space-y-8">
+              <div className="bg-samp-primary rounded-[40px] p-10 text-white shadow-3xl relative overflow-hidden group">
+                 <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/10 blur-[60px] rounded-full group-hover:scale-125 transition-transform duration-700"></div>
+                 <h3 className="text-2xl font-black mb-4 flex items-center gap-3">
+                    <BarChart size={28} />
+                    Live Fleet Status
+                 </h3>
+                 <div className="space-y-6">
+                    <div className="flex justify-between items-center py-4 border-b border-white/10">
+                       <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Total Nodes</span>
+                       <span className="text-2xl font-bold font-mono">{strategies.length}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-4 border-b border-white/10">
+                       <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Automated Liquidity</span>
+                       <span className="text-2xl font-bold font-mono">₹{strategies.reduce((a,b)=> a+b.qty, 0)*25000}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-4">
+                       <span className="text-white/60 font-bold uppercase tracking-widest text-[10px]">Handshake Status</span>
+                       <span className="flex items-center gap-2 font-bold text-xs">
+                          <div className="w-2 h-2 rounded-full bg-samp-success animate-pulse"></div>
+                          OPTIMIZED
+                       </span>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="bg-slate-100 dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-8 space-y-6">
+                 <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-samp-accent/10 rounded-lg text-samp-accent">
+                       <Settings size={20} />
+                    </div>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-lg">Platform Compliance</h4>
+                 </div>
+                 <p className="text-sm text-slate-500 dark:text-gray-400 leading-relaxed font-medium">
+                    All strategies deployed here are instantly propagated to the user market terminal. Administrators must perform backtesting before committing logic to production.
+                 </p>
+                 <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-5 flex gap-4">
+                    <AlertCircle className="text-amber-500 shrink-0" size={18} />
+                    <p className="text-[11px] text-amber-700 dark:text-amber-500/80 font-bold uppercase leading-tight">
+                       Modification of active lot sizes affects real-time margin requirements for all connected users.
+                    </p>
+                 </div>
+              </div>
+           </div>
         )}
       </div>
     </div>
