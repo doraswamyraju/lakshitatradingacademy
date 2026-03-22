@@ -39,7 +39,11 @@ export class AliceBlueService {
       console.log(`[AliceBlue] getAPIEncpkey Response:`, JSON.stringify(keyRes.data));
       
       const encKey = (keyRes.data as any)?.encKey;
-      if (!encKey) throw new Error("Failed to retrieve encryption key from AliceBlue");
+      if (!encKey) {
+        const errorMsg = `AliceBlue key fetch failed: ${JSON.stringify(keyRes.data)}`;
+        systemErrors.push({ timestamp: new Date(), context: 'AliceBlue Auth', error: errorMsg });
+        throw new Error(errorMsg);
+      }
 
       // Step 2: Generate SHA-256 Checksum
       const hashStr = this.config.clientCode + this.config.apiKey + encKey;
