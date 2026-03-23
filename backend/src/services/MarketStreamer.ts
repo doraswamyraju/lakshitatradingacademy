@@ -127,6 +127,17 @@ export class MarketStreamer {
               if (tick.lp) {
                 this.currentPrice = parseFloat(tick.lp);
                 this.generateNextTick(false);
+
+                // Instantly broadcast REAL AliceBlue ticks exactly when they happen (Native Injection)
+                this.io.emit('market_tick', {
+                  symbol: 'NSE:BANKNIFTY',
+                  price: this.currentPrice,
+                  trend: this.currentPrice > this.candles[this.candles.length - 1].open ? 'bullish' : 'bearish',
+                  candles: this.candles,
+                  bids: [], // Broker Depth can be merged here
+                  asks: [],
+                  feedSource: 'BROKER_WS'
+                });
               }
             });
             console.log('[MarketStreamer] AliceBlue native WebSocket stream authorized.');
@@ -147,35 +158,19 @@ export class MarketStreamer {
       this.io.emit('system_log', { message: '[FEED] Connection failed. Falling back to SIMULATED data.', type: 'error' });
     }
 
-    const pollYahoo = () => {
-      axios.get('https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEBANK')
-        .then(res => {
-          const meta = (res.data as any)?.chart?.result?.[0]?.meta;
-          if (meta && meta.regularMarketPrice) {
-            if (this.feedSource !== 'BROKER_WS') {
-              this.feedSource = 'YAHOO_HTTP';
-            }
-            this.currentPrice = meta.regularMarketPrice;
-            this.candles[this.candles.length - 1].close = this.currentPrice;
-          }
-        })
-        .catch(() => {
-          if (this.feedSource !== 'BROKER_WS') {
-            this.feedSource = 'SIMULATED';
-          }
-        });
-    };
-    pollYahoo();
-    setInterval(() => {
-      if (this.feedSource === 'YAHOO_HTTP' || this.feedSource === 'SIMULATED') {
-         pollYahoo();
-      }
-    }, 5000);
+    // Suppress polling entirely if we have a real broker WebSocket connection
+    if (this.feedSource === 'BROKER_WS') {
+      if (this.intervalId) clearInterval(this.intervalId);
+      this.intervalId = null;
+      console.log('[MarketStreamer] Interval loop suppressed. Relying strictly on native real-time WebSocket ticks.');
+      return; 
+    }
 
     if (this.intervalId) clearInterval(this.intervalId);
 
+    // Pure Simulation Logic if Broker Fails (Yahoo fallback removed as requested)
     this.intervalId = setInterval(() => {
-      this.generateNextTick(this.feedSource !== 'BROKER_WS');
+      this.generateNextTick(true);
 
       const bidBase = this.currentPrice - 0.5;
       const askBase = this.currentPrice + 0.5;
