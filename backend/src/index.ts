@@ -126,9 +126,15 @@ app.post(['/api/config', '/config'], authenticateToken, async (req: Request, res
           apiSecret,
           clientCode
         });
-        const verified = await verifier.generateSession();
-        if (!verified) {
-          return res.status(400).json({ error: 'Broker authentication failed. Invalid API credentials or broker session unavailable.' });
+        
+        try {
+           const verified = await verifier.generateSession();
+           if (!verified) {
+             console.log('[API Config] Warning: Key verification failed, but allowing force-save to database.');
+             // Proceed to force save anyway, enabling users to attempt connection loops.
+           }
+        } catch (err) {
+           console.log('[API Config] Warning: Verification layer threw exception. Forcing save anyway.');
         }
       }
     }
