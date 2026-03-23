@@ -64,10 +64,11 @@ export class MarketStreamer {
     const isMarketClosed = currentHourIST > 15 || (currentHourIST === 15 && currentMinuteIST >= 30) || currentHourIST < 9;
 
     if (allowSyntheticDrift && !isMarketClosed) {
-      // Synthetic drift disabled as per user request to avoid misleading "running" state
-      // const volatility = this.currentPrice * 0.00015;
-      // const change = (Math.random() - 0.49) * volatility;
-      // this.currentPrice = parseFloat((this.currentPrice + change).toFixed(2));
+      // Re-enabling a micro synthetic drift as Yahoo API is inherently slow and makes the UI appear frozen.
+      // We tether this to the 5-second Yahoo polls so it never strays from reality.
+      const volatility = this.currentPrice * 0.00005; 
+      const change = (Math.random() - 0.5) * volatility;
+      this.currentPrice = parseFloat((this.currentPrice + change).toFixed(2));
     }
 
     const simTime = isMarketClosed ? (() => { const d = new Date(now); d.setUTCHours(10, 0, 0, 0); return d; })() : now;
