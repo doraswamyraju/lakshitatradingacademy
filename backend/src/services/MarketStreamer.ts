@@ -146,24 +146,30 @@ export class MarketStreamer {
       this.io.emit('system_log', { message: '[FEED] Connection failed. Falling back to SIMULATED data.', type: 'error' });
     }
 
-    axios.get('https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEBANK')
-      .then(res => {
-        const meta = (res.data as any)?.chart?.result?.[0]?.meta;
-        if (meta && meta.regularMarketPrice) {
-          if (this.feedSource !== 'BROKER_WS') {
-            this.feedSource = 'YAHOO_HTTP';
+    const pollYahoo = () => {
+      axios.get('https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEBANK')
+        .then(res => {
+          const meta = (res.data as any)?.chart?.result?.[0]?.meta;
+          if (meta && meta.regularMarketPrice) {
+            if (this.feedSource !== 'BROKER_WS') {
+              this.feedSource = 'YAHOO_HTTP';
+            }
+            this.currentPrice = meta.regularMarketPrice;
+            this.candles[this.candles.length - 1].close = this.currentPrice;
           }
-          this.currentPrice = meta.regularMarketPrice;
-          this.candles[this.candles.length - 1].close = this.currentPrice;
-          console.log(`[MarketStreamer] Synced BankNifty baseline price: ${this.currentPrice}`);
-        }
-      })
-      .catch(() => {
-        if (this.feedSource !== 'BROKER_WS') {
-          this.feedSource = 'SIMULATED';
-        }
-        console.log(`[MarketStreamer] Yahoo fallback unavailable. Running simulation at ${this.currentPrice}`);
-      });
+        })
+        .catch(() => {
+          if (this.feedSource !== 'BROKER_WS') {
+            this.feedSource = 'SIMULATED';
+          }
+        });
+    };
+    pollYahoo();
+    setInterval(() => {
+      if (this.feedSource === 'YAHOO_HTTP' || this.feedSource === 'SIMULATED') {
+         pollYahoo();
+      }
+    }, 5000);
 
     if (this.intervalId) clearInterval(this.intervalId);
 
