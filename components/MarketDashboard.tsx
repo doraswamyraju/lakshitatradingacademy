@@ -178,8 +178,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                <h2 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
                   <IndianRupee className="text-samp-primary" size={24} />{market.symbol}
                   <button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-slate-900 dark:hover:text-white"><Search size={18} /></button>
-                  <span className={`text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider ${market.feedSource === 'BROKER_WS' ? 'bg-samp-success/20 text-samp-success border border-samp-success/30' : 'bg-samp-warning/20 text-samp-warning border border-samp-warning/30'}`}>
-                    {market.feedSource === 'BROKER_WS' ? 'LIVE' : 'SIMULATED'}
+                  <span className={`text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider ${market.feedSource === 'SIMULATED' ? 'bg-samp-warning/20 text-samp-warning border border-samp-warning/30' : 'bg-samp-success/20 text-samp-success border border-samp-success/30'}`}>
+                    {market.feedSource === 'SIMULATED' ? 'SIMULATED' : 'LIVE'}
                   </span>
                </h2>
             </div>
