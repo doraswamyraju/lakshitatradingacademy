@@ -32,8 +32,7 @@ export class AliceBlueService {
       console.log(`[AliceBlue] Sending Handshake for User: ${this.config.clientCode.length} chars, Key: ${this.config.apiKey.length} chars`);
       
       const keyRes = await axios.post(`${AliceBlueService.BASE_URL}/customer/getAPIEncpkey`, {
-          userId: this.config.clientCode,
-          apikey: this.config.apiKey
+          userId: this.config.clientCode
       }, {
           headers: { 'Content-Type': 'application/json' }
       });
