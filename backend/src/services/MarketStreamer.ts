@@ -20,6 +20,7 @@ export class MarketStreamer {
   private candles: Candle[] = [];
   private currentPrice: number | null = null;
   private feedSource: FeedSource = 'DISCONNECTED';
+  private lastFeedMessage = 'Market feed not initialized.';
   private kiteClient: KiteService | null = null;
 
   constructor(io: Server) {
@@ -162,6 +163,15 @@ export class MarketStreamer {
   }
 
   private emitFeedStatus(source: FeedSource, message: string) {
+    this.feedSource = source;
+    this.lastFeedMessage = message;
     this.io.emit('feed_status', { source, message, at: new Date().toISOString() });
+  }
+
+  public getLatestFeedStatus() {
+    return {
+      source: this.feedSource,
+      message: this.lastFeedMessage
+    };
   }
 }

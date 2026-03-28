@@ -316,6 +316,12 @@ const marketStreamer = new MarketStreamer(io);
 
 io.on('connection', (socket) => {
   console.log(`[WebSocket] Terminal Connected: ${socket.id}`);
+  const latestFeed = marketStreamer.getLatestFeedStatus();
+  socket.emit('feed_status', {
+    source: latestFeed.source,
+    message: latestFeed.message,
+    at: new Date().toISOString()
+  });
   socket.on('disconnect', () => console.log(`[WebSocket] Terminal Disconnected: ${socket.id}`));
 });
 
