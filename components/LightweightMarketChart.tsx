@@ -244,16 +244,16 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
 
   // Synchronize Dataset seamlessly
   useEffect(() => {
-    if (seriesRef.current && formattedData.length > 0) {
+    if (seriesRef.current) {
       seriesRef.current.setData(formattedData as any);
     }
-    if (volumeSeriesRef.current && volumeData.length > 0) {
+    if (volumeSeriesRef.current) {
       volumeSeriesRef.current.setData(volumeData as any);
     }
-    if (showSMA && smaSeriesRef.current && smaData?.length > 0) {
+    if (showSMA && smaSeriesRef.current) {
       smaSeriesRef.current.setData(smaData);
     }
-    if (showEMA && emaSeriesRef.current && emaData?.length > 0) {
+    if (showEMA && emaSeriesRef.current) {
       emaSeriesRef.current.setData(emaData);
     }
   }, [formattedData, showSMA, smaData, showEMA, emaData, volumeData]);

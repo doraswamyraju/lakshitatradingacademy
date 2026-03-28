@@ -1,10 +1,18 @@
 const { PrismaClient } = require('@prisma/client');
+
 const prisma = new PrismaClient();
 
 async function main() {
-  const [appKey, appSecret, clientCode, token = 'NSE|26009', isEnabled = 'true'] = process.argv.slice(2);
-  if (!appKey || !appSecret || !clientCode) {
-    console.error('Usage: node scripts/update-market-data-config.js <APP_KEY> <APP_SECRET> <CLIENT_CODE> [BANKNIFTY_TOKEN] [isEnabled]');
+  const [
+    appKey,
+    appSecret,
+    redirectUrl = 'https://lakshitatradingacademy.com/kite/callback',
+    bankNiftyInstrumentToken = '260105',
+    isEnabled = 'true'
+  ] = process.argv.slice(2);
+
+  if (!appKey || !appSecret) {
+    console.error('Usage: node scripts/update-market-data-config.js <KITE_API_KEY> <KITE_API_SECRET> [REDIRECT_URL] [BANKNIFTY_INSTRUMENT_TOKEN] [isEnabled]');
     process.exit(1);
   }
 
@@ -12,30 +20,44 @@ async function main() {
     where: { id: 'GLOBAL' },
     create: {
       id: 'GLOBAL',
-      brokerName: 'AliceBlue',
+      brokerName: 'Kite',
       appKey,
       appSecret,
-      clientCode,
-      bankNiftySpotToken: token,
+      redirectUrl,
+      requestToken: null,
+      accessToken: null,
+      accessTokenUpdatedAt: null,
+      bankNiftyInstrumentToken: Number(bankNiftyInstrumentToken),
       isEnabled: isEnabled === 'true'
     },
     update: {
-      brokerName: 'AliceBlue',
+      brokerName: 'Kite',
       appKey,
       appSecret,
-      clientCode,
-      bankNiftySpotToken: token,
+      redirectUrl,
+      bankNiftyInstrumentToken: Number(bankNiftyInstrumentToken),
       isEnabled: isEnabled === 'true'
     }
   });
 
-  console.log('Updated:', {
+  const loginUrl = `https://kite.zerodha.com/connect/login?v=3&api_key=${encodeURIComponent(appKey)}`;
+
+  console.log('Market data config updated:', {
     id: config.id,
     brokerName: config.brokerName,
-    clientCode: config.clientCode,
-    bankNiftySpotToken: config.bankNiftySpotToken,
+    redirectUrl: config.redirectUrl,
+    bankNiftyInstrumentToken: config.bankNiftyInstrumentToken,
     isEnabled: config.isEnabled
   });
+  console.log('Open this URL to get request_token and complete login:');
+  console.log(loginUrl);
 }
 
-main().finally(async () => prisma.$disconnect());
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

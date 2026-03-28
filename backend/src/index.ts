@@ -7,7 +7,7 @@ import jwt from 'jsonwebtoken';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { MarketStreamer } from './services/MarketStreamer';
-import { AliceBlueService } from './services/AliceBlueService';
+import { KiteService } from './services/KiteService';
 
 dotenv.config();
 
@@ -20,6 +20,8 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'lakshita_fallback_secret';
 export const systemErrors: any[] = [];
+const MARKET_DATA_CONFIG_ID = 'GLOBAL';
+const KITE_DEFAULT_REDIRECT = 'https://lakshitatradingacademy.com/kite/callback';
 
 // Basic health check route
 app.get(['/api/health', '/health'], (req: Request, res: Response) => {
@@ -87,6 +89,166 @@ app.post(['/api/auth/login', '/auth/login'], async (req: Request, res: Response)
 
 // --- PROTECTED ROUTES ---
 
+// Global market-data API config (shared for all users)
+app.get(['/api/market-data/config', '/market-data/config'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required.' });
+    }
+
+    const cfg = await prisma.marketDataConfig.upsert({
+      where: { id: MARKET_DATA_CONFIG_ID },
+      create: {
+        id: MARKET_DATA_CONFIG_ID,
+        brokerName: 'Kite',
+        appKey: 'DUMMY_KITE_API_KEY',
+        appSecret: 'DUMMY_KITE_API_SECRET',
+        clientCode: null,
+        redirectUrl: KITE_DEFAULT_REDIRECT,
+        requestToken: null,
+        accessToken: null,
+        accessTokenUpdatedAt: null,
+        bankNiftyInstrumentToken: 260105,
+        isEnabled: false
+      },
+      update: {}
+    });
+    res.json(cfg);
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to fetch market data config.' });
+  }
+});
+
+app.post(['/api/market-data/config', '/market-data/config'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required.' });
+    }
+
+    const {
+      brokerName = 'Kite',
+      appKey,
+      appSecret,
+      clientCode = null,
+      redirectUrl = KITE_DEFAULT_REDIRECT,
+      requestToken = null,
+      accessToken = null,
+      bankNiftyInstrumentToken = 260105,
+      isEnabled = true
+    } = req.body;
+
+    const updated = await prisma.marketDataConfig.upsert({
+      where: { id: MARKET_DATA_CONFIG_ID },
+      create: {
+        id: MARKET_DATA_CONFIG_ID,
+        brokerName,
+        appKey,
+        appSecret,
+        clientCode,
+        redirectUrl,
+        requestToken,
+        accessToken,
+        accessTokenUpdatedAt: accessToken ? new Date() : null,
+        bankNiftyInstrumentToken,
+        isEnabled
+      },
+      update: {
+        brokerName,
+        appKey,
+        appSecret,
+        clientCode,
+        redirectUrl,
+        requestToken,
+        accessToken,
+        accessTokenUpdatedAt: accessToken ? new Date() : undefined,
+        bankNiftyInstrumentToken,
+        isEnabled
+      }
+    });
+
+    await marketStreamer.rebootFeed();
+    res.json({ success: true, config: updated });
+  } catch (error: any) {
+    systemErrors.push({ timestamp: new Date(), context: 'MarketDataConfig', error: error.message });
+    res.status(500).json({ error: 'Failed to save market data config.' });
+  }
+});
+
+app.get(['/api/market-data/kite/login-url', '/market-data/kite/login-url'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    if (user?.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required.' });
+    }
+
+    const config = await prisma.marketDataConfig.upsert({
+      where: { id: MARKET_DATA_CONFIG_ID },
+      create: {
+        id: MARKET_DATA_CONFIG_ID,
+        brokerName: 'Kite',
+        appKey: 'DUMMY_KITE_API_KEY',
+        appSecret: 'DUMMY_KITE_API_SECRET',
+        redirectUrl: KITE_DEFAULT_REDIRECT,
+        isEnabled: false
+      },
+      update: {}
+    });
+
+    if (!config.appKey) {
+      return res.status(400).json({ error: 'Kite app key missing in market-data config.' });
+    }
+
+    const loginUrl = KiteService.buildLoginUrl(config.appKey);
+    res.json({ loginUrl, redirectUrl: config.redirectUrl || KITE_DEFAULT_REDIRECT });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to generate Kite login URL.' });
+  }
+});
+
+app.get(['/api/market-data/kite/callback', '/market-data/kite/callback'], async (req: Request, res: Response) => {
+  try {
+    const requestToken = String(req.query.request_token || '');
+    const status = String(req.query.status || '');
+    if (!requestToken || status.toLowerCase() !== 'success') {
+      return res.status(400).send('Kite callback missing valid request_token.');
+    }
+
+    const config = await prisma.marketDataConfig.findUnique({ where: { id: MARKET_DATA_CONFIG_ID } });
+    if (!config) {
+      return res.status(400).send('Market data config not found.');
+    }
+    if (!config.appKey || !config.appSecret) {
+      return res.status(400).send('Kite API credentials not configured.');
+    }
+
+    const session = await KiteService.exchangeRequestToken({
+      apiKey: config.appKey,
+      apiSecret: config.appSecret,
+      requestToken
+    });
+
+    await prisma.marketDataConfig.update({
+      where: { id: MARKET_DATA_CONFIG_ID },
+      data: {
+        brokerName: 'Kite',
+        requestToken,
+        accessToken: session.accessToken,
+        accessTokenUpdatedAt: new Date(),
+        clientCode: session.userId || config.clientCode,
+        isEnabled: true
+      }
+    });
+
+    await marketStreamer.rebootFeed();
+    res.send('Kite authorization successful. You can close this tab and return to dashboard.');
+  } catch (error: any) {
+    console.error('[Kite Callback] Error:', error);
+    res.status(500).send(`Kite authorization failed: ${error?.message || 'unknown error'}`);
+  }
+});
+
 // Get User Broker Config
 app.get(['/api/config', '/config'], authenticateToken, async (req: Request, res: Response) => {
   try {
@@ -118,25 +280,6 @@ app.post(['/api/config', '/config'], authenticateToken, async (req: Request, res
       if (!brokerName || !apiKey || !apiSecret || !clientCode) {
         return res.status(400).json({ error: 'brokerName, apiKey, apiSecret and clientCode are required.' });
       }
-
-      if (brokerName === 'AliceBlue') {
-        const verifier = new AliceBlueService({
-          brokerName,
-          apiKey,
-          apiSecret,
-          clientCode
-        });
-        
-        try {
-           const verified = await verifier.generateSession();
-           if (!verified) {
-             console.log('[API Config] Warning: Key verification failed, but allowing force-save to database.');
-             // Proceed to force save anyway, enabling users to attempt connection loops.
-           }
-        } catch (err) {
-           console.log('[API Config] Warning: Verification layer threw exception. Forcing save anyway.');
-        }
-      }
     }
     
     await prisma.user.update({
@@ -149,9 +292,7 @@ app.post(['/api/config', '/config'], authenticateToken, async (req: Request, res
       }
     });
 
-    marketStreamer?.rebootFeed();
-
-    res.json({ success: true, message: isConnected ? 'Broker connected and verified.' : 'Broker disconnected.' });
+    res.json({ success: true, message: isConnected ? 'Broker configuration saved.' : 'Broker disconnected.' });
   } catch (error: any) {
     console.error('[API Config POST] Fatal Error during Broker saving:', error);
     systemErrors.push({ timestamp: new Date(), context: 'Broker Config', error: error.message });

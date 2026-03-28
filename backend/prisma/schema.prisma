@@ -40,3 +40,18 @@ model StrategyLog {
   message    String?
   timestamp  DateTime @default(now())
 }
+
+model MarketDataConfig {
+  id                 String   @id @default("GLOBAL")
+  brokerName         String   @default("Kite")
+  appKey             String
+  appSecret          String
+  clientCode         String?
+  redirectUrl        String?
+  requestToken       String?
+  accessToken        String?
+  accessTokenUpdatedAt DateTime?
+  bankNiftyInstrumentToken Int @default(260105)
+  isEnabled          Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
+}

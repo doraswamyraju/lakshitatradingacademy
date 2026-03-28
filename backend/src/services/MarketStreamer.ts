@@ -1,8 +1,6 @@
-import { Server } from 'socket.io';
-import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
-import { AliceBlueService } from './AliceBlueService';
-import { systemErrors } from '../index';
+import { Server } from 'socket.io';
+import { KiteService } from './KiteService';
 
 const prisma = new PrismaClient();
 
@@ -15,193 +13,150 @@ export interface Candle {
   volume: number;
 }
 
-type FeedSource = 'BROKER_WS' | 'YAHOO_HTTP' | 'SIMULATED';
+type FeedSource = 'BROKER_WS' | 'DISCONNECTED' | 'ERROR';
 
 export class MarketStreamer {
   private io: Server;
-  public currentPrice: number = 53427.05;
   private candles: Candle[] = [];
-  private intervalId: NodeJS.Timeout | null = null;
-  private feedSource: FeedSource = 'SIMULATED';
+  private currentPrice: number | null = null;
+  private feedSource: FeedSource = 'DISCONNECTED';
+  private kiteClient: KiteService | null = null;
 
   constructor(io: Server) {
     this.io = io;
-    this.initSimulation();
     this.startStreaming();
   }
 
-  private initSimulation() {
-    let basePrice = 53427.05;
-    const now = new Date();
-    const currentHourIST = now.getUTCHours() + 5 + Math.floor((now.getUTCMinutes() + 30) / 60);
-    const currentMinuteIST = (now.getUTCMinutes() + 30) % 60;
-    const isMarketClosed = currentHourIST > 15 || (currentHourIST === 15 && currentMinuteIST >= 30) || currentHourIST < 9;
-
-    const simTime = isMarketClosed ? (() => { const d = new Date(now); d.setUTCHours(10, 0, 0, 0); return d; })() : now;
-
-    for (let i = 60; i >= 0; i--) {
-      const time = new Date(simTime.getTime() - i * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const volatility = basePrice * 0.0005;
-      const change = (Math.random() - 0.5) * volatility;
-
-      const open = basePrice;
-      const close = basePrice + change;
-      const high = Math.max(open, close) + Math.random() * (volatility / 2);
-      const low = Math.min(open, close) - Math.random() * (volatility / 2);
-
-      this.candles.push({ time, open, high, low, close, volume: Math.floor(Math.random() * 5000) + 1000 });
-      basePrice = close;
-    }
-    this.currentPrice = basePrice;
-  }
-
-  private generateNextTick(allowSyntheticDrift: boolean = false) {
-    const lastCandle = this.candles[this.candles.length - 1];
-
-    const now = new Date();
-    const currentHourIST = now.getUTCHours() + 5 + Math.floor((now.getUTCMinutes() + 30) / 60);
-    const currentMinuteIST = (now.getUTCMinutes() + 30) % 60;
-    const isMarketClosed = currentHourIST > 15 || (currentHourIST === 15 && currentMinuteIST >= 30) || currentHourIST < 9;
-
-    if (allowSyntheticDrift && !isMarketClosed) {
-      // Re-enabling a micro synthetic drift as Yahoo API is inherently slow and makes the UI appear frozen.
-      // We tether this to the 5-second Yahoo polls so it never strays from reality.
-      const volatility = this.currentPrice * 0.00005; 
-      const change = (Math.random() - 0.5) * volatility;
-      this.currentPrice = parseFloat((this.currentPrice + change).toFixed(2));
-    }
-
-    const simTime = isMarketClosed ? (() => { const d = new Date(now); d.setUTCHours(10, 0, 0, 0); return d; })() : now;
-    const timeStr = simTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    if (lastCandle.time === timeStr) {
-      lastCandle.close = this.currentPrice;
-      lastCandle.high = Math.max(lastCandle.high, this.currentPrice);
-      lastCandle.low = Math.min(lastCandle.low, this.currentPrice);
-      lastCandle.volume += Math.floor(Math.random() * 5);
-    } else {
-      const newCandle: Candle = {
-        time: timeStr,
-        open: lastCandle.close,
-        high: Math.max(lastCandle.close, this.currentPrice),
-        low: Math.min(lastCandle.close, this.currentPrice),
-        close: this.currentPrice,
-        volume: Math.floor(Math.random() * 150) + 50
-      };
-      this.candles.push(newCandle);
-      if (this.candles.length > 200) this.candles.shift();
-    }
-  }
-
   public async rebootFeed() {
-    console.log('[MarketStreamer] Rebooting feed pipeline with latest credentials...');
-    this.feedSource = 'SIMULATED';
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
+    this.stopStreaming();
     await this.startStreaming();
+  }
+
+  private stopStreaming() {
+    if (this.kiteClient) {
+      this.kiteClient.disconnect();
+      this.kiteClient = null;
+    }
+    this.feedSource = 'DISCONNECTED';
+    this.currentPrice = null;
+    this.candles = [];
+    this.emitFeedStatus('DISCONNECTED', 'Market feed stopped.');
   }
 
   private async startStreaming() {
     try {
-      const user = await prisma.user.findFirst({
-        where: { apiKey: { not: null } }
+      const config = await prisma.marketDataConfig.upsert({
+        where: { id: 'GLOBAL' },
+        create: {
+          id: 'GLOBAL',
+          brokerName: 'Kite',
+          appKey: 'DUMMY_KITE_API_KEY',
+          appSecret: 'DUMMY_KITE_API_SECRET',
+          redirectUrl: 'https://lakshitatradingacademy.com/kite/callback',
+          requestToken: null,
+          accessToken: null,
+          bankNiftyInstrumentToken: 260105,
+          isEnabled: false
+        },
+        update: {}
       });
 
-      if (user && user.apiKey && user.clientCode && user.apiSecret) {
-        console.log(`[MarketStreamer] Found Broker Configuration: ${user.brokerName} for ${user.clientCode}`);
-        
-        if (user.brokerName === 'AliceBlue') {
-          const ab = new AliceBlueService({
-            brokerName: 'AliceBlue',
-            apiKey: user.apiKey,
-            apiSecret: user.apiSecret,
-            clientCode: user.clientCode
-          });
-
-          const success = await ab.generateSession();
-          if (success) {
-            this.feedSource = 'BROKER_WS';
-            ab.initWebSocket((tick: any) => {
-              if (tick.lp) {
-                this.currentPrice = parseFloat(tick.lp);
-                this.generateNextTick(false);
-
-                // Instantly broadcast REAL AliceBlue ticks exactly when they happen (Native Injection)
-                this.io.emit('market_tick', {
-                  symbol: 'NSE:BANKNIFTY',
-                  price: this.currentPrice,
-                  trend: this.currentPrice > this.candles[this.candles.length - 1].open ? 'bullish' : 'bearish',
-                  candles: this.candles,
-                  bids: [], // Broker Depth can be merged here
-                  asks: [],
-                  feedSource: 'BROKER_WS'
-                });
-              }
-            });
-            console.log('[MarketStreamer] AliceBlue native WebSocket stream authorized.');
-            this.io.emit('system_log', { message: '[FEED] LIVE Data active via AliceBlue WS', type: 'success' });
-          } else {
-            throw new Error('AliceBlue session generation failed.');
-          }
-        } else {
-          // Fallback or placeholder for other brokers
-          console.log(`[MarketStreamer] Broker ${user.brokerName} selected. WebSocket integration pending.`);
-          this.io.emit('system_log', { message: `[FEED] ${user.brokerName} selected. Using Simulated data while integration is finalized.`, type: 'warning' });
-        }
+      if (!config.isEnabled) {
+        this.feedSource = 'DISCONNECTED';
+        this.emitFeedStatus('DISCONNECTED', 'Market data config is disabled.');
+        return;
       }
+
+      if (config.brokerName !== 'Kite') {
+        this.feedSource = 'ERROR';
+        this.emitFeedStatus('ERROR', `Unsupported market feed broker: ${config.brokerName}`);
+        return;
+      }
+
+      if (!config.appKey || !config.appSecret || !config.accessToken) {
+        this.feedSource = 'ERROR';
+        this.emitFeedStatus('ERROR', 'Kite credentials missing. Complete Kite login flow.');
+        return;
+      }
+
+      this.kiteClient = new KiteService({
+        apiKey: config.appKey,
+        apiSecret: config.appSecret,
+        accessToken: config.accessToken,
+        instrumentToken: config.bankNiftyInstrumentToken
+      });
+
+      this.feedSource = 'BROKER_WS';
+      this.emitFeedStatus('BROKER_WS', 'Kite websocket connecting...');
+
+      this.kiteClient.connect({
+        onTick: (tick) => this.handleLiveTick(tick),
+        onStatus: (event, message) => {
+          if (event === 'CONNECTED' || event === 'AUTHENTICATED') {
+            this.feedSource = 'BROKER_WS';
+            this.emitFeedStatus('BROKER_WS', message || 'Kite websocket active.');
+          }
+          if (event === 'DISCONNECTED') {
+            this.feedSource = 'DISCONNECTED';
+            this.emitFeedStatus('DISCONNECTED', message || 'Kite websocket disconnected.');
+          }
+          if (event === 'ERROR') {
+            this.feedSource = 'ERROR';
+            this.emitFeedStatus('ERROR', message || 'Kite websocket error.');
+          }
+        }
+      });
     } catch (error: any) {
-      this.feedSource = 'SIMULATED';
-      console.error('[MarketStreamer] Broker connection failed. Falling back to Simulation.');
-      systemErrors.push({ timestamp: new Date(), context: 'MarketStreamer', error: error.message });
-      this.io.emit('system_log', { message: '[FEED] Connection failed. Falling back to SIMULATED data.', type: 'error' });
+      this.feedSource = 'ERROR';
+      this.emitFeedStatus('ERROR', error?.message || 'Feed bootstrap failed.');
+    }
+  }
+
+  private handleLiveTick(tick: { lp: number; bids: any[]; asks: any[] }) {
+    const livePrice = Number(tick.lp);
+    if (!Number.isFinite(livePrice) || livePrice <= 0) return;
+
+    this.currentPrice = livePrice;
+    this.upsertCandle(livePrice);
+
+    const latestCandle = this.candles[this.candles.length - 1];
+
+    this.io.emit('market_tick', {
+      symbol: 'NSE:BANKNIFTY',
+      price: livePrice,
+      trend: latestCandle && livePrice >= latestCandle.open ? 'bullish' : 'bearish',
+      candles: this.candles,
+      bids: tick.bids,
+      asks: tick.asks,
+      feedSource: this.feedSource
+    });
+  }
+
+  private upsertCandle(price: number) {
+    const now = new Date();
+    const candleTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const last = this.candles[this.candles.length - 1];
+
+    if (!last || last.time !== candleTime) {
+      this.candles.push({
+        time: candleTime,
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+        volume: 1
+      });
+      if (this.candles.length > 500) this.candles.shift();
+      return;
     }
 
-    // Suppress polling entirely if we have a real broker WebSocket connection
-    if (this.feedSource === 'BROKER_WS') {
-      if (this.intervalId) clearInterval(this.intervalId);
-      this.intervalId = null;
-      console.log('[MarketStreamer] Interval loop suppressed. Relying strictly on native real-time WebSocket ticks.');
-      return; 
-    }
+    last.close = price;
+    last.high = Math.max(last.high, price);
+    last.low = Math.min(last.low, price);
+    last.volume += 1;
+  }
 
-    if (this.intervalId) clearInterval(this.intervalId);
-
-    // Pure Simulation Logic if Broker Fails (Yahoo fallback removed as requested)
-    this.intervalId = setInterval(() => {
-      this.generateNextTick(true);
-
-      const bidBase = this.currentPrice - 0.5;
-      const askBase = this.currentPrice + 0.5;
-
-      const bids = Array.from({ length: 5 }, (_, i) => ({
-        price: parseFloat((bidBase - i * 0.25).toFixed(2)),
-        amount: Math.floor(Math.random() * 500) + 100,
-        orders: Math.floor(Math.random() * 10) + 1,
-        total: Math.floor(Math.random() * 5000) + 1000
-      }));
-
-      const asks = Array.from({ length: 5 }, (_, i) => ({
-        price: parseFloat((askBase + i * 0.25).toFixed(2)),
-        amount: Math.floor(Math.random() * 500) + 100,
-        orders: Math.floor(Math.random() * 10) + 1,
-        total: Math.floor(Math.random() * 5000) + 1000
-      }));
-
-      const lastCandle = this.candles[this.candles.length - 1];
-
-      const marketState = {
-        symbol: 'NSE:BANKNIFTY',
-        price: this.currentPrice,
-        trend: this.currentPrice > lastCandle.open ? 'bullish' : 'bearish',
-        candles: this.candles,
-        bids,
-        asks,
-        feedSource: this.feedSource
-      };
-
-      this.io.emit('market_tick', marketState);
-    }, 1000);
+  private emitFeedStatus(source: FeedSource, message: string) {
+    this.io.emit('feed_status', { source, message, at: new Date().toISOString() });
   }
 }
