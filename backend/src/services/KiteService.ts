@@ -67,8 +67,9 @@ export class KiteService {
     this.ws.on('open', () => {
       options.onStatus?.('CONNECTED', 'Kite websocket connected.');
       this.ws?.send(JSON.stringify({ a: 'subscribe', v: [this.config.instrumentToken] }));
-      this.ws?.send(JSON.stringify({ a: 'mode', v: ['full', [this.config.instrumentToken]] }));
-      options.onStatus?.('AUTHENTICATED', 'Kite subscription active.');
+      // Use LTP mode for robust index ticks (full mode packet layouts vary by instrument type).
+      this.ws?.send(JSON.stringify({ a: 'mode', v: ['ltp', [this.config.instrumentToken]] }));
+      options.onStatus?.('AUTHENTICATED', `Kite subscription active for token ${this.config.instrumentToken}.`);
     });
 
     this.ws.on('message', (payload: WebSocket.RawData) => {
@@ -116,7 +117,8 @@ export class KiteService {
       const packet = new DataView(buffer.buffer, buffer.byteOffset + offset, packetLength);
       offset += packetLength;
 
-      if (packetLength !== 184 && packetLength !== 44 && packetLength !== 8) continue;
+      // Kite index/equity derivatives can emit different packet sizes depending on mode/instrument.
+      if (packetLength !== 184 && packetLength !== 44 && packetLength !== 28 && packetLength !== 8) continue;
 
       const lastPrice = packet.getInt32(4, false) / 100;
       if (!Number.isFinite(lastPrice) || lastPrice <= 0) continue;

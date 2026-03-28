@@ -92,6 +92,11 @@ export class MarketStreamer {
       this.kiteClient.connect({
         onTick: (tick) => this.handleLiveTick(tick),
         onStatus: (event, message) => {
+          if (message) {
+            console.log(`[MarketStreamer][Kite] ${event}: ${message}`);
+          } else {
+            console.log(`[MarketStreamer][Kite] ${event}`);
+          }
           if (event === 'CONNECTED' || event === 'AUTHENTICATED') {
             this.feedSource = 'BROKER_WS';
             this.emitFeedStatus('BROKER_WS', message || 'Kite websocket active.');
