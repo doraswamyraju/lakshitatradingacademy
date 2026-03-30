@@ -99,28 +99,39 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 mb-8"
             >
               <Sparkles className="text-blue-600" size={16} />
-              <span className="text-xs font-bold tracking-widest uppercase text-blue-900/60">Learn Stock Market From Zero</span>
+              <span className="text-xs font-bold tracking-widest uppercase text-blue-900/60">Practical Stock Market Training</span>
             </motion.div>
 
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.9] mb-8 text-blue-950"
+              className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[0.95] mb-8 text-blue-950"
             >
-              Start Your <br />
-              <span className="text-blue-700">Successful</span> <br />
-              Trading Journey
+              Become a <br />
+              <span className="text-blue-700">Confident</span> and <br />
+              <span className="text-blue-700">Consistent</span> Trader
             </motion.h1>
 
-            <motion.p
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-lg md:text-xl text-slate-600 max-w-xl mb-10 leading-relaxed"
+              className="space-y-3 mb-10"
             >
-              Master the stock market with **Sampangi**. We provide institutional-grade training in Telugu, designed to make you a consistently profitable trader.
-            </motion.p>
+              {[
+                { icon: <Target size={16} className="text-blue-600 shrink-0 mt-0.5" />, text: 'Practical Stock Market Training for Serious Traders' },
+                { icon: <MonitorPlay size={16} className="text-blue-600 shrink-0 mt-0.5" />, text: 'Offline & Online Classes — Limited Seats Only' },
+                { icon: <Zap size={16} className="text-blue-600 shrink-0 mt-0.5" />, text: <span>Learn <span className="text-slate-400 font-light">·</span> Practice <span className="text-slate-400 font-light">·</span> Execute <span className="text-slate-400 font-light">·</span> Succeed</span> }
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
+                    {item.icon}
+                  </div>
+                  <span className="text-slate-700 font-medium">{item.text}</span>
+                </div>
+              ))}
+            </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -128,10 +139,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex flex-col sm:flex-row items-center gap-4"
             >
-              <button onClick={() => setIsEnrollOpen(true)} className="w-full sm:w-auto px-8 py-4 bg-blue-900 hover:bg-blue-800 text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 transition-all active:scale-95 flex items-center justify-center gap-2 group">
-                Enroll for Free Demo
+              <a
+                href="https://wa.me/919515126201"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-8 py-4 bg-blue-900 hover:bg-blue-800 text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 transition-all active:scale-95 flex items-center justify-center gap-2 group"
+              >
+                Enroll Now — Call/WhatsApp
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-              </button>
+              </a>
               <div className="flex items-center gap-4 px-4">
                 <div className="flex -space-x-3">
                   {[1, 2, 3, 4].map(i => (
@@ -142,6 +158,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   <span className="text-blue-900 font-bold">15k+</span> Students
                 </div>
               </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="mt-6 flex items-center gap-2 text-slate-500 text-sm"
+            >
+              <Phone size={15} className="text-green-600" />
+              <span>Call or WhatsApp: <a href="tel:+919515126201" className="font-bold text-blue-900 hover:underline">+91 9515126201</a></span>
             </motion.div>
           </div>
 
@@ -502,7 +528,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 </div>
                 <div>
                   <h4 className="font-bold text-lg mb-1">Phone & WhatsApp</h4>
-                  <p className="text-blue-200 text-sm">+91 9948157156</p>
+                  <p className="text-blue-200 text-sm">+91 9515126201</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -552,7 +578,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <div className="mt-8 flex items-center justify-center gap-8 text-white/60">
               <div className="flex items-center gap-2">
                 <Phone size={16} />
-                <span className="text-sm font-medium">+91 9948157156</span>
+                <span className="text-sm font-medium">+91 9515126201</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail size={16} />
