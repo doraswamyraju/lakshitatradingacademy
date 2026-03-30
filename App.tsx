@@ -152,7 +152,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#050508] text-slate-900 dark:text-gray-200 font-sans flex overflow-hidden selection:bg-samp-primary/30 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#050508] text-slate-900 dark:text-gray-200 font-sans flex selection:bg-samp-primary/30 transition-colors duration-300">
       
       <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-white dark:bg-samp-surface border-r border-slate-200 dark:border-white/5 flex flex-col justify-between flex-shrink-0 z-20 transition-all duration-500 ease-in-out`}>
         <div>
@@ -207,7 +207,7 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <main className="flex-1 flex flex-col min-h-screen relative">
         <header className="h-20 border-b border-slate-200 dark:border-white/5 flex items-center justify-between px-8 bg-white/40 dark:bg-samp-bg/40 backdrop-blur-md z-10 shrink-0">
            <div className="flex items-center gap-2">
               <span className="text-slate-400 dark:text-gray-600 font-mono text-sm">/</span>
@@ -226,7 +226,7 @@ const App: React.FC = () => {
            </div>
         </header>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-scroll">
            {activeTab === 'dashboard' && <MarketDashboard strategies={userStrategies} brokerConfig={brokerConfig} userRole={currentUser?.role || 'USER'} token={token} onRemoveStrategy={removeUserStrategy} />}
            {/* {activeTab === 'strategy' && <AILab />} */}
            {activeTab === 'admin' && (

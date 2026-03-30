@@ -272,7 +272,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   };
 
   return (
-    <div className="min-h-full flex flex-col p-6 gap-6 overflow-y-scroll pb-20 pr-2">
+    <div className="min-h-full flex flex-col p-6 gap-6 pb-20 pr-2">
       <div className="flex items-center justify-between bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 shadow-xl shrink-0 transition-colors duration-300">
         <div className="flex items-center gap-8">
           <div className="flex flex-col min-w-[220px]">
