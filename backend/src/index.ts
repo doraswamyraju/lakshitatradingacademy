@@ -284,25 +284,13 @@ app.get(['/api/market-data/kite/callback', '/market-data/kite/callback'], async 
 
 app.get(['/api/market-data/kite/token-status', '/market-data/kite/token-status'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const config = await prisma.marketDataConfig.findUnique({ where: { id: MARKET_DATA_CONFIG_ID } });
-    if (!config) {
-      return res.json({
-        broker: 'Kite',
-        isEnabled: false,
-        hasAccessToken: false,
-        accessTokenUpdatedAt: null,
-        tokenAgeMinutes: null,
-        shouldReconnect: true
-      });
-    }
-
+    const { config } = await getGlobalKiteClient();
     const updatedAt = config.accessTokenUpdatedAt;
     const tokenAgeMinutes = updatedAt ? Math.max(0, Math.round((Date.now() - updatedAt.getTime()) / 60000)) : null;
     const shouldReconnect = !updatedAt || tokenAgeMinutes === null || tokenAgeMinutes > 1440;
-    
     res.json({
-      broker: config.brokerName || 'Kite',
-      isEnabled: config.isEnabled || false,
+      broker: config.brokerName,
+      isEnabled: config.isEnabled,
       hasAccessToken: Boolean(config.accessToken),
       accessTokenUpdatedAt: updatedAt,
       tokenAgeMinutes,
@@ -322,12 +310,6 @@ app.get(['/api/market-data/wallet', '/market-data/wallet'], authenticateToken, a
       wallet
     });
   } catch (error: any) {
-    if (error?.message?.includes('credentials missing') || error?.message?.includes('config not found')) {
-      return res.json({
-        broker: 'Kite',
-        wallet: { walletBalance: 0, availableMargin: 0, usedMargin: 0, collateral: 0, dayPnl: 0 }
-      });
-    }
     res.status(400).json({ error: error?.message || 'Failed to fetch broker wallet.' });
   }
 });
@@ -447,9 +429,6 @@ app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (_req: Re
     }));
     res.json({ orders });
   } catch (error: any) {
-    if (error?.message?.includes('credentials missing') || error?.message?.includes('config not found')) {
-      return res.json({ orders: [] });
-    }
     res.status(400).json({ error: error?.message || 'Failed to fetch orders.' });
   }
 });
@@ -468,9 +447,6 @@ app.get(['/api/algo/positions', '/algo/positions'], authenticateToken, async (_r
     }));
     res.json({ positions });
   } catch (error: any) {
-    if (error?.message?.includes('credentials missing') || error?.message?.includes('config not found')) {
-      return res.json({ positions: [] });
-    }
     res.status(400).json({ error: error?.message || 'Failed to fetch positions.' });
   }
 });

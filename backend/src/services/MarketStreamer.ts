@@ -140,19 +140,6 @@ export class MarketStreamer {
       // Periodic REST-LTP sync to keep display aligned with Kite quote screen.
       this.ltpSyncInterval = setInterval(async () => {
         if (!this.kiteClient || this.feedSource !== 'BROKER_WS') return;
-
-        // Check if market is open (IST 09:15 to 15:30, Mon-Fri)
-        const now = new Date();
-        const istTime = now.getUTCHours() * 60 + now.getUTCMinutes() + 330;
-        const istHour = Math.floor(istTime / 60) % 24;
-        const istMin = istTime % 60;
-        const isWeekday = now.getUTCDay() >= 1 && now.getUTCDay() <= 5;
-        const isMarketOpen = isWeekday && 
-          (istHour > 9 || (istHour === 9 && istMin >= 15)) && 
-          (istHour < 15 || (istHour === 15 && istMin <= 30));
-
-        if (!isMarketOpen) return;
-
         const ltp = await this.kiteClient.fetchLtp('NSE:NIFTY BANK');
         if (!ltp) return;
         this.handleLiveTick({
