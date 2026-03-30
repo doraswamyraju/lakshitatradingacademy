@@ -28,9 +28,20 @@ export interface KiteHistoricalCandle {
   volume: number;
 }
 
+export interface KiteOptionRow {
+  strike: number;
+  ceSymbol: string | null;
+  peSymbol: string | null;
+  ceLtp: number | null;
+  peLtp: number | null;
+  ceOi: number | null;
+  peOi: number | null;
+}
+
 export class KiteService {
   private config: KiteConfig;
   private ws: WebSocket | null = null;
+  private static instrumentsCache: { at: number; rows: any[] } | null = null;
 
   constructor(config: KiteConfig) {
     this.config = config;
@@ -188,6 +199,166 @@ export class KiteService {
       close: Number(item[4]),
       volume: Number(item[5] || 0)
     }));
+  }
+
+  async placeOrder(params: {
+    tradingsymbol: string;
+    exchange: 'NSE' | 'NFO';
+    transactionType: 'BUY' | 'SELL';
+    quantity: number;
+    product: 'MIS' | 'CNC';
+    orderType: 'MARKET' | 'LIMIT';
+    price?: number;
+  }): Promise<{ orderId: string }> {
+    const body = new URLSearchParams({
+      variety: 'regular',
+      exchange: params.exchange,
+      tradingsymbol: params.tradingsymbol,
+      transaction_type: params.transactionType,
+      quantity: String(params.quantity),
+      product: params.product,
+      order_type: params.orderType,
+      validity: 'DAY'
+    });
+    if (params.orderType === 'LIMIT' && typeof params.price === 'number') {
+      body.set('price', String(params.price));
+    }
+
+    const response = await axios.post('https://api.kite.trade/orders/regular', body.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Kite-Version': '3',
+        Authorization: `token ${this.config.apiKey}:${this.config.accessToken}`
+      }
+    });
+    const orderId = (response.data as any)?.data?.order_id;
+    if (!orderId) {
+      throw new Error((response.data as any)?.message || 'Failed to place order.');
+    }
+    return { orderId };
+  }
+
+  async fetchOrders(): Promise<any[]> {
+    const response = await axios.get('https://api.kite.trade/orders', {
+      headers: {
+        'X-Kite-Version': '3',
+        Authorization: `token ${this.config.apiKey}:${this.config.accessToken}`
+      }
+    });
+    return Array.isArray((response.data as any)?.data) ? (response.data as any).data : [];
+  }
+
+  async fetchPositions(): Promise<any[]> {
+    const response = await axios.get('https://api.kite.trade/portfolio/positions', {
+      headers: {
+        'X-Kite-Version': '3',
+        Authorization: `token ${this.config.apiKey}:${this.config.accessToken}`
+      }
+    });
+    return Array.isArray((response.data as any)?.data?.net) ? (response.data as any).data.net : [];
+  }
+
+  private async fetchInstruments(): Promise<any[]> {
+    const now = Date.now();
+    if (KiteService.instrumentsCache && now - KiteService.instrumentsCache.at < 15 * 60 * 1000) {
+      return KiteService.instrumentsCache.rows;
+    }
+
+    const response = await axios.get('https://api.kite.trade/instruments', {
+      headers: {
+        'X-Kite-Version': '3',
+        Authorization: `token ${this.config.apiKey}:${this.config.accessToken}`
+      }
+    });
+    const csv = String(response.data || '');
+    const lines = csv.split('\n').filter(Boolean);
+    const rows = lines.slice(1).map(line => {
+      const cols = line.split(',');
+      return {
+        instrumentToken: Number(cols[0]),
+        tradingsymbol: cols[2],
+        name: cols[3],
+        expiry: cols[5],
+        strike: Number(cols[6]),
+        lotSize: Number(cols[8]),
+        instrumentType: cols[9],
+        segment: cols[10],
+        exchange: cols[11]
+      };
+    });
+    KiteService.instrumentsCache = { at: now, rows };
+    return rows;
+  }
+
+  async fetchBankNiftyOptionChain(params: {
+    spot: number;
+    expiry?: string;
+    strikesAround?: number;
+  }): Promise<{ expiry: string; rows: KiteOptionRow[] }> {
+    const instruments = await this.fetchInstruments();
+    const candidates = instruments.filter(
+      i => i.name === 'BANKNIFTY' && i.exchange === 'NFO' && (i.instrumentType === 'CE' || i.instrumentType === 'PE')
+    );
+    if (candidates.length === 0) {
+      throw new Error('BANKNIFTY option instruments not found.');
+    }
+
+    const uniqueExpiries = [...new Set(candidates.map(c => c.expiry).filter(Boolean))].sort();
+    const today = new Date().toISOString().slice(0, 10);
+    const nearest = uniqueExpiries.find(e => e >= today) || uniqueExpiries[0];
+    const chosenExpiry = params.expiry && uniqueExpiries.includes(params.expiry) ? params.expiry : nearest;
+    const expiryRows = candidates.filter(c => c.expiry === chosenExpiry);
+
+    const atm = Math.round(params.spot / 100) * 100;
+    const around = params.strikesAround ?? 6;
+    const strikes: number[] = [];
+    for (let s = -around; s <= around; s++) strikes.push(atm + s * 100);
+
+    const selected = expiryRows.filter(r => strikes.includes(r.strike));
+    const quoteKeys = selected.map(r => `NFO:${r.tradingsymbol}`);
+    if (quoteKeys.length === 0) return { expiry: chosenExpiry, rows: [] };
+
+    const query = quoteKeys.map(i => `i=${encodeURIComponent(i)}`).join('&');
+    const quoteResp = await axios.get(`https://api.kite.trade/quote?${query}`, {
+      headers: {
+        'X-Kite-Version': '3',
+        Authorization: `token ${this.config.apiKey}:${this.config.accessToken}`
+      }
+    });
+    const quoteData = (quoteResp.data as any)?.data || {};
+
+    const map = new Map<number, KiteOptionRow>();
+    for (const r of selected) {
+      const key = `NFO:${r.tradingsymbol}`;
+      const q = quoteData[key];
+      const asNullableNumber = (value: any) => (value === null || value === undefined ? null : Number(value));
+      if (!map.has(r.strike)) {
+        map.set(r.strike, {
+          strike: r.strike,
+          ceSymbol: null,
+          peSymbol: null,
+          ceLtp: null,
+          peLtp: null,
+          ceOi: null,
+          peOi: null
+        });
+      }
+      const row = map.get(r.strike)!;
+      if (r.instrumentType === 'CE') {
+        row.ceSymbol = r.tradingsymbol;
+        row.ceLtp = asNullableNumber(q?.last_price);
+        row.ceOi = asNullableNumber(q?.oi);
+      } else {
+        row.peSymbol = r.tradingsymbol;
+        row.peLtp = asNullableNumber(q?.last_price);
+        row.peOi = asNullableNumber(q?.oi);
+      }
+    }
+
+    return {
+      expiry: chosenExpiry,
+      rows: [...map.values()].sort((a, b) => a.strike - b.strike)
+    };
   }
 
   private parseBinaryTicks(buffer: Buffer): { instrumentToken: number; lp: number; bids: any[]; asks: any[]; receivedAt: string }[] {

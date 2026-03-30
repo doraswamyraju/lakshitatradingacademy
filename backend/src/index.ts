@@ -41,6 +41,21 @@ const getGlobalKiteClient = async () => {
   };
 };
 
+const formatKiteDateTime = (raw: string): string => {
+  // Accept ISO and convert to Kite expected "YYYY-MM-DD HH:mm:ss"
+  const dt = new Date(raw);
+  if (!Number.isNaN(dt.getTime())) {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const d = String(dt.getDate()).padStart(2, '0');
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const mm = String(dt.getMinutes()).padStart(2, '0');
+    const ss = String(dt.getSeconds()).padStart(2, '0');
+    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+  }
+  return raw;
+};
+
 // Basic health check route
 app.get(['/api/health', '/health'], (req: Request, res: Response) => {
   res.json({ status: 'live', message: 'Lakshita Trading Academy Engine Running' });
@@ -321,8 +336,8 @@ app.get(['/api/market-data/kite/historical', '/market-data/kite/historical'], au
     const candles = await client.fetchHistoricalCandles({
       instrumentToken: token,
       interval,
-      from,
-      to
+      from: formatKiteDateTime(from),
+      to: formatKiteDateTime(to)
     });
 
     res.json({
@@ -335,6 +350,104 @@ app.get(['/api/market-data/kite/historical', '/market-data/kite/historical'], au
     });
   } catch (error: any) {
     res.status(400).json({ error: error?.message || 'Failed to fetch historical candles.' });
+  }
+});
+
+app.get(['/api/market-data/kite/option-chain', '/market-data/kite/option-chain'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { client, config } = await getGlobalKiteClient();
+    const spotLtp = await client.fetchLtp('NSE:NIFTY BANK');
+    const spot = Number(req.query.spot || spotLtp || 0);
+    if (!Number.isFinite(spot) || spot <= 0) {
+      return res.status(400).json({ error: 'Unable to determine BANKNIFTY spot.' });
+    }
+    const expiry = req.query.expiry ? String(req.query.expiry) : undefined;
+    const strikesAround = Number(req.query.strikesAround || 6);
+    const chain = await client.fetchBankNiftyOptionChain({
+      spot,
+      expiry,
+      strikesAround: Number.isFinite(strikesAround) ? strikesAround : 6
+    });
+
+    res.json({
+      broker: config.brokerName,
+      spot,
+      expiry: chain.expiry,
+      rows: chain.rows
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || 'Failed to fetch option chain.' });
+  }
+});
+
+app.post(['/api/algo/order', '/algo/order'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { client } = await getGlobalKiteClient();
+    const {
+      tradingsymbol = 'NIFTY BANK',
+      exchange = 'NSE',
+      transactionType,
+      quantity,
+      product = 'MIS',
+      orderType = 'MARKET',
+      price
+    } = req.body || {};
+    if (!transactionType || !quantity) {
+      return res.status(400).json({ error: 'transactionType and quantity are required.' });
+    }
+
+    const placed = await client.placeOrder({
+      tradingsymbol,
+      exchange,
+      transactionType,
+      quantity: Number(quantity),
+      product,
+      orderType,
+      price
+    });
+
+    res.json({ success: true, orderId: placed.orderId });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || 'Failed to place order.' });
+  }
+});
+
+app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (_req: Request, res: Response) => {
+  try {
+    const { client } = await getGlobalKiteClient();
+    const rows = await client.fetchOrders();
+    const orders = rows.slice(0, 200).map((o: any) => ({
+      order_id: o.order_id,
+      symbol: `${o.exchange}:${o.tradingsymbol}`,
+      transaction_type: o.transaction_type,
+      quantity: Number(o.quantity),
+      price: Number(o.average_price || o.price || 0),
+      order_type: o.order_type,
+      status: o.status,
+      order_timestamp: o.order_timestamp || new Date().toISOString(),
+      product: o.product === 'CNC' ? 'CNC' : 'MIS'
+    }));
+    res.json({ orders });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || 'Failed to fetch orders.' });
+  }
+});
+
+app.get(['/api/algo/positions', '/algo/positions'], authenticateToken, async (_req: Request, res: Response) => {
+  try {
+    const { client } = await getGlobalKiteClient();
+    const rows = await client.fetchPositions();
+    const positions = rows.map((p: any) => ({
+      symbol: `${p.exchange}:${p.tradingsymbol}`,
+      quantity: Number(p.quantity || 0),
+      avgPrice: Number(p.average_price || 0),
+      ltp: Number(p.last_price || 0),
+      pnl: Number(p.pnl || 0),
+      product: p.product === 'CNC' ? 'CNC' : 'MIS'
+    }));
+    res.json({ positions });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || 'Failed to fetch positions.' });
   }
 });
 

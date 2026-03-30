@@ -6,7 +6,7 @@ import { UserFunds } from '../types';
 interface TradingPanelProps {
   currentPrice: number;
   funds: UserFunds;
-  onPlaceOrder: (side: 'BUY' | 'SELL', quantity: number, type: 'MARKET' | 'LIMIT', product: 'MIS' | 'CNC', price?: number) => void;
+  onPlaceOrder: (side: 'BUY' | 'SELL', quantity: number, type: 'MARKET' | 'LIMIT', product: 'MIS' | 'CNC', price?: number) => void | Promise<void>;
 }
 
 const TradingPanel: React.FC<TradingPanelProps> = ({ currentPrice, funds, onPlaceOrder }) => {

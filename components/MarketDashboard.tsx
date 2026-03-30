@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { IndianRupee, Search, Activity, Play, Square, Globe, Clock, X, Trash2, LayoutGrid, Layers, Wallet, ShieldAlert, RefreshCcw } from 'lucide-react';
 import { MarketState, UserFunds, Position, Order, TradingStrategy, BrokerConfig, UserRole, ChartType, FeedStatus } from '../types';
 import { io } from 'socket.io-client';
@@ -14,6 +14,14 @@ interface MarketDashboardProps {
   onRemoveStrategy?: (id: string) => void;
 }
 
+interface OptionChainRow {
+  strike: number;
+  ceLtp: number | null;
+  peLtp: number | null;
+  ceOi: number | null;
+  peOi: number | null;
+}
+
 const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerConfig, token, onRemoveStrategy }) => {
   const [market, setMarket] = useState<MarketState>({
     symbol: 'NSE:BANKNIFTY',
@@ -26,7 +34,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   });
   const [feedStatus, setFeedStatus] = useState<FeedStatus>({
     source: 'DISCONNECTED',
-    message: 'Waiting for market feed...'
+    message: 'Feed initializing...'
   });
 
   const [activeStrategyId, setActiveStrategyId] = useState<string | null>(null);
@@ -37,7 +45,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   const [chartType, setChartType] = useState<ChartType>('HEIKIN_ASHI');
   const [showSMA, setShowSMA] = useState(false);
   const [showEMA, setShowEMA] = useState(false);
-  const [logs, setLogs] = useState<string[]>(['[SYSTEM] Waiting for live market data...']);
+  const [logs, setLogs] = useState<string[]>(['[SYSTEM] Engine initialized.']);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const [funds, setFunds] = useState<UserFunds>({
     walletBalance: 0,
@@ -48,6 +57,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   });
   const [positions, setPositions] = useState<Position[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [optionChain, setOptionChain] = useState<OptionChainRow[]>([]);
+  const [optionExpiry, setOptionExpiry] = useState<string>('');
 
   const automationRef = useRef(isAutomationOn);
   const strategyRef = useRef(activeStrategyId);
@@ -55,44 +66,73 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   useEffect(() => { strategyRef.current = activeStrategyId; }, [activeStrategyId]);
 
   const addLog = (msg: string) => {
-    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 20));
+    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 25));
   };
 
+  const authHeaders = useMemo(() => (
+    token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : undefined
+  ), [token]);
+
   const fetchWallet = async () => {
-    if (!token) return;
-    try {
-      const res = await fetch('/api/market-data/wallet', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Wallet fetch failed.');
-      setFunds(data.wallet);
-    } catch (error: any) {
-      addLog(`[WALLET] ${error.message}`);
-    }
+    if (!authHeaders) return;
+    const res = await fetch('/api/market-data/wallet', { headers: authHeaders });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Wallet fetch failed.');
+    setFunds(data.wallet);
   };
 
   const fetchTokenStatus = async () => {
-    if (!token) return;
-    try {
-      const res = await fetch('/api/market-data/kite/token-status', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Token status fetch failed.');
-      if (data.shouldReconnect) {
-        addLog('[TOKEN] Kite session likely stale. Reconnect Kite before market hours.');
-      }
-    } catch (error: any) {
-      addLog(`[TOKEN] ${error.message}`);
-    }
+    if (!authHeaders) return;
+    const res = await fetch('/api/market-data/kite/token-status', { headers: authHeaders });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Token status fetch failed.');
+    if (data.shouldReconnect) addLog('[TOKEN] Kite session stale. Reconnect advised.');
+  };
+
+  const fetchOrdersAndPositions = async () => {
+    if (!authHeaders) return;
+    const [ordersRes, posRes] = await Promise.all([
+      fetch('/api/algo/orders', { headers: authHeaders }),
+      fetch('/api/algo/positions', { headers: authHeaders })
+    ]);
+    const ordersData = await ordersRes.json();
+    const posData = await posRes.json();
+    if (ordersRes.ok && Array.isArray(ordersData.orders)) setOrders(ordersData.orders);
+    if (posRes.ok && Array.isArray(posData.positions)) setPositions(posData.positions);
+  };
+
+  const fetchOptionChain = async () => {
+    if (!authHeaders || market.price <= 0) return;
+    const url = `/api/market-data/kite/option-chain?spot=${market.price.toFixed(2)}&strikesAround=5${optionExpiry ? `&expiry=${encodeURIComponent(optionExpiry)}` : ''}`;
+    const res = await fetch(url, { headers: authHeaders });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Option chain fetch failed.');
+    setOptionChain(Array.isArray(data.rows) ? data.rows : []);
+    if (data.expiry) setOptionExpiry(data.expiry);
   };
 
   useEffect(() => {
-    fetchWallet();
-    fetchTokenStatus();
-    const interval = setInterval(() => {
-      fetchWallet();
-      fetchTokenStatus();
-    }, 30000);
+    if (!authHeaders) return;
+    const run = async () => {
+      try {
+        await Promise.all([fetchWallet(), fetchTokenStatus(), fetchOrdersAndPositions()]);
+      } catch (error: any) {
+        addLog(`[SYNC] ${error.message}`);
+      }
+    };
+    run();
+    const interval = setInterval(run, 30000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [authHeaders]);
+
+  useEffect(() => {
+    if (!authHeaders || market.price <= 0) return;
+    fetchOptionChain().catch((error: any) => addLog(`[CHAIN] ${error.message}`));
+    const interval = setInterval(() => {
+      fetchOptionChain().catch((error: any) => addLog(`[CHAIN] ${error.message}`));
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [authHeaders, market.price, optionExpiry]);
 
   useEffect(() => {
     const socket = io({ path: '/api/socket.io' });
@@ -104,9 +144,10 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
         const strategy = strategies.find(s => s.id === strategyRef.current);
         if (strategy && strategy.isActive && data.price > 0) {
           const chance = Math.random();
-          if (chance > 0.97) {
-            handlePlaceOrder('BUY', strategy.qty, 'MARKET', strategy.productType, data.price);
-            addLog(`[AUTO] ${strategy.name} triggered.`);
+          if (chance > 0.985) {
+            handlePlaceOrder('BUY', strategy.qty, 'MARKET', strategy.productType).catch((e) => {
+              addLog(`[AUTO ORDER] ${e.message}`);
+            });
           }
         }
       }
@@ -116,6 +157,9 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
       setMarket(prev => ({ ...prev, feedSource: payload.source }));
       setFeedStatus(payload);
       addLog(`[FEED] ${payload.message}`);
+      if (payload.source === 'BROKER_WS') {
+        setLogs(prev => prev.filter(line => !line.includes('Waiting for live market data')));
+      }
     });
 
     socket.on('connect', () => addLog('[SOCKET] Connected'));
@@ -123,11 +167,6 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
 
     return () => { socket.disconnect(); };
   }, [strategies]);
-
-  useEffect(() => {
-    if (market.price <= 0) return;
-    setPositions(prev => prev.map(pos => ({ ...pos, ltp: market.price, pnl: (market.price - pos.avgPrice) * pos.quantity })));
-  }, [market.price]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,60 +178,58 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     setSearchQuery('');
   };
 
-  const handlePlaceOrder = (side: 'BUY' | 'SELL', quantity: number, type: 'MARKET' | 'LIMIT', product: 'MIS' | 'CNC', priceOverride?: number) => {
+  const handlePlaceOrder = async (
+    side: 'BUY' | 'SELL',
+    quantity: number,
+    type: 'MARKET' | 'LIMIT',
+    product: 'MIS' | 'CNC',
+    priceOverride?: number
+  ) => {
+    if (!authHeaders) return;
     const executionPrice = priceOverride || market.price;
     if (executionPrice <= 0) {
-      addLog('[ORDER REJECTED] Live price unavailable.');
+      addLog('[ORDER] Live price unavailable.');
       return;
     }
-
-    const orderValue = executionPrice * quantity;
-    const marginRequired = product === 'MIS' ? orderValue / 5 : orderValue;
-
+    const marginRequired = (type === 'MARKET' ? executionPrice : (priceOverride || executionPrice)) * quantity / (product === 'MIS' ? 5 : 1);
     if (side === 'BUY' && funds.availableMargin < marginRequired) {
-      addLog(`[ORDER REJECTED] Insufficient margin for ₹${marginRequired.toFixed(2)}.`);
+      addLog(`[ORDER] Insufficient margin for ₹${marginRequired.toFixed(2)}.`);
       return;
     }
 
-    const newOrder: Order = {
-      order_id: Math.random().toString(36).substr(2, 9).toUpperCase(),
-      symbol: market.symbol,
-      transaction_type: side,
-      quantity,
-      price: executionPrice,
-      order_type: type,
-      status: 'COMPLETE',
-      order_timestamp: new Date().toISOString(),
-      product
-    };
-    setOrders(prev => [newOrder, ...prev]);
-
-    if (side === 'BUY') {
-      setFunds(prev => ({
-        ...prev,
-        availableMargin: Math.max(0, prev.availableMargin - marginRequired),
-        usedMargin: prev.usedMargin + marginRequired
-      }));
-    } else {
-      setFunds(prev => ({
-        ...prev,
-        availableMargin: prev.availableMargin + marginRequired,
-        usedMargin: Math.max(0, prev.usedMargin - marginRequired)
-      }));
+    setIsPlacingOrder(true);
+    try {
+      const res = await fetch('/api/algo/order', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          tradingsymbol: market.symbol.replace('NSE:', ''),
+          exchange: 'NSE',
+          transactionType: side,
+          quantity,
+          product,
+          orderType: type,
+          price: type === 'LIMIT' ? priceOverride : undefined
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Order placement failed.');
+      addLog(`[ORDER] Submitted: ${data.orderId}`);
+      await Promise.all([fetchOrdersAndPositions(), fetchWallet()]);
+    } finally {
+      setIsPlacingOrder(false);
     }
   };
 
   const toggleAutomation = () => {
     if (!activeStrategyId) { addLog('Select a strategy first.'); return; }
     if (!brokerConfig.isConnected) { addLog('Connect order API first.'); return; }
-    setIsAutomationOn(!isAutomationOn);
+    setIsAutomationOn(prev => !prev);
     addLog(`AUTO: ${!isAutomationOn ? 'ACTIVE' : 'IDLE'}`);
   };
 
-  const totalPnl = positions.reduce((acc, p) => acc + p.pnl, 0);
-
   return (
-    <div className="h-full flex flex-col p-6 gap-6 overflow-hidden">
+    <div className="h-full flex flex-col p-6 gap-6 overflow-y-auto pb-12">
       <div className="flex items-center justify-between bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 shadow-xl shrink-0 transition-colors duration-300">
         <div className="flex items-center gap-8">
           <div className="flex flex-col min-w-[220px]">
@@ -246,9 +283,9 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
         <FeedBadge icon={<ShieldAlert size={14} />} label="Token Age" value={feedStatus.tokenAgeMinutes !== undefined && feedStatus.tokenAgeMinutes !== null ? `${feedStatus.tokenAgeMinutes} min` : '--'} />
       </div>
 
-      <div className="flex-1 grid grid-cols-12 gap-6 min-h-0 overflow-hidden">
-        <div className="col-span-8 flex flex-col gap-6 overflow-hidden">
-          <div className="flex-[3] bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 flex flex-col relative transition-colors duration-300">
+      <div className="grid grid-cols-12 gap-6 min-h-[900px]">
+        <div className="col-span-8 flex flex-col gap-6">
+          <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 flex flex-col relative transition-colors duration-300">
             <div className="flex items-center justify-between mb-4">
               <div className="flex gap-2">
                 {['1m', '5m', '15m', '1h', 'D'].map(tf => (<button key={tf} onClick={() => setTimeframe(tf as any)} className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${tf === timeframe ? 'bg-samp-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-white/5'}`}>{tf}</button>))}
@@ -266,7 +303,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                 <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono"><Clock size={12} className="text-samp-accent" />SESSION: {new Date().toLocaleTimeString()}</div>
               </div>
             </div>
-            <div className="flex-1 relative">
+            <div className="relative">
               <LightweightMarketChart data={market.candles} height={380} chartType={chartType} showSMA={showSMA} showEMA={showEMA} timeframe={timeframe} />
               {market.candles.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-900/35 rounded-xl">
@@ -278,17 +315,35 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
               )}
             </div>
           </div>
-          <div className="flex-[2] min-h-0"><PortfolioPanel positions={positions} orders={orders} /></div>
+          <div className="min-h-[260px]"><PortfolioPanel positions={positions} orders={orders} /></div>
         </div>
 
-        <div className="col-span-4 flex flex-col gap-6 overflow-y-auto pr-1">
+        <div className="col-span-4 flex flex-col gap-6">
           <div className="shrink-0 h-[480px]"><TradingPanel currentPrice={market.price} funds={funds} onPlaceOrder={handlePlaceOrder} /></div>
           <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-5 shrink-0 transition-colors duration-300">
-            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Activity size={14} className="text-samp-primary" /> Exchange Depth</h3>
-            <div className="space-y-1 font-mono text-[10px]">
-              {market.asks.slice(0, 5).reverse().map((a, i) => (<div key={i} className="flex justify-between py-1 px-2 relative group hover:bg-samp-danger/5"><span className="text-samp-danger z-10">{a.price.toFixed(2)}</span><span className="text-slate-400 z-10">{a.amount}</span></div>))}
-              <div className="py-2 text-center text-slate-900 dark:text-white font-bold bg-slate-50 dark:bg-white/5 my-2 border-y border-slate-200 dark:border-white/5">{market.price > 0 ? market.price.toFixed(2) : '--'}</div>
-              {market.bids.slice(0, 5).map((b, i) => (<div key={i} className="flex justify-between py-1 px-2 relative group hover:bg-samp-success/5"><span className="text-samp-success z-10">{b.price.toFixed(2)}</span><span className="text-slate-400 z-10">{b.amount}</span></div>))}
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Activity size={14} className="text-samp-primary" /> Option Chain ({optionExpiry || '--'})</h3>
+            <div className="max-h-[190px] overflow-auto text-xs font-mono">
+              <table className="w-full">
+                <thead className="text-slate-500 sticky top-0 bg-white dark:bg-samp-surface">
+                  <tr>
+                    <th className="text-left py-1">CE LTP</th>
+                    <th className="text-center py-1">Strike</th>
+                    <th className="text-right py-1">PE LTP</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {optionChain.map((row) => (
+                    <tr key={row.strike} className="border-t border-slate-200 dark:border-white/5">
+                      <td className="py-1 text-samp-success">{row.ceLtp?.toFixed(2) ?? '--'}</td>
+                      <td className="py-1 text-center font-bold text-slate-900 dark:text-white">{row.strike}</td>
+                      <td className="py-1 text-right text-samp-danger">{row.peLtp?.toFixed(2) ?? '--'}</td>
+                    </tr>
+                  ))}
+                  {optionChain.length === 0 && (
+                    <tr><td colSpan={3} className="py-3 text-center text-slate-400">No option-chain data yet</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
           <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-4 shrink-0 transition-colors duration-300">
@@ -306,16 +361,18 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
               </div>
             </div>
           </div>
-          <div className="bg-slate-100 dark:bg-black border border-slate-200 dark:border-white/5 rounded-[24px] p-5 flex flex-col h-[220px] shrink-0 font-mono shadow-inner transition-colors duration-300">
+          <div className="bg-slate-100 dark:bg-black border border-slate-200 dark:border-white/5 rounded-[24px] p-5 flex flex-col h-[230px] shrink-0 font-mono shadow-inner transition-colors duration-300">
             <h3 className="text-[10px] font-bold text-slate-600 mb-3 uppercase tracking-widest">Audit Log</h3>
-            <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-hide">{logs.map((log, i) => (<div key={i} className="text-[10px] leading-relaxed text-slate-600 dark:text-gray-500 border-l border-slate-300 dark:border-white/5 pl-2">{log}</div>))}</div>
+            <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-hide">
+              {logs.map((log, i) => (<div key={i} className="text-[10px] leading-relaxed text-slate-600 dark:text-gray-500 border-l border-slate-300 dark:border-white/5 pl-2">{log}</div>))}
+            </div>
           </div>
         </div>
       </div>
 
       {isSearchOpen && (
-        <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-[32px] p-8 w-full max-w-lg shadow-2xl animate-in fade-in zoom-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-[32px] p-8 w-full max-w-lg shadow-2xl">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">Universal Search</h3>
               <button onClick={() => setIsSearchOpen(false)} className="text-slate-500 hover:text-slate-900 transition-colors"><X size={24} /></button>
