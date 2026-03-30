@@ -228,87 +228,102 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             </motion.div>
           </motion.div>
         </div>
-      </section>
-
-      {/* About Founder Section */}
+      </section>      {/* About Section */}
       <section id="about" className="py-24 px-6 bg-slate-50">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
-          <div className="order-2 lg:order-1">
-            <h2 className="text-4xl font-black mb-6 text-blue-950">Meet Your Mentor: Sampangi</h2>
-            <p className="text-slate-600 text-lg mb-6 leading-relaxed">
-              With years of experience in the financial markets, Sampangi founded Lakshita Trading Academy to bridge the gap between retail traders and institutional success.
-            </p>
-            <div className="space-y-4 mb-8">
-              {[
-                'Expert in Technical Analysis & Price Action',
-                'Specialized in Options Buying & Selling Strategies',
-                'Pioneer in Algorithmic Trading Education in Telugu',
-                'Dedicated to Daily Doubt Clarification'
-              ].map((point, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center flex-shrink-0">
-                    <CheckCircle2 className="text-white" size={14} />
+        <div className="max-w-7xl mx-auto space-y-24">
+          
+          {/* About Academy & Mission */}
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-8">
+              <div>
+                <h2 className="text-4xl font-black mb-6 text-blue-950">About Lakshita Trading Academy</h2>
+                <p className="text-slate-600 text-lg leading-relaxed">
+                  Lakshita Trading Academy is a professional stock market training institute (online & offline) based in Tirupati.
+                  We focus on practical learning, live market understanding, discipline, and risk management.
+                </p>
+              </div>
+              
+              <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-2 h-full bg-blue-600"></div>
+                <h3 className="text-2xl font-bold mb-3 text-blue-950">Our Mission</h3>
+                <p className="text-slate-600 leading-relaxed">
+                  To create disciplined traders who understand <strong className="text-blue-900">risk before profit</strong> and <strong className="text-blue-900">consistency before excitement</strong>. 
+                  Our goal is to transform existing traders into confident and consistent market participants.
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-100 p-6 rounded-2xl flex items-start gap-4">
+                <ShieldCheck className="text-blue-700 shrink-0 mt-1" size={24} />
+                <p className="text-slate-700 font-medium">We don't teach theory alone — we train you for real market conditions.</p>
+              </div>
+            </div>
+
+            <div className="relative rounded-[40px] overflow-hidden border-8 border-white shadow-2xl">
+              <img src="https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover" alt="Trading environment" />
+              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-blue-950 to-transparent p-8 pt-20">
+                <p className="text-white font-bold text-xl">Practical & Disciplined Approach</p>
+              </div>
+            </div>
+          </div>
+
+          {/* About Trainer */}
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="order-2 lg:order-1 relative">
+              <div className="relative z-10 rounded-[40px] overflow-hidden border-[8px] border-white shadow-2xl aspect-[4/5] bg-blue-50 max-w-sm mx-auto">
+                <img src="/founder.png" alt="K.Y. Sampangi" className="w-full h-full object-contain" />
+              </div>
+              <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-blue-600/10 rounded-full blur-2xl"></div>
+            </div>
+            
+            <div className="order-1 lg:order-2 space-y-6">
+              <h2 className="text-4xl font-black mb-2 text-blue-950">About the Trainer</h2>
+              <h3 className="text-2xl font-bold text-blue-700 mb-6">K.Y. Sampangi</h3>
+              <p className="text-slate-500 font-medium uppercase tracking-wider text-sm mb-8">
+                Founder • Trader • Mentor • Market Analyst
+              </p>
+              
+              <div className="space-y-4">
+                <p className="text-slate-600 text-lg leading-relaxed mb-6">
+                  With practical market experience and a disciplined approach, Sampangi focuses on building confident and emotionally strong traders.
+                </p>
+                
+                {[
+                  'Professional Market Analysis',
+                  'Focus on Trading Psychology & Emotional Strength',
+                  'Expert in Risk Management Systems',
+                ].map((point, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="text-white" size={14} />
+                    </div>
+                    <span className="font-medium text-slate-700">{point}</span>
                   </div>
-                  <span className="font-medium text-slate-700">{point}</span>
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setIsEnrollOpen(true)} className="px-8 py-4 bg-white border border-slate-200 rounded-2xl font-bold text-blue-900 hover:bg-slate-50 transition-all active:scale-95 shadow-sm hover:shadow-md">
-              Learn More About My Journey
-            </button>
-          </div>
-          <div className="order-1 lg:order-2 grid grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <img src="https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80&w=400" className="rounded-3xl shadow-lg" alt="Trading" />
-              <div className="bg-blue-900 p-8 rounded-3xl text-white">
-                <h4 className="text-4xl font-black mb-2">10+</h4>
-                <p className="text-blue-200 text-sm">Years Experience</p>
+                ))}
               </div>
             </div>
-            <div className="space-y-4 pt-8">
-              <div className="bg-white p-8 rounded-3xl border border-slate-200">
-                <h4 className="text-4xl font-black mb-2 text-blue-900">5k+</h4>
-                <p className="text-slate-500 text-sm">Live Sessions</p>
-              </div>
-              <img src="https://images.unsplash.com/photo-1611974714658-75d4f1ad308e?auto=format&fit=crop&q=80&w=400" className="rounded-3xl shadow-lg" alt="Analysis" />
-            </div>
           </div>
+
         </div>
       </section>
-
-      {/* Why Choose Us Section (Content from site) */}
+      {/* Why Choose Us Section */}
       <section id="why-us" className="py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Why Choose Lakshita Academy?</h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">We provide a unique learning environment designed for your success.</p>
+            <p className="text-slate-600 max-w-2xl mx-auto">A structured and disciplined approach to market education.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
-              {
-                icon: <Globe className="text-blue-600" size={32} />,
-                title: 'Telugu Language',
-                desc: 'Specially designed for Telugu states to make stock market education accessible.'
-              },
-              {
-                icon: <Clock className="text-blue-700" size={32} />,
-                title: 'Daily Doubt Clearing',
-                desc: 'Clarify your doubts on the same day after class with our dedicated sessions.'
-              },
-              {
-                icon: <MessageCircle className="text-blue-800" size={32} />,
-                title: 'WhatsApp Support',
-                desc: 'Stay updated with our exclusive WhatsApp group for lifelong communication.'
-              },
-              {
-                icon: <Target className="text-blue-900" size={32} />,
-                title: 'Basic to Advanced',
-                desc: 'Learn everything from scratch to institutional level in just one month.'
-              }
+              { icon: <GraduationCap />, title: 'From Zero to Teaching', desc: 'Comprehensive education from absolute basics to advanced levels.' },
+              { icon: <Heart />, title: 'Psychology & Discipline', desc: 'Focus extensively on practical trader psychology and building discipline.' },
+              { icon: <MonitorPlay />, title: 'Live Market Analysis', desc: 'Learn to analyze and execute trades during live market sessions.' },
+              { icon: <Users />, title: 'Limited Batch Size', desc: 'Small batches ensure personal attention and dedicated doubt clearing.' },
+              { icon: <BookOpen />, title: 'Step-by-Step Learning', desc: 'Highly structured and step-by-step curriculum for easy grasping.' },
+              { icon: <ShieldCheck />, title: 'Focus on Risk Management', desc: 'We prioritize capital protection and risk management above all else.' }
             ].map((item, idx) => (
               <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ y: -5 }} key={idx} className="p-8 rounded-3xl bg-white border border-slate-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-xl">
-                <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-6">
+                <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center mb-6">
                   {item.icon}
                 </div>
                 <h3 className="text-xl font-bold mb-3 text-blue-900">{item.title}</h3>
@@ -319,58 +334,90 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         </div>
       </section>
 
-      {/* Courses Section */}
+      {/* Course Highlights Section */}
       <section id="courses" className="py-24 px-6 bg-slate-50 relative overflow-hidden">
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Our Signature Courses</h2>
-            <p className="text-slate-600">Choose the path that fits your trading goals.</p>
-          </div>
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            
+            <div>
+              <h2 className="text-3xl md:text-5xl font-black mb-6 text-blue-950">Our Course Highlights</h2>
+              <p className="text-slate-600 text-lg mb-10">
+                A highly comprehensive curriculum that transforms you into a professional, self-sufficient trader.
+              </p>
+              
+              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4">
+                {[
+                  'Basic Stock Market Foundation',
+                  'SEBI, NSE & BSE Understanding',
+                  'Demat Account & Order Types',
+                  'Candlestick Clear Information',
+                  'Strict Entry / Exit Rules',
+                  'Advanced Risk Management System',
+                  'Intraday Trading Strategy',
+                  'Capital Protection Rules',
+                  'Trading Discipline Framework'
+                ].map((feature, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                    <CheckCircle2 className="text-green-500 shrink-0" size={20} />
+                    <span className="text-sm font-bold text-slate-800">{feature}</span>
+                  </div>
+                ))}
+              </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {[
-              {
-                title: 'Full Stock Market Course',
-                desc: 'Complete journey from basics to professional trading. Ideal for beginners.',
-                features: ['Equity Basics', 'Technical Analysis', 'Risk Management', 'Live Trading'],
-                price: '₹14,999',
-                popular: true
-              },
-              {
-                title: 'Advanced Technicals Master Course',
-                desc: 'Deep dive into institutional concepts and complex price action strategies.',
-                features: ['Advanced Indicators', 'Gann Theory', 'Institutional Flow', 'Algo Integration'],
-                price: '₹19,999',
-                popular: false
-              }
-            ].map((course, idx) => (
-              <div key={idx} className={`p-8 rounded-[40px] bg-white border ${course.popular ? 'border-blue-500 shadow-2xl' : 'border-slate-200 shadow-sm'} relative overflow-hidden`}>
-                {course.popular && (
-                  <div className="absolute top-6 right-6 px-4 py-1 bg-blue-900 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">
-                    Most Popular
-                  </div>
-                )}
-                <h3 className="text-2xl font-black text-blue-950 mb-4">{course.title}</h3>
-                <p className="text-slate-500 mb-8 text-sm">{course.desc}</p>
-                <div className="space-y-4 mb-10">
-                  {course.features.map((f, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <CheckCircle2 className="text-blue-600" size={18} />
-                      <span className="text-sm font-medium text-slate-700">{f}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between pt-8 border-t border-slate-100">
-                  <div>
-                    <p className="text-xs text-slate-400 font-bold uppercase">Course Fee</p>
-                    <p className="text-3xl font-black text-blue-900">{course.price}</p>
-                  </div>
-                  <button onClick={() => setIsEnrollOpen(true)} className={`px-6 py-3 rounded-2xl font-bold transition-all ${course.popular ? 'bg-blue-900 text-white hover:bg-blue-800' : 'bg-slate-100 text-blue-900 hover:bg-slate-200'}`}>
+              <div className="mt-12 bg-white rounded-3xl p-8 border border-blue-100 shadow-xl max-w-md">
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-2">Ready to Start?</p>
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-2xl font-black text-blue-950">Join Our Next Batch</p>
+                  <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-3 rounded-2xl font-bold bg-blue-900 text-white hover:bg-blue-800 transition-all shadow-lg active:scale-95">
                     Enroll Now
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 bg-blue-600/5 blur-3xl transform -rotate-6 rounded-[60px]"></div>
+              <img src="https://images.unsplash.com/photo-1611974714658-75d4f1ad308e?auto=format&fit=crop&q=80&w=800" className="relative z-10 rounded-[40px] shadow-2xl border-8 border-white object-cover aspect-[4/3]" alt="Course Materials" />
+              
+              <div className="absolute -bottom-8 -left-8 bg-blue-900 border-4 border-white text-white p-6 rounded-3xl shadow-2xl z-20">
+                <h4 className="text-xl font-black mb-1">Practical Learning</h4>
+                <p className="text-blue-200 text-sm">Offline & Online Available</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* Who Can Join Section */}
+      <section className="py-24 px-6 bg-blue-950 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-600/20 blur-[120px] rounded-full mix-blend-screen pointer-events-none"></div>
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black mb-4">Who Can Join?</h2>
+            <p className="text-blue-200">Our program is designed to create value for individuals across all backgrounds.</p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {[
+              { title: 'Existing Traders', desc: 'Looking to build consistency and emotional discipline.'},
+              { title: 'Beginners', desc: 'With basic knowledge wanting a strong foundation.'},
+              { title: 'Working Professionals', desc: 'Seeking secondary income streams safely.'},
+              { title: 'Business Owners', desc: 'Looking to diversify and manage capital effectively.'},
+              { title: 'Housewives', desc: 'Wanting financial independence from home.'},
+              { title: 'Anyone Serious', desc: 'About making trading a professional career.'}
+            ].map((persona, i) => (
+              <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-sm hover:bg-white/10 transition-colors">
+                <h3 className="text-xl font-bold mb-2 text-white">{persona.title}</h3>
+                <p className="text-blue-200 text-sm">{persona.desc}</p>
+              </div>
             ))}
+          </div>
+          
+          <div className="mt-16 text-center">
+             <div className="inline-block border border-blue-400/30 bg-blue-900/40 backdrop-blur-sm rounded-full px-6 py-2">
+                 <p className="text-blue-200 text-sm font-medium">Limited Seats Available • We accept only serious and committed traders.</p>
+             </div>
           </div>
         </div>
       </section>
@@ -449,30 +496,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
         </div>
       </section>
-      {/* Our Process Section */}
-      <section className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Our Trading Process</h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">A systematic approach to help you become an independent trader.</p>
-          </div>
-          <div className="grid md:grid-cols-4 gap-8">
-            {[
-              { step: '01', title: 'Learn the Basics', desc: 'Understand how the market works from scratch.' },
-              { step: '02', title: 'Master Strategy', desc: 'Learn institutional price action and advanced concepts.' },
-              { step: '03', title: 'Live Practice', desc: 'Trade in live markets under our expert guidance.' },
-              { step: '04', title: 'Profit Consistently', desc: 'Apply risk management to achieve consistent returns.' }
-            ].map((s, idx) => (
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ scale: 1.05 }} key={idx} className="relative p-8 rounded-3xl bg-blue-50 border border-blue-100 flex flex-col items-center text-center hover:shadow-lg transition-all">
-                <div className="w-16 h-16 rounded-full bg-blue-900 text-white flex items-center justify-center font-black text-2xl mb-6 shadow-lg shadow-blue-900/20">{s.step}</div>
-                <h3 className="text-xl font-bold mb-3 text-blue-900">{s.title}</h3>
-                <p className="text-slate-600 text-sm leading-relaxed">{s.desc}</p>
-                {idx < 3 && <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-[2px] bg-blue-200"></div>}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      
 
       {/* Testimonials Section */}
       <section className="py-24 px-6 bg-slate-50">
@@ -600,18 +624,28 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 </div>
                 <span className="font-bold text-xl tracking-tight text-white">Lakshita Academy</span>
               </div>
-              <p className="text-blue-200/60 max-w-sm leading-relaxed">
-                Empowering retail traders with institutional-grade education in Telugu. Founded by Sampangi.
+              <p className="text-blue-200/60 max-w-sm leading-relaxed mb-6">
+                Empowering retail traders with practical education.
               </p>
+              
+              {/* Disclaimer */}
+              <div className="bg-white/5 border border-white/10 p-4 rounded-xl max-w-md mt-4">
+                <p className="text-[11px] uppercase tracking-wider text-blue-300 font-bold mb-2">Disclaimer</p>
+                <div className="text-xs text-white/50 space-y-1">
+                  <p>• Stock market trading involves financial risk.</p>
+                  <p>• Lakshita Trading Academy provides educational training only.</p>
+                  <p>• We do NOT provide any calls/tips, investment advice, or guaranteed profit.</p>
+                </div>
+              </div>
             </div>
 
             <div>
               <h4 className="font-bold text-white mb-6">Courses</h4>
               <ul className="space-y-4 text-sm text-blue-200/60">
-                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Full Market Course</a></li>
-                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Advanced Technicals</a></li>
-                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Options Specialization</a></li>
-                <li><button onClick={() => setIsEnrollOpen(true)} className="hover:text-white hover:translate-x-1 inline-block transition-transform">Free Demo Class</button></li>
+                <li><a href="#courses" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Course Highlights</a></li>
+                <li><a href="#about" className="hover:text-white hover:translate-x-1 inline-block transition-transform">About Trainer</a></li>
+                <li><a href="#brokers" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Brokers</a></li>
+                <li><button onClick={() => setIsEnrollOpen(true)} className="hover:text-white hover:translate-x-1 inline-block transition-transform">Contact for Offline Batch</button></li>
               </ul>
             </div>
 
@@ -621,7 +655,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 <li><a href="#contact" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Contact Us</a></li>
                 <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Privacy Policy</a></li>
                 <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Terms of Use</a></li>
-                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">SEBI Disclaimer</a></li>
               </ul>
             </div>
           </div>
