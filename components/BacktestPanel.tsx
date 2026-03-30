@@ -30,6 +30,22 @@ const intervalMap: Record<string, 'minute' | '3minute' | '5minute' | '15minute' 
   'D': 'day'
 };
 
+const intervalMinutesMap: Record<'1m' | '3m' | '5m' | '15m' | '30m' | '1h' | 'D', number> = {
+  '1m': 1,
+  '3m': 3,
+  '5m': 5,
+  '15m': 15,
+  '30m': 30,
+  '1h': 60,
+  'D': 1440
+};
+
+const estimateTargetCandles = (days: number, timeframe: '1m' | '3m' | '5m' | '15m' | '30m' | '1h' | 'D') => {
+  if (timeframe === 'D') return Math.max(5, days);
+  // NSE session is ~375 minutes/day. We keep strict day-based candle targeting.
+  return Math.max(50, Math.round((days * 375) / intervalMinutesMap[timeframe]));
+};
+
 const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
   const { token } = useAuth();
   const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
@@ -51,6 +67,8 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
     () => result?.ruleTrace.slice(Math.max(0, replayIndex - 12), replayIndex + 1) || [],
     [result, replayIndex]
   );
+  const dataFrom = historicalData.length > 0 ? new Date(historicalData[0].time).toLocaleString() : '--';
+  const dataTo = historicalData.length > 0 ? new Date(historicalData[historicalData.length - 1].time).toLocaleString() : '--';
 
   const runSimulation = async () => {
     if (!selectedStrategy || !token) return;
@@ -59,15 +77,19 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
 
     try {
       const toDate = new Date();
-      const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      // Fetch with a calendar buffer so weekends/holidays don't collapse the selected trading window.
+      const fromDate = new Date(Date.now() - (days + 10) * 24 * 60 * 60 * 1000);
 
-      const candles = await fetchHistoricalCandles({
+      const rawCandles = await fetchHistoricalCandles({
         token,
         instrumentToken: 260105,
         interval: intervalMap[timeframe],
         fromISO: fromDate.toISOString(),
         toISO: toDate.toISOString()
       });
+
+      const targetCandles = estimateTargetCandles(days, timeframe);
+      const candles = rawCandles.slice(-targetCandles);
 
       if (candles.length < 50) {
         throw new Error('Not enough historical candles returned from broker.');
@@ -172,6 +194,14 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
             <div className="text-xs text-slate-700 dark:text-gray-300 flex items-center justify-between">
               <span>Candles</span>
               <span className="font-bold">{historicalData.length || '--'}</span>
+            </div>
+            <div className="text-xs text-slate-700 dark:text-gray-300 flex items-center justify-between">
+              <span>From</span>
+              <span className="font-bold text-[11px]">{dataFrom}</span>
+            </div>
+            <div className="text-xs text-slate-700 dark:text-gray-300 flex items-center justify-between">
+              <span>To</span>
+              <span className="font-bold text-[11px]">{dataTo}</span>
             </div>
           </div>
         </div>

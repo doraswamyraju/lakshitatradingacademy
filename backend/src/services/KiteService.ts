@@ -276,14 +276,14 @@ export class KiteService {
       const cols = line.split(',');
       return {
         instrumentToken: Number(cols[0]),
-        tradingsymbol: cols[2],
-        name: cols[3],
-        expiry: cols[5],
+        tradingsymbol: String(cols[2] || '').trim(),
+        name: String(cols[3] || '').trim(),
+        expiry: String(cols[5] || '').trim(),
         strike: Number(cols[6]),
         lotSize: Number(cols[8]),
-        instrumentType: cols[9],
-        segment: cols[10],
-        exchange: cols[11]
+        instrumentType: String(cols[9] || '').trim(),
+        segment: String(cols[10] || '').trim(),
+        exchange: String(cols[11] || '').trim()
       };
     });
     KiteService.instrumentsCache = { at: now, rows };
@@ -296,9 +296,20 @@ export class KiteService {
     strikesAround?: number;
   }): Promise<{ expiry: string; rows: KiteOptionRow[] }> {
     const instruments = await this.fetchInstruments();
-    const candidates = instruments.filter(
-      i => i.name === 'BANKNIFTY' && i.exchange === 'NFO' && (i.instrumentType === 'CE' || i.instrumentType === 'PE')
-    );
+    const candidates = instruments.filter((i) => {
+      const symbol = String(i.tradingsymbol || '').toUpperCase();
+      const name = String(i.name || '').toUpperCase();
+      const segment = String(i.segment || '').toUpperCase();
+      const instrumentType = String(i.instrumentType || '').toUpperCase();
+      const isBankNifty =
+        symbol.startsWith('BANKNIFTY') ||
+        symbol.startsWith('NIFTYBANK') ||
+        name.includes('BANKNIFTY') ||
+        name.includes('NIFTY BANK');
+      const isOptionsSegment = segment.includes('NFO-OPT') || i.exchange === 'NFO';
+      const isOptionType = instrumentType === 'CE' || instrumentType === 'PE';
+      return isBankNifty && isOptionsSegment && isOptionType;
+    });
     if (candidates.length === 0) {
       throw new Error('BANKNIFTY option instruments not found.');
     }
