@@ -357,11 +357,12 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
             </div>
             <div className="relative">
               <LightweightMarketChart data={market.candles} height={330} chartType={chartType} showSMA={showSMA} showEMA={showEMA} timeframe={timeframe} />
-              {market.candles.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/35 rounded-xl">
-                  <div className="text-center">
+              {(!market.candles || market.candles.length === 0) && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm rounded-xl">
+                  <div className="text-center p-6 bg-slate-800/90 rounded-2xl shadow-xl">
                     <p className="text-white font-bold text-sm">No live market data</p>
                     <p className="text-gray-300 text-xs mt-1">{feedStatus.message}</p>
+                    <p className="text-samp-primary text-[10px] mt-3 uppercase tracking-widest font-bold">Please Login to Broker</p>
                   </div>
                 </div>
               )}
@@ -371,7 +372,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
         </div>
 
         <div className="col-span-4 flex flex-col gap-6 min-h-0 pr-1">
-          <div className="shrink-0 h-[520px]">
+          <div className="shrink-0">
             <TradingPanel funds={funds} optionChain={optionChain} onPlaceOptionOrder={handlePlaceOptionOrder} />
           </div>
           <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-5 shrink-0 transition-colors duration-300">

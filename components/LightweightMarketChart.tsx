@@ -1,5 +1,16 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, Time, LineData, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
+import { 
+  createChart, 
+  ColorType, 
+  IChartApi, 
+  ISeriesApi, 
+  Time, 
+  LineData,
+  CandlestickSeries,
+  LineSeries,
+  HistogramSeries,
+  UTCTimestamp
+} from 'lightweight-charts';
 import { Candle, ChartType } from '../types';
 
 interface LightweightMarketChartProps {
@@ -28,25 +39,15 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
 
   const normalizeTimeToMs = (raw: any): number | null => {
     if (typeof raw === 'number' && Number.isFinite(raw)) {
-      // Accept both seconds and milliseconds.
       return raw < 1e12 ? raw * 1000 : raw;
     }
     if (typeof raw === 'string') {
-      const hhmm = raw.match(/^(\d{1,2}):(\d{2})$/);
-      if (hhmm) {
-        const hh = Math.min(23, Math.max(0, parseInt(hhmm[1], 10)));
-        const mm = Math.min(59, Math.max(0, parseInt(hhmm[2], 10)));
-        const d = new Date();
-        d.setHours(hh, mm, 0, 0);
-        return d.getTime();
-      }
       const parsed = Date.parse(raw);
       if (Number.isFinite(parsed)) return parsed;
     }
     return null;
   };
 
-  // Transform and aggregate data based on Timeframe
   const formattedData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
@@ -112,7 +113,6 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     }));
 
     if (chartType === 'HEIKIN_ASHI' && result.length > 0) {
-        // Compute strict HA transformation over the raw set
         const haData = [];
         let prevOpen = (result[0].open + result[0].close) / 2;
         let prevClose = (result[0].open + result[0].high + result[0].low + result[0].close) / 4;
@@ -152,7 +152,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         if (i < period - 1) continue;
         let sum = 0;
         for (let j = 0; j < period; j++) {
-            sum += formattedData[i - j].close; 
+            sum += (formattedData[i - j] as any).close; 
         }
         result.push({ time: formattedData[i].time, value: sum / period });
     }
@@ -164,11 +164,12 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     const period = 9; 
     const result: LineData[] = [];
     const k = 2 / (period + 1);
-    let ema = formattedData[0].close;
+    let ema = (formattedData[0] as any).close;
 
     for (let i = 0; i < formattedData.length; i++) {
+        const close = (formattedData[i] as any).close;
         if (i > 0) {
-            ema = (formattedData[i].close * k) + (ema * (1 - k));
+            ema = (close * k) + (ema * (1 - k));
         }
         result.push({ time: formattedData[i].time, value: ema });
     }
@@ -178,12 +179,11 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   const volumeData = useMemo(() => {
     return formattedData.map(d => ({
         time: d.time,
-        value: d.volume,
-        color: d.close >= d.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+        value: (d as any).volume,
+        color: (d as any).close >= (d as any).open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
     }));
   }, [formattedData]);
 
-  // Handle Chart Destruction & Creation natively
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
@@ -203,71 +203,49 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         secondsVisible: false,
         rightOffset: 5,
         shiftVisibleRangeOnNewBar: true,
-        tickMarkFormatter: (time: any) => {
-          const ts = typeof time === 'number' ? time : 0;
-          const d = new Date(ts * 1000);
-          return d.toLocaleTimeString('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-          });
-        }
-      },
-      localization: {
-        timeFormatter: (timestamp: number) => {
-          const date = new Date(timestamp * 1000);
-          return date.toLocaleTimeString('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false
-          });
-        }
       },
       crosshair: { mode: 1 },
-      rightPriceScale: { borderColor: 'rgba(255, 255, 255, 0.1)' }
     });
 
     chartRef.current = chart;
 
     if (chartType === 'CANDLE' || chartType === 'HEIKIN_ASHI') {
-      const series = chart.addSeries(CandlestickSeries, {
+      const series = chart.addCandlestickSeries({
         upColor: '#10B981',
         downColor: '#EF4444',
         borderVisible: false,
         wickUpColor: '#10B981',
         wickDownColor: '#EF4444',
       });
-      seriesRef.current = series;
+      seriesRef.current = series as any;
     } else {
-      const series = chart.addSeries(LineSeries, {
+      const series = chart.addLineSeries({
         color: '#3B82F6',
         lineWidth: 2,
         crosshairMarkerVisible: true
       });
-      seriesRef.current = series;
+      seriesRef.current = series as any;
     }
 
     if (showSMA) {
-      const smaSeries = chart.addSeries(LineSeries, {
+      const smaSeries = chart.addLineSeries({
         color: '#F59E0B',
         lineWidth: 2,
         title: 'SMA 20',
       });
-      smaSeriesRef.current = smaSeries;
+      smaSeriesRef.current = smaSeries as any;
     }
 
     if (showEMA) {
-      const emaSeries = chart.addSeries(LineSeries, {
+      const emaSeries = chart.addLineSeries({
         color: '#8B5CF6',
         lineWidth: 2,
         title: 'EMA 9',
       });
-      emaSeriesRef.current = emaSeries;
+      emaSeriesRef.current = emaSeries as any;
     }
 
-    const volumeSeries = chart.addSeries(HistogramSeries, {
+    const volumeSeries = chart.addHistogramSeries({
       color: '#26a69a',
       priceFormat: { type: 'volume' },
       priceScaleId: '', 
@@ -275,11 +253,11 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     volumeSeries.priceScale().applyOptions({
       scaleMargins: { top: 0.8, bottom: 0 },
     });
-    volumeSeriesRef.current = volumeSeries;
+    volumeSeriesRef.current = volumeSeries as any;
 
     const handleResize = () => {
-      if (chartContainerRef.current) {
-         chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      if (chartContainerRef.current && chartRef.current) {
+         chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
       }
     };
     window.addEventListener('resize', handleResize);
@@ -288,9 +266,8 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [chartType, showSMA, height]);
+  }, [chartType, showSMA, showEMA, height]);
 
-  // Synchronize Dataset seamlessly
   useEffect(() => {
     if (seriesRef.current) {
       seriesRef.current.setData(formattedData as any);

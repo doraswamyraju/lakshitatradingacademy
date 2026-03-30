@@ -122,16 +122,16 @@ const TradingPanel: React.FC<TradingPanelProps> = ({ funds, optionChain, onPlace
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className={`cursor-pointer border ${product === 'MIS' ? 'border-samp-primary bg-samp-primary/10' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/20'} rounded-lg p-2 text-center transition-all`}>
+        <div className="grid grid-cols-2 gap-2">
+          <label className={`cursor-pointer border ${product === 'MIS' ? 'border-samp-primary bg-samp-primary/10' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/20'} rounded-lg p-1.5 text-center transition-all`}>
             <input type="radio" name="product" className="hidden" checked={product === 'MIS'} onChange={() => setProduct('MIS')} />
             <div className="text-xs font-bold text-slate-900 dark:text-white">Intraday</div>
-            <div className="text-[9px] text-slate-500 dark:text-gray-400 font-bold uppercase">MIS (5x)</div>
+            <div className="text-[8px] text-slate-500 dark:text-gray-400 font-bold uppercase">MIS (5x)</div>
           </label>
-          <label className={`cursor-pointer border ${product === 'CNC' ? 'border-samp-primary bg-samp-primary/10' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/20'} rounded-lg p-2 text-center transition-all`}>
+          <label className={`cursor-pointer border ${product === 'CNC' ? 'border-samp-primary bg-samp-primary/10' : 'border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/20'} rounded-lg p-1.5 text-center transition-all`}>
             <input type="radio" name="product" className="hidden" checked={product === 'CNC'} onChange={() => setProduct('CNC')} />
             <div className="text-xs font-bold text-slate-900 dark:text-white">Delivery</div>
-            <div className="text-[9px] text-slate-500 dark:text-gray-400 font-bold uppercase">CNC (1x)</div>
+            <div className="text-[8px] text-slate-500 dark:text-gray-400 font-bold uppercase">CNC (1x)</div>
           </label>
         </div>
 
@@ -195,12 +195,12 @@ const TradingPanel: React.FC<TradingPanelProps> = ({ funds, optionChain, onPlace
           </div>
         </div>
 
-        <div className="mt-auto pt-4 border-t border-slate-200 dark:border-white/5">
-          <div className="flex justify-between text-[10px] mb-1 font-bold uppercase tracking-widest">
+        <div className="mt-auto pt-2 border-t border-slate-200 dark:border-white/5">
+          <div className="flex justify-between text-[9px] mb-0.5 font-bold uppercase tracking-widest">
             <span className="text-slate-500 dark:text-gray-400">Margin Required</span>
             <span className="text-slate-900 dark:text-white">₹{marginRequired.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
           </div>
-          <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+          <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest">
             <span className="text-slate-500 dark:text-gray-400">Available Margin</span>
             <span className={funds.availableMargin < marginRequired ? 'text-samp-danger' : 'text-samp-success'}>
               ₹{funds.availableMargin.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
@@ -211,7 +211,7 @@ const TradingPanel: React.FC<TradingPanelProps> = ({ funds, optionChain, onPlace
         <button
           type="submit"
           disabled={!canSubmit}
-          className={`w-full py-4 rounded-xl font-bold text-white shadow-xl transition-all transform active:scale-95 ${
+          className={`w-full py-3 rounded-xl font-bold text-white shadow-xl transition-all transform active:scale-95 ${
             side === 'BUY'
               ? 'bg-samp-success hover:bg-emerald-500 shadow-samp-success/20'
               : 'bg-samp-danger hover:bg-red-500 shadow-samp-danger/20'

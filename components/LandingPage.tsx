@@ -352,64 +352,132 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {/* Course Highlights & Who Can Join */}
       <section id="courses" className="py-24 px-6 bg-slate-50 relative overflow-hidden">
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid lg:grid-cols-2 gap-16">
-            
-            {/* Course Highlights */}
-            <div>
-              <div className="text-left mb-10">
-                <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Our Course Highlights</h2>
-                <p className="text-slate-600 font-medium bg-blue-100 text-blue-900 inline-block px-4 py-2 rounded-xl mt-2">
-                  Heikinashi + ADX/DMI + Bollinger Band
-                </p>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Comprehensive Training Programs</h2>
+            <p className="text-slate-600 font-medium">Heikinashi + ADX/DMI + Bollinger Band &mdash; Our Signature Setup</p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8 mb-16">
+            {/* Basic Course Card */}
+            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-xl hover:border-blue-300 transition-all">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-2xl font-black text-blue-900 mb-1">Basic Trading Course</h3>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">Perfect for Beginners & New Traders</p>
+                </div>
+                <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl text-xs font-bold">15 Days + 1 Month Practice</div>
               </div>
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 mb-8">
                 {[
-                  'Basic Stock Market Foundation',
-                  'SEBI, NSE & BSE Understanding',
-                  'Demat Account & Order Types',
-                  'Candles Clear Information',
-                  'Entry / Exit Rules',
-                  'Risk Management System',
-                  'Intraday Trading Strategy',
-                  'Capital Protection Rules',
-                  'Trading Discipline Framework'
-                ].map((highlight, idx) => (
-                  <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center gap-3 shadow-sm hover:border-blue-300 transition-colors">
-                    <CheckCircle2 className="text-blue-600 flex-shrink-0" size={20} />
-                    <span className="font-bold text-slate-700 text-sm">{highlight}</span>
+                  "Introduction to Stock Market", "What is SEBI? Role of SEBI", "NSE & BSE Understanding",
+                  "Demat & Trading Account", "Market Behaviour", "Candles Clear Information",
+                  "Types of Orders (Market, Limit, SL)", "LTA Setup (Intraday)", "Basic Risk Management",
+                  "Capital Protection Rules", "Trading Discipline Intro", "Paper Trade",
+                  "Back Test", "Live Market (Orders)", "Emotional Control TIPS"
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
+                    <CheckCircle2 size={14} className="text-blue-500 shrink-0" />
+                    <span>{i + 1}. {item}</span>
                   </div>
                 ))}
               </div>
+              <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-400 font-bold uppercase block">Special Fee</span>
+                  <span className="text-3xl font-black text-blue-900">₹5,999</span>
+                  <span className="text-sm text-slate-400 line-through ml-2">₹10,000</span>
+                </div>
+                <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 transition-all">Enroll Now</button>
+              </div>
             </div>
 
-            {/* Who Can Join */}
-            <div className="bg-white rounded-[40px] p-10 border border-slate-200 shadow-xl">
-              <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-6">
-                <Users className="text-blue-600" size={32} />
+            {/* Advance Course Card */}
+            <div className="bg-white rounded-[40px] p-8 border border-blue-200 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-blue-900 text-white px-6 py-2 rounded-bl-3xl text-[10px] font-bold uppercase tracking-widest">Most Popular</div>
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-2xl font-black text-blue-900 mb-1">Advance Training Course</h3>
+                  <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">For Existing Traders Seeking Consistency</p>
+                </div>
+                <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl text-xs font-bold">30 Days + 2 Months Practice</div>
               </div>
-              <h3 className="text-3xl font-black text-blue-950 mb-8">Who Can Join?</h3>
-              <ul className="space-y-5">
+              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 mb-8">
                 {[
-                  { title: 'Existing Traders', desc: 'Looking to refine strategies and discipline.' },
-                  { title: 'Beginners with Basic Knowledge', desc: 'Ready to take the next step into professional trading.' },
-                  { title: 'Working Professionals', desc: 'Seeking a secondary income stream.' },
-                  { title: 'Business Owners', desc: 'Wanting to grow their wealth through markets.' },
-                  { title: 'Anyone Serious About Trading', desc: 'Committed to learning and practicing.' },
-                  { title: 'Housewives', desc: 'Looking to achieve financial independence.' }
+                  "Price Action", "Understanding Market", "Support and Resistance",
+                  "Moving Averages", "Option Greeks", "Trendline", "CPR",
+                  "Main Setup 9/15 (Scalping)", "Main Setup 9/20", "BTST",
+                  "Gap Up / Gap Down", "Risk Management", "Back Test",
+                  "Live Market Explanation", "Psychology & Emotional Control"
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
+                    <CheckCircle2 size={14} className="text-blue-500 shrink-0" />
+                    <span>{i + 1}. {item}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-400 font-bold uppercase block">Special Fee</span>
+                  <span className="text-3xl font-black text-blue-900">₹9,999</span>
+                  <span className="text-sm text-slate-400 line-through ml-2">₹30,000</span>
+                </div>
+                <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 transition-all">Enroll Now</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Who Can Join & Monthly Subscription */}
+          <div className="grid lg:grid-cols-3 gap-8">
+            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm col-span-1">
+              <h3 className="text-xl font-black text-blue-950 mb-6 flex items-center gap-2">
+                <Users className="text-blue-600" size={24} /> Who Can Join?
+              </h3>
+              <ul className="space-y-4">
+                {[
+                  { title: "Existing Traders", desc: "Refine strategies and discipline." },
+                  { title: "Beginners", desc: "Ready to take the next professional step." },
+                  { title: "Working Professionals", desc: "Seeking secondary income." },
+                  { title: "Business Owners", desc: "Wealth growth through markets." },
+                  { title: "Housewives", desc: "For financial independence." }
                 ].map((person, idx) => (
-                  <li key={idx} className="flex items-start gap-4">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-1">
-                      <ArrowRight className="text-blue-700" size={14} />
-                    </div>
+                  <li key={idx} className="flex items-start gap-3">
+                    <ArrowRight className="text-blue-700 mt-1 shrink-0" size={14} />
                     <div>
-                      <h4 className="font-bold text-slate-800">{person.title}</h4>
-                      <p className="text-sm text-slate-500">{person.desc}</p>
+                      <h4 className="font-bold text-slate-800 text-sm">{person.title}</h4>
+                      <p className="text-xs text-slate-500">{person.desc}</p>
                     </div>
                   </li>
                 ))}
               </ul>
             </div>
 
+            <div className="bg-blue-900 rounded-[40px] p-8 text-white col-span-2 relative overflow-hidden shadow-2xl">
+              <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-600 rounded-full blur-[80px] opacity-30"></div>
+              <div className="relative z-10">
+                <h3 className="text-2xl font-black mb-6 flex items-center gap-2">
+                  <Star className="text-yellow-400" size={24} /> Monthly Subscription Plans
+                </h3>
+                <div className="grid sm:grid-cols-3 gap-4 mb-8">
+                  {[
+                    { period: "1 Month", price: "₹999", tag: "Basic" },
+                    { period: "3 Months", price: "₹1,999", tag: "Popular", highlight: true },
+                    { period: "6 Months", price: "₹3,999", tag: "Best Value" }
+                  ].map((plan, i) => (
+                    <div key={i} className={`p-6 rounded-3xl border ${plan.highlight ? 'bg-white text-blue-900 border-white' : 'bg-blue-950/40 border-blue-800/50 text-white'}`}>
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">{plan.tag}</p>
+                      <h4 className="text-xl font-black mb-2">{plan.period}</h4>
+                      <p className="text-2xl font-black">{plan.price}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4 text-sm font-medium">
+                  <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-400" /> Weekend Doubt Sessions</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-400" /> After Market Daily Updates</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-400" /> 1-1 Personal Guidance</div>
+                  <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-400" /> Weekly Back Test & Paper Trade</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -674,6 +742,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 <li>Stock market trading involves financial risk.</li>
                 <li>Lakshita Trading Academy provides educational training only.</li>
                 <li>We do not provide any calls/tips, investment advice, or guarantee profit.</li>
+                <li>Participants must consult a registered financial advisor before making investment decisions.</li>
               </ul>
               <div className="mt-8">
                 <p className="text-sm text-blue-200/40">© 2024 Lakshita Trading Academy. All rights reserved.</p>
