@@ -20,6 +20,8 @@ interface OptionChainRow {
   peLtp: number | null;
   ceOi: number | null;
   peOi: number | null;
+  ceSymbol?: string | null;
+  peSymbol?: string | null;
 }
 
 const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerConfig, token, onRemoveStrategy }) => {
@@ -185,14 +187,10 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
 
       if (automationRef.current && strategyRef.current) {
         const strategy = strategies.find(s => s.id === strategyRef.current);
-        if (strategy && strategy.isActive && data.price > 0) {
-          const chance = Math.random();
-          if (chance > 0.985) {
-            handlePlaceOrder('BUY', strategy.qty, 'MARKET', strategy.productType).catch((e) => {
-              addLog(`[AUTO ORDER] ${e.message}`);
-            });
+          if (strategy && strategy.isActive && data.price > 0) {
+            // Index feed is for signal context. Execution is options-only.
+            // Auto execution should map strategy signal -> option contract explicitly.
           }
-        }
       }
     });
 
@@ -221,17 +219,26 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     setSearchQuery('');
   };
 
-  const handlePlaceOrder = async (
+  const handlePlaceOptionOrder = async (
     side: 'BUY' | 'SELL',
     quantity: number,
     type: 'MARKET' | 'LIMIT',
     product: 'MIS' | 'CNC',
+    optionType: 'CE' | 'PE',
+    strike: number,
     priceOverride?: number
   ) => {
     if (!authHeaders) return;
-    const executionPrice = priceOverride || market.price;
+    const selected = optionChain.find((row) => row.strike === strike);
+    const optionSymbol = optionType === 'CE' ? selected?.ceSymbol : selected?.peSymbol;
+    const ltp = optionType === 'CE' ? (selected?.ceLtp ?? 0) : (selected?.peLtp ?? 0);
+    if (!optionSymbol) {
+      addLog(`[ORDER] ${optionType} symbol not available for strike ${strike}.`);
+      return;
+    }
+    const executionPrice = priceOverride || ltp;
     if (executionPrice <= 0) {
-      addLog('[ORDER] Live price unavailable.');
+      addLog('[ORDER] Option LTP unavailable.');
       return;
     }
     const marginRequired = (type === 'MARKET' ? executionPrice : (priceOverride || executionPrice)) * quantity / (product === 'MIS' ? 5 : 1);
@@ -246,8 +253,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
         method: 'POST',
         headers: authHeaders,
         body: JSON.stringify({
-          tradingsymbol: market.symbol.replace('NSE:', ''),
-          exchange: 'NSE',
+          tradingsymbol: optionSymbol,
+          exchange: 'NFO',
           transactionType: side,
           quantity,
           product,
@@ -257,7 +264,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Order placement failed.');
-      addLog(`[ORDER] Submitted: ${data.orderId}`);
+      addLog(`[ORDER] ${optionSymbol} submitted: ${data.orderId}`);
       await Promise.all([fetchOrdersAndPositions(), fetchWallet()]);
     } finally {
       setIsPlacingOrder(false);
@@ -364,7 +371,9 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
         </div>
 
         <div className="col-span-4 flex flex-col gap-6 min-h-0 pr-1">
-          <div className="shrink-0 h-[440px]"><TradingPanel currentPrice={market.price} funds={funds} onPlaceOrder={handlePlaceOrder} /></div>
+          <div className="shrink-0 h-[520px]">
+            <TradingPanel funds={funds} optionChain={optionChain} onPlaceOptionOrder={handlePlaceOptionOrder} />
+          </div>
           <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-5 shrink-0 transition-colors duration-300">
             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Activity size={14} className="text-samp-primary" /> Option Chain ({optionExpiry || '--'})</h3>
             <div className="max-h-[190px] overflow-auto text-xs font-mono">
