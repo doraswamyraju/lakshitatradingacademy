@@ -203,11 +203,26 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         secondsVisible: false,
         rightOffset: 5,
         shiftVisibleRangeOnNewBar: true,
+        tickMarkFormatter: (time: any) => {
+          const ts = typeof time === 'number' ? time : 0;
+          const d = new Date(ts * 1000);
+          return d.toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
+        }
       },
       localization: {
         timeFormatter: (timestamp: number) => {
           const date = new Date(timestamp * 1000);
-          return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+          return date.toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          });
         }
       },
       crosshair: { mode: 1 },

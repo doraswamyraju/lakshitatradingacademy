@@ -73,6 +73,19 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : undefined
   ), [token]);
 
+  const isMarketClosedIST = useMemo(() => {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).formatToParts(now);
+    const hh = Number(parts.find(p => p.type === 'hour')?.value || 0);
+    const mm = Number(parts.find(p => p.type === 'minute')?.value || 0);
+    return (hh < 9) || (hh === 9 && mm < 15) || (hh > 15) || (hh === 15 && mm >= 30);
+  }, []);
+
   const fetchWallet = async () => {
     if (!authHeaders) return;
     const res = await fetch('/api/market-data/wallet', { headers: authHeaders });
@@ -111,11 +124,41 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     if (data.expiry) setOptionExpiry(data.expiry);
   };
 
+  const preloadRecentCandles = async () => {
+    if (!authHeaders) return;
+    const to = new Date();
+    const from = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const url = `/api/market-data/kite/historical?instrumentToken=260105&interval=minute&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`;
+    const res = await fetch(url, { headers: authHeaders });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Failed to preload candles.');
+
+    const candles = Array.isArray(data.candles)
+      ? data.candles.map((c: any, idx: number) => ({
+          time: Date.parse(c.time) || Date.now() + idx * 60000,
+          open: Number(c.open),
+          high: Number(c.high),
+          low: Number(c.low),
+          close: Number(c.close),
+          volume: Number(c.volume || 0)
+        }))
+      : [];
+
+    if (candles.length > 0) {
+      setMarket(prev => ({
+        ...prev,
+        candles: candles.slice(-500),
+        price: prev.price > 0 ? prev.price : candles[candles.length - 1].close
+      }));
+      addLog(`[SYSTEM] Preloaded ${candles.length} recent candles.`);
+    }
+  };
+
   useEffect(() => {
     if (!authHeaders) return;
     const run = async () => {
       try {
-        await Promise.all([fetchWallet(), fetchTokenStatus(), fetchOrdersAndPositions()]);
+        await Promise.all([fetchWallet(), fetchTokenStatus(), fetchOrdersAndPositions(), preloadRecentCandles()]);
       } catch (error: any) {
         addLog(`[SYNC] ${error.message}`);
       }
@@ -229,7 +272,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   };
 
   return (
-    <div className="h-full flex flex-col p-6 gap-6 overflow-y-auto pb-12">
+    <div className="min-h-full flex flex-col p-6 gap-6 overflow-y-auto pb-20">
       <div className="flex items-center justify-between bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 shadow-xl shrink-0 transition-colors duration-300">
         <div className="flex items-center gap-8">
           <div className="flex flex-col min-w-[220px]">
@@ -244,7 +287,9 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
           </div>
           <div className="flex flex-col">
             <span className={`text-3xl font-mono font-bold tracking-tighter ${market.trend === 'bullish' ? 'text-samp-success' : 'text-samp-danger'}`}>{market.price > 0 ? market.price.toFixed(2) : '--'}</span>
-            <span className="text-xs font-mono font-medium text-slate-500">{feedStatus.message}</span>
+            <span className="text-xs font-mono font-medium text-slate-500">
+              {feedStatus.message}{isMarketClosedIST ? ' • Market Closed (static chart)' : ''}
+            </span>
           </div>
         </div>
 
@@ -283,9 +328,9 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
         <FeedBadge icon={<ShieldAlert size={14} />} label="Token Age" value={feedStatus.tokenAgeMinutes !== undefined && feedStatus.tokenAgeMinutes !== null ? `${feedStatus.tokenAgeMinutes} min` : '--'} />
       </div>
 
-      <div className="grid grid-cols-12 gap-6 min-h-[900px]">
-        <div className="col-span-8 flex flex-col gap-6">
-          <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 flex flex-col relative transition-colors duration-300">
+      <div className="grid grid-cols-12 gap-6 min-h-0">
+        <div className="col-span-8 flex flex-col gap-6 min-h-0 overflow-y-auto pr-1">
+          <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 flex flex-col relative transition-colors duration-300 shrink-0">
             <div className="flex items-center justify-between mb-4">
               <div className="flex gap-2">
                 {['1m', '5m', '15m', '1h', 'D'].map(tf => (<button key={tf} onClick={() => setTimeframe(tf as any)} className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${tf === timeframe ? 'bg-samp-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-white/5'}`}>{tf}</button>))}
@@ -304,7 +349,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
               </div>
             </div>
             <div className="relative">
-              <LightweightMarketChart data={market.candles} height={380} chartType={chartType} showSMA={showSMA} showEMA={showEMA} timeframe={timeframe} />
+              <LightweightMarketChart data={market.candles} height={330} chartType={chartType} showSMA={showSMA} showEMA={showEMA} timeframe={timeframe} />
               {market.candles.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-900/35 rounded-xl">
                   <div className="text-center">
@@ -315,11 +360,11 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
               )}
             </div>
           </div>
-          <div className="min-h-[260px]"><PortfolioPanel positions={positions} orders={orders} /></div>
+          <div className="shrink-0 min-h-[280px]"><PortfolioPanel positions={positions} orders={orders} /></div>
         </div>
 
-        <div className="col-span-4 flex flex-col gap-6">
-          <div className="shrink-0 h-[480px]"><TradingPanel currentPrice={market.price} funds={funds} onPlaceOrder={handlePlaceOrder} /></div>
+        <div className="col-span-4 flex flex-col gap-6 min-h-0 overflow-y-auto pr-1">
+          <div className="shrink-0 h-[440px]"><TradingPanel currentPrice={market.price} funds={funds} onPlaceOrder={handlePlaceOrder} /></div>
           <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-5 shrink-0 transition-colors duration-300">
             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Activity size={14} className="text-samp-primary" /> Option Chain ({optionExpiry || '--'})</h3>
             <div className="max-h-[190px] overflow-auto text-xs font-mono">
