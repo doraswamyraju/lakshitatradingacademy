@@ -272,7 +272,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   };
 
   return (
-    <div className="min-h-full flex flex-col p-6 gap-6 overflow-y-auto pb-20">
+    <div className="min-h-full flex flex-col p-6 gap-6 overflow-y-scroll pb-20 pr-2">
       <div className="flex items-center justify-between bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 shadow-xl shrink-0 transition-colors duration-300">
         <div className="flex items-center gap-8">
           <div className="flex flex-col min-w-[220px]">
@@ -329,7 +329,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
       </div>
 
       <div className="grid grid-cols-12 gap-6 min-h-0">
-        <div className="col-span-8 flex flex-col gap-6 min-h-0 overflow-y-auto pr-1">
+        <div className="col-span-8 flex flex-col gap-6 min-h-0 pr-1">
           <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 flex flex-col relative transition-colors duration-300 shrink-0">
             <div className="flex items-center justify-between mb-4">
               <div className="flex gap-2">
@@ -363,7 +363,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
           <div className="shrink-0 min-h-[280px]"><PortfolioPanel positions={positions} orders={orders} /></div>
         </div>
 
-        <div className="col-span-4 flex flex-col gap-6 min-h-0 overflow-y-auto pr-1">
+        <div className="col-span-4 flex flex-col gap-6 min-h-0 pr-1">
           <div className="shrink-0 h-[440px]"><TradingPanel currentPrice={market.price} funds={funds} onPlaceOrder={handlePlaceOrder} /></div>
           <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-5 shrink-0 transition-colors duration-300">
             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Activity size={14} className="text-samp-primary" /> Option Chain ({optionExpiry || '--'})</h3>
