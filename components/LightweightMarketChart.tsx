@@ -11,7 +11,7 @@ interface LightweightMarketChartProps {
   timeframe?: string;
 }
 
-const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({ 
+const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   data, 
   height, 
   chartType = 'CANDLE',
@@ -25,6 +25,26 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   const smaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
   const emaSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+
+  const normalizeTimeToMs = (raw: any): number | null => {
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      // Accept both seconds and milliseconds.
+      return raw < 1e12 ? raw * 1000 : raw;
+    }
+    if (typeof raw === 'string') {
+      const hhmm = raw.match(/^(\d{1,2}):(\d{2})$/);
+      if (hhmm) {
+        const hh = Math.min(23, Math.max(0, parseInt(hhmm[1], 10)));
+        const mm = Math.min(59, Math.max(0, parseInt(hhmm[2], 10)));
+        const d = new Date();
+        d.setHours(hh, mm, 0, 0);
+        return d.getTime();
+      }
+      const parsed = Date.parse(raw);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
 
   // Transform and aggregate data based on Timeframe
   const formattedData = useMemo(() => {
@@ -41,9 +61,11 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     };
     const bucketSeconds = bucketSecondsMap[timeframe] || 60;
 
-    const sorted = [...data]
-      .filter(d => Number.isFinite(d.time))
-      .sort((a, b) => a.time - b.time);
+    const normalized = data
+      .map((d) => ({ ...d, __tsMs: normalizeTimeToMs((d as any).time) }))
+      .filter((d) => d.__tsMs !== null) as Array<Candle & { __tsMs: number }>;
+
+    const sorted = normalized.sort((a, b) => a.__tsMs - b.__tsMs);
 
     if (sorted.length === 0) return [];
 
@@ -57,7 +79,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     }> = [];
 
     for (const candle of sorted) {
-      const tsSec = Math.floor(candle.time / 1000);
+      const tsSec = Math.floor(candle.__tsMs / 1000);
       const bucketStart = Math.floor(tsSec / bucketSeconds) * bucketSeconds;
       const last = aggregated[aggregated.length - 1];
 
