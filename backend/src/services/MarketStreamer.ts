@@ -5,7 +5,7 @@ import { KiteService } from './KiteService';
 const prisma = new PrismaClient();
 
 export interface Candle {
-  time: string;
+  time: number;
   open: number;
   high: number;
   low: number;
@@ -190,8 +190,9 @@ export class MarketStreamer {
   }
 
   private upsertCandle(price: number) {
-    const now = new Date();
-    const candleTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const nowMs = Date.now();
+    // Minute bucket start in epoch milliseconds (stable across locales/time formats).
+    const candleTime = Math.floor(nowMs / 60000) * 60000;
     const last = this.candles[this.candles.length - 1];
 
     if (!last || last.time !== candleTime) {
