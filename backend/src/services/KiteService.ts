@@ -58,7 +58,7 @@ export class KiteService {
   }
 
   connect(options: {
-    onTick: (tick: { lp: number; bids: any[]; asks: any[] }) => void;
+    onTick: (tick: { instrumentToken: number; lp: number; bids: any[]; asks: any[]; receivedAt: string }) => void;
     onStatus?: (event: StatusEvent, message?: string) => void;
   }) {
     const wsUrl = `wss://ws.kite.trade?api_key=${encodeURIComponent(this.config.apiKey)}&access_token=${encodeURIComponent(this.config.accessToken)}`;
@@ -100,8 +100,24 @@ export class KiteService {
     this.ws = null;
   }
 
-  private parseBinaryTicks(buffer: Buffer): { lp: number; bids: any[]; asks: any[] }[] {
-    const ticks: { lp: number; bids: any[]; asks: any[] }[] = [];
+  async fetchLtp(exchangeSymbol: string): Promise<number | null> {
+    try {
+      const response = await axios.get(`https://api.kite.trade/quote/ltp?i=${encodeURIComponent(exchangeSymbol)}`, {
+        headers: {
+          'X-Kite-Version': '3',
+          Authorization: `token ${this.config.apiKey}:${this.config.accessToken}`
+        }
+      });
+      const node = (response.data as any)?.data?.[exchangeSymbol];
+      const ltp = Number(node?.last_price);
+      return Number.isFinite(ltp) && ltp > 0 ? ltp : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private parseBinaryTicks(buffer: Buffer): { instrumentToken: number; lp: number; bids: any[]; asks: any[]; receivedAt: string }[] {
+    const ticks: { instrumentToken: number; lp: number; bids: any[]; asks: any[]; receivedAt: string }[] = [];
     const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 
     if (buffer.byteLength < 2) return ticks;
@@ -120,6 +136,7 @@ export class KiteService {
       // Kite index/equity derivatives can emit different packet sizes depending on mode/instrument.
       if (packetLength !== 184 && packetLength !== 44 && packetLength !== 28 && packetLength !== 8) continue;
 
+      const instrumentToken = packet.getInt32(0, false);
       const lastPrice = packet.getInt32(4, false) / 100;
       if (!Number.isFinite(lastPrice) || lastPrice <= 0) continue;
 
@@ -139,7 +156,7 @@ export class KiteService {
         }
       }
 
-      ticks.push({ lp: lastPrice, bids, asks });
+      ticks.push({ instrumentToken, lp: lastPrice, bids, asks, receivedAt: new Date().toISOString() });
     }
 
     return ticks;

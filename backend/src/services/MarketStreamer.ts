@@ -22,6 +22,8 @@ export class MarketStreamer {
   private feedSource: FeedSource = 'DISCONNECTED';
   private lastFeedMessage = 'Market feed not initialized.';
   private kiteClient: KiteService | null = null;
+  private ltpSyncInterval: NodeJS.Timeout | null = null;
+  private subscribedToken: number | null = null;
 
   constructor(io: Server) {
     this.io = io;
@@ -38,9 +40,14 @@ export class MarketStreamer {
       this.kiteClient.disconnect();
       this.kiteClient = null;
     }
+    if (this.ltpSyncInterval) {
+      clearInterval(this.ltpSyncInterval);
+      this.ltpSyncInterval = null;
+    }
     this.feedSource = 'DISCONNECTED';
     this.currentPrice = null;
     this.candles = [];
+    this.subscribedToken = null;
     this.emitFeedStatus('DISCONNECTED', 'Market feed stopped.');
   }
 
@@ -86,6 +93,7 @@ export class MarketStreamer {
         accessToken: config.accessToken,
         instrumentToken: config.bankNiftyInstrumentToken
       });
+      this.subscribedToken = config.bankNiftyInstrumentToken;
 
       this.feedSource = 'BROKER_WS';
       this.emitFeedStatus('BROKER_WS', 'Kite websocket connecting...');
@@ -112,13 +120,29 @@ export class MarketStreamer {
           }
         }
       });
+
+      // Periodic REST-LTP sync to keep display aligned with Kite quote screen.
+      this.ltpSyncInterval = setInterval(async () => {
+        if (!this.kiteClient || this.feedSource !== 'BROKER_WS') return;
+        const ltp = await this.kiteClient.fetchLtp('NSE:NIFTY BANK');
+        if (!ltp) return;
+        this.handleLiveTick({
+          instrumentToken: this.subscribedToken || 260105,
+          lp: ltp,
+          bids: [],
+          asks: [],
+          receivedAt: new Date().toISOString()
+        });
+      }, 2000);
     } catch (error: any) {
       this.feedSource = 'ERROR';
       this.emitFeedStatus('ERROR', error?.message || 'Feed bootstrap failed.');
     }
   }
 
-  private handleLiveTick(tick: { lp: number; bids: any[]; asks: any[] }) {
+  private handleLiveTick(tick: { instrumentToken: number; lp: number; bids: any[]; asks: any[]; receivedAt: string }) {
+    if (this.subscribedToken && tick.instrumentToken !== this.subscribedToken) return;
+
     const livePrice = Number(tick.lp);
     if (!Number.isFinite(livePrice) || livePrice <= 0) return;
 
