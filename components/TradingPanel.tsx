@@ -195,7 +195,7 @@ const TradingPanel: React.FC<TradingPanelProps> = ({ funds, optionChain, onPlace
           </div>
         </div>
 
-        <div className="mt-auto pt-2 border-t border-slate-200 dark:border-white/5">
+        <div className="pt-2 border-t border-slate-200 dark:border-white/5">
           <div className="flex justify-between text-[9px] mb-0.5 font-bold uppercase tracking-widest">
             <span className="text-slate-500 dark:text-gray-400">Margin Required</span>
             <span className="text-slate-900 dark:text-white">₹{marginRequired.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
