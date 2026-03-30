@@ -21,8 +21,13 @@ export class MarketStreamer {
   private currentPrice: number | null = null;
   private feedSource: FeedSource = 'DISCONNECTED';
   private lastFeedMessage = 'Market feed not initialized.';
+  private lastTickAt: string | null = null;
+  private lastTickLatencyMs: number | null = null;
+  private reconnectCount = 0;
+  private accessTokenUpdatedAt: Date | null = null;
   private kiteClient: KiteService | null = null;
   private ltpSyncInterval: NodeJS.Timeout | null = null;
+  private reconnectTimer: NodeJS.Timeout | null = null;
   private subscribedToken: number | null = null;
 
   constructor(io: Server) {
@@ -44,9 +49,17 @@ export class MarketStreamer {
       clearInterval(this.ltpSyncInterval);
       this.ltpSyncInterval = null;
     }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.feedSource = 'DISCONNECTED';
     this.currentPrice = null;
     this.candles = [];
+    this.lastTickAt = null;
+    this.lastTickLatencyMs = null;
+    this.reconnectCount = 0;
+    this.accessTokenUpdatedAt = null;
     this.subscribedToken = null;
     this.emitFeedStatus('DISCONNECTED', 'Market feed stopped.');
   }
@@ -93,6 +106,7 @@ export class MarketStreamer {
         accessToken: config.accessToken,
         instrumentToken: config.bankNiftyInstrumentToken
       });
+      this.accessTokenUpdatedAt = config.accessTokenUpdatedAt || null;
       this.subscribedToken = config.bankNiftyInstrumentToken;
 
       this.feedSource = 'BROKER_WS';
@@ -113,10 +127,12 @@ export class MarketStreamer {
           if (event === 'DISCONNECTED') {
             this.feedSource = 'DISCONNECTED';
             this.emitFeedStatus('DISCONNECTED', message || 'Kite websocket disconnected.');
+            this.scheduleReconnect();
           }
           if (event === 'ERROR') {
             this.feedSource = 'ERROR';
             this.emitFeedStatus('ERROR', message || 'Kite websocket error.');
+            this.scheduleReconnect();
           }
         }
       });
@@ -140,6 +156,15 @@ export class MarketStreamer {
     }
   }
 
+  private scheduleReconnect() {
+    if (this.reconnectTimer) return;
+    this.reconnectTimer = setTimeout(async () => {
+      this.reconnectTimer = null;
+      this.reconnectCount += 1;
+      await this.rebootFeed();
+    }, 5000);
+  }
+
   private handleLiveTick(tick: { instrumentToken: number; lp: number; bids: any[]; asks: any[]; receivedAt: string }) {
     if (this.subscribedToken && tick.instrumentToken !== this.subscribedToken) return;
 
@@ -147,6 +172,8 @@ export class MarketStreamer {
     if (!Number.isFinite(livePrice) || livePrice <= 0) return;
 
     this.currentPrice = livePrice;
+    this.lastTickAt = tick.receivedAt || new Date().toISOString();
+    this.lastTickLatencyMs = Math.max(0, Date.now() - new Date(this.lastTickAt).getTime());
     this.upsertCandle(livePrice);
 
     const latestCandle = this.candles[this.candles.length - 1];
@@ -189,13 +216,31 @@ export class MarketStreamer {
   private emitFeedStatus(source: FeedSource, message: string) {
     this.feedSource = source;
     this.lastFeedMessage = message;
-    this.io.emit('feed_status', { source, message, at: new Date().toISOString() });
+    this.io.emit('feed_status', {
+      source,
+      message,
+      at: new Date().toISOString(),
+      broker: 'Kite',
+      lastTickAt: this.lastTickAt,
+      latencyMs: this.lastTickLatencyMs,
+      reconnectCount: this.reconnectCount,
+      tokenAgeMinutes: this.accessTokenUpdatedAt
+        ? Math.max(0, Math.round((Date.now() - this.accessTokenUpdatedAt.getTime()) / 60000))
+        : null
+    });
   }
 
   public getLatestFeedStatus() {
     return {
       source: this.feedSource,
-      message: this.lastFeedMessage
+      message: this.lastFeedMessage,
+      broker: 'Kite',
+      lastTickAt: this.lastTickAt,
+      latencyMs: this.lastTickLatencyMs,
+      reconnectCount: this.reconnectCount,
+      tokenAgeMinutes: this.accessTokenUpdatedAt
+        ? Math.max(0, Math.round((Date.now() - this.accessTokenUpdatedAt.getTime()) / 60000))
+        : null
     };
   }
 }

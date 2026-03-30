@@ -137,21 +137,21 @@ const TradingPanel: React.FC<TradingPanelProps> = ({ currentPrice, funds, onPlac
                 <span className="text-slate-900 dark:text-white">₹{marginRequired.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                <span className="text-slate-500 dark:text-gray-400">Available</span>
-                <span className={funds.available < marginRequired ? 'text-samp-danger' : 'text-samp-success'}>
-                    ₹{funds.available.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                <span className="text-slate-500 dark:text-gray-400">Available Margin</span>
+                <span className={funds.availableMargin < marginRequired ? 'text-samp-danger' : 'text-samp-success'}>
+                    ₹{funds.availableMargin.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                 </span>
             </div>
         </div>
 
         <button
             type="submit"
-            disabled={funds.available < marginRequired}
+            disabled={funds.availableMargin < marginRequired}
             className={`w-full py-4 rounded-xl font-bold text-white shadow-xl transition-all transform active:scale-95 ${
                 side === 'BUY' 
                 ? 'bg-samp-success hover:bg-emerald-500 shadow-samp-success/20' 
                 : 'bg-samp-danger hover:bg-red-500 shadow-samp-danger/20'
-            } ${funds.available < marginRequired ? 'opacity-50 cursor-not-allowed' : ''}`}
+            } ${funds.availableMargin < marginRequired ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
             PLACE {side} ORDER
         </button>

@@ -1,248 +1,313 @@
-
-import React, { useState, useMemo } from 'react';
-import { 
-  Play, Calendar, TrendingUp, TrendingDown, 
-  BarChart2, PieChart, Activity, Download, 
-  Search, FlaskConical, Target, ShieldCheck,
-  ChevronRight, ArrowUpRight, ArrowDownRight
+import React, { useMemo, useState } from 'react';
+import {
+  Play,
+  Calendar,
+  TrendingUp,
+  Activity,
+  Download,
+  FlaskConical,
+  Target,
+  ShieldCheck,
+  Layers,
+  SlidersHorizontal
 } from 'lucide-react';
-import { TradingStrategy, BacktestResult, BacktestTrade, Candle } from '../types';
-import { generateInitialCandles } from '../services/market';
+import { TradingStrategy, BacktestResult, BacktestTrade, Candle, BacktestRuleTrace } from '../types';
+import { fetchHistoricalCandles } from '../services/market';
+import LightweightMarketChart from './LightweightMarketChart';
+import { useAuth } from '../context/AuthContext';
 
 interface BacktestPanelProps {
   strategies: TradingStrategy[];
 }
 
+const intervalMap: Record<string, 'minute' | '3minute' | '5minute' | '15minute' | '30minute' | '60minute' | 'day'> = {
+  '1m': 'minute',
+  '3m': '3minute',
+  '5m': '5minute',
+  '15m': '15minute',
+  '30m': '30minute',
+  '1h': '60minute',
+  'D': 'day'
+};
+
 const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
+  const { token } = useAuth();
   const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
   const [days, setDays] = useState(30);
+  const [timeframe, setTimeframe] = useState<'1m' | '3m' | '5m' | '15m' | '30m' | '1h' | 'D'>('5m');
   const [isSimulating, setIsSimulating] = useState(false);
   const [result, setResult] = useState<BacktestResult | null>(null);
+  const [historicalData, setHistoricalData] = useState<Candle[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [replayIndex, setReplayIndex] = useState(0);
 
-  const selectedStrategy = useMemo(() => 
-    strategies.find(s => s.id === selectedStrategyId), 
+  const selectedStrategy = useMemo(
+    () => strategies.find(s => s.id === selectedStrategyId),
     [strategies, selectedStrategyId]
   );
 
-  const runSimulation = () => {
-    if (!selectedStrategyId) return;
+  const replayData = useMemo(() => historicalData.slice(0, Math.max(30, replayIndex + 1)), [historicalData, replayIndex]);
+  const visibleRuleTrace = useMemo(
+    () => result?.ruleTrace.slice(Math.max(0, replayIndex - 12), replayIndex + 1) || [],
+    [result, replayIndex]
+  );
+
+  const runSimulation = async () => {
+    if (!selectedStrategy || !token) return;
     setIsSimulating(true);
-    
-    setTimeout(() => {
-      const historicalCandles = generateInitialCandles(days * 100); 
-      const simulationResult = performBacktest(historicalCandles, selectedStrategy!);
+    setError(null);
+
+    try {
+      const toDate = new Date();
+      const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+      const candles = await fetchHistoricalCandles({
+        token,
+        instrumentToken: 260105,
+        interval: intervalMap[timeframe],
+        fromISO: fromDate.toISOString(),
+        toISO: toDate.toISOString()
+      });
+
+      if (candles.length < 50) {
+        throw new Error('Not enough historical candles returned from broker.');
+      }
+
+      const simulationResult = performBacktest(candles, selectedStrategy, days);
+      setHistoricalData(candles);
       setResult(simulationResult);
+      setReplayIndex(candles.length - 1);
+    } catch (err: any) {
+      setError(err.message || 'Backtest failed.');
+      setResult(null);
+      setHistoricalData([]);
+    } finally {
       setIsSimulating(false);
-    }, 2000);
-  };
-
-  const performBacktest = (candles: Candle[], strategy: TradingStrategy): BacktestResult => {
-    const trades: BacktestTrade[] = [];
-    let equity = 100000; 
-    const equityCurve = [equity];
-    let winningTrades = 0;
-    let losingTrades = 0;
-    
-    const tradeCount = Math.floor(Math.random() * 50) + 10;
-    const avgProfitPct = 0.02; 
-    const avgLossPct = 0.01; 
-    const probability = 0.55; 
-
-    for (let i = 0; i < tradeCount; i++) {
-      const isWin = Math.random() < probability;
-      const move = isWin ? (Math.random() * avgProfitPct) : -(Math.random() * avgLossPct);
-      const profit = equity * move;
-      
-      const entryPrice = candles[Math.floor(Math.random() * candles.length)].close;
-      const exitPrice = entryPrice * (1 + move);
-      
-      const trade: BacktestTrade = {
-        type: 'BUY',
-        entryPrice,
-        exitPrice,
-        entryTime: Date.now() - (tradeCount - i) * 86400000,
-        exitTime: Date.now() - (tradeCount - i) * 86400000 + 3600000,
-        pnl: profit,
-        pnlPct: move * 100
-      };
-
-      trades.push(trade);
-      equity += profit;
-      equityCurve.push(equity);
-      
-      if (isWin) winningTrades++;
-      else losingTrades++;
     }
-
-    const netPnl = equity - 100000;
-    const maxDrawdown = 2.45; 
-
-    return {
-      totalTrades: tradeCount,
-      winningTrades,
-      losingTrades,
-      winRate: (winningTrades / tradeCount) * 100,
-      netPnl,
-      maxDrawdown,
-      sharpeRatio: 1.84,
-      trades,
-      equityCurve
-    };
   };
 
   return (
     <div className="h-full flex flex-col p-6 gap-6 overflow-hidden transition-colors duration-300">
       <div className="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
-        
         <div className="col-span-12 lg:col-span-3 space-y-6">
-          <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[32px] p-8 shadow-xl">
-             <div className="flex items-center gap-3 mb-8">
-                <div className="p-3 bg-samp-accent/10 rounded-2xl text-samp-accent">
-                   <FlaskConical size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Simulation Core</h3>
-             </div>
+          <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-samp-accent/10 rounded-xl text-samp-accent">
+                <FlaskConical size={22} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Backtest Engine</h3>
+            </div>
 
-             <div className="space-y-6">
-                <div className="space-y-2">
-                   <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] ml-1">Strategy Selection</label>
-                   <select 
-                     value={selectedStrategyId || ''}
-                     onChange={e => setSelectedStrategyId(e.target.value)}
-                     className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl py-4 px-4 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all font-bold"
-                   >
-                      <option value="">-- SELECT LOGIC --</option>
-                      {strategies.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                   </select>
-                </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] ml-1">Strategy</label>
+                <select
+                  value={selectedStrategyId || ''}
+                  onChange={e => setSelectedStrategyId(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-xl py-3 px-3 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all font-bold text-sm"
+                >
+                  <option value="">-- SELECT LOGIC --</option>
+                  {strategies.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div className="space-y-2">
-                   <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] ml-1">Historical Window (Days)</label>
-                   <div className="relative">
-                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                      <input 
-                        type="number" 
-                        value={days}
-                        onChange={e => setDays(parseInt(e.target.value) || 1)}
-                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl py-4 pl-12 pr-4 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all font-bold"
-                      />
-                   </div>
-                </div>
+              <div className="space-y-2">
+                <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] ml-1">Timeframe</label>
+                <select
+                  value={timeframe}
+                  onChange={e => setTimeframe(e.target.value as any)}
+                  className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-xl py-3 px-3 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all font-bold text-sm"
+                >
+                  {['1m', '3m', '5m', '15m', '30m', '1h', 'D'].map(tf => (
+                    <option key={tf} value={tf}>{tf}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div className="pt-4">
-                   <button 
-                     onClick={runSimulation}
-                     disabled={!selectedStrategyId || isSimulating}
-                     className="w-full bg-samp-primary hover:bg-indigo-500 text-white font-bold py-4 rounded-[20px] shadow-xl shadow-samp-primary/20 transition-all flex items-center justify-center gap-3 group disabled:opacity-50"
-                   >
-                     {isSimulating ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                     ) : (
-                        <><Play size={20} fill="currentColor" /> Initialize Simulation</>
-                     )}
-                   </button>
+              <div className="space-y-2">
+                <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] ml-1">Historical Window (Days)</label>
+                <div className="relative">
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="number"
+                    min={5}
+                    max={365}
+                    value={days}
+                    onChange={e => setDays(Math.max(5, Math.min(365, parseInt(e.target.value) || 5)))}
+                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-xl py-3 pl-12 pr-4 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all font-bold text-sm"
+                  />
                 </div>
-             </div>
+              </div>
+
+              <button
+                onClick={runSimulation}
+                disabled={!selectedStrategyId || isSimulating || !token}
+                className="w-full bg-samp-primary hover:bg-indigo-500 text-white font-bold py-3 rounded-xl shadow-xl shadow-samp-primary/20 transition-all flex items-center justify-center gap-3 group disabled:opacity-50"
+              >
+                {isSimulating ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <><Play size={18} fill="currentColor" /> Run Historical Replay</>
+                )}
+              </button>
+            </div>
           </div>
 
-          {selectedStrategy && (
-            <div className="bg-slate-100 dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[32px] p-6 space-y-4">
-               <h4 className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Strategy Parameters</h4>
-               <div className="space-y-3">
-                  <div className="flex justify-between text-xs">
-                     <span className="text-slate-400">Risk Reward</span>
-                     <span className="text-slate-900 dark:text-white font-bold">1:{(selectedStrategy.riskConfig.takeProfitPct / selectedStrategy.riskConfig.stopLossPct).toFixed(1)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                     <span className="text-slate-400">Timeframe</span>
-                     <span className="text-slate-900 dark:text-white font-bold">{selectedStrategy.timeframe}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                     <span className="text-slate-400">Conditions</span>
-                     <span className="text-slate-900 dark:text-white font-bold">{selectedStrategy.entryConditions.length} Entry</span>
-                  </div>
-               </div>
+          <div className="bg-slate-100 dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-5 space-y-3">
+            <h4 className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Data Source</h4>
+            <div className="text-xs text-slate-700 dark:text-gray-300 flex items-center justify-between">
+              <span>Instrument</span>
+              <span className="font-bold">BANKNIFTY (260105)</span>
             </div>
-          )}
+            <div className="text-xs text-slate-700 dark:text-gray-300 flex items-center justify-between">
+              <span>Timeframe</span>
+              <span className="font-bold">{timeframe}</span>
+            </div>
+            <div className="text-xs text-slate-700 dark:text-gray-300 flex items-center justify-between">
+              <span>Window</span>
+              <span className="font-bold">{days}D</span>
+            </div>
+            <div className="text-xs text-slate-700 dark:text-gray-300 flex items-center justify-between">
+              <span>Candles</span>
+              <span className="font-bold">{historicalData.length || '--'}</span>
+            </div>
+          </div>
         </div>
 
         <div className="col-span-12 lg:col-span-9 flex flex-col gap-6 overflow-hidden">
-          {result ? (
-            <div className="flex flex-col gap-6 overflow-y-auto pr-2 scrollbar-hide animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <StatCard label="Net P&L" value={`₹${result.netPnl.toLocaleString()}`} icon={<TrendingUp size={18}/>} color="success" />
-                  <StatCard label="Win Rate" value={`${result.winRate.toFixed(1)}%`} icon={<Target size={18}/>} color="primary" />
-                  <StatCard label="Max Drawdown" value={`${result.maxDrawdown}%`} icon={<Activity size={18}/>} color="danger" />
-                  <StatCard label="Sharpe Ratio" value={result.sharpeRatio.toString()} icon={<ShieldCheck size={18}/>} color="accent" />
-               </div>
+          {error && (
+            <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 p-3 text-sm font-medium">
+              {error}
+            </div>
+          )}
 
-               <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[32px] overflow-hidden shadow-xl flex flex-col">
-                  <div className="p-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center">
-                     <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <BarChart2 size={20} className="text-samp-primary" /> 
-                        Simulation Tape
-                     </h3>
-                     <button className="text-xs font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-2">
-                        <Download size={14} /> EXPORT CSV
-                     </button>
+          {result ? (
+            <div className="flex flex-col gap-5 overflow-y-auto pr-2 scrollbar-hide animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <StatCard label="Net P&L" value={`₹${result.netPnl.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} icon={<TrendingUp size={16} />} color="success" />
+                <StatCard label="Win Rate" value={`${result.winRate.toFixed(1)}%`} icon={<Target size={16} />} color="primary" />
+                <StatCard label="Max DD" value={`${result.maxDrawdown.toFixed(2)}%`} icon={<Activity size={16} />} color="danger" />
+                <StatCard label="Sharpe" value={result.sharpeRatio.toFixed(2)} icon={<ShieldCheck size={16} />} color="accent" />
+                <StatCard label="Profit Factor" value={result.profitFactor.toFixed(2)} icon={<Layers size={16} />} color="primary" />
+                <StatCard label="CAGR" value={`${result.cagr.toFixed(2)}%`} icon={<TrendingUp size={16} />} color="success" />
+              </div>
+
+              <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-4 shadow-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Activity size={18} className="text-samp-primary" />
+                    Replay Chart + Rule Engine
+                  </h3>
+                  <div className="text-xs font-mono text-slate-500">
+                    Bar {replayIndex + 1} / {historicalData.length}
                   </div>
-                  <div className="flex-1 overflow-auto max-h-[400px]">
-                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-black/20 text-[10px] text-slate-500 font-black uppercase tracking-widest sticky top-0">
-                           <tr>
-                              <th className="p-4">Entry Time</th>
-                              <th className="p-4">Exit Price</th>
-                              <th className="p-4 text-right">Qty</th>
-                              <th className="p-4 text-right">P&L</th>
-                              <th className="p-4 text-right">Change %</th>
-                              <th className="p-4"></th>
-                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-xs">
-                           {result.trades.map((trade, i) => (
-                              <tr key={i} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                                 <td className="p-4 font-mono text-slate-500">{new Date(trade.entryTime).toLocaleDateString()}</td>
-                                 <td className="p-4 font-bold text-slate-900 dark:text-white">₹{trade.exitPrice.toFixed(2)}</td>
-                                 <td className="p-4 text-right font-mono text-slate-500">{selectedStrategy?.qty}</td>
-                                 <td className={`p-4 text-right font-black font-mono ${trade.pnl >= 0 ? 'text-samp-success' : 'text-samp-danger'}`}>
-                                    {trade.pnl >= 0 ? '+' : ''}₹{trade.pnl.toFixed(0)}
-                                 </td>
-                                 <td className={`p-4 text-right font-bold ${trade.pnl >= 0 ? 'text-samp-success' : 'text-samp-danger'}`}>
-                                    {trade.pnlPct.toFixed(2)}%
-                                 </td>
-                                 <td className="p-4 text-right">
-                                    <ChevronRight size={14} className="text-slate-300 ml-auto" />
-                                 </td>
-                              </tr>
-                           ))}
-                        </tbody>
-                     </table>
+                </div>
+                <LightweightMarketChart data={replayData} height={320} chartType="CANDLE" showSMA={true} showEMA={true} timeframe={timeframe} />
+                <div className="mt-4">
+                  <input
+                    type="range"
+                    min={30}
+                    max={Math.max(30, historicalData.length - 1)}
+                    value={Math.max(30, replayIndex)}
+                    onChange={e => setReplayIndex(parseInt(e.target.value, 10))}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] overflow-hidden shadow-xl">
+                  <div className="p-4 border-b border-slate-100 dark:border-white/5 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <SlidersHorizontal size={16} className="text-samp-primary" />
+                      Strategy Explain Mode
+                    </h3>
                   </div>
-               </div>
+                  <div className="max-h-[280px] overflow-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 dark:bg-black/20 text-slate-500 dark:text-gray-500 sticky top-0">
+                        <tr>
+                          <th className="p-3 font-medium">Time</th>
+                          <th className="p-3 font-medium">Close</th>
+                          <th className="p-3 font-medium">Regime</th>
+                          <th className="p-3 font-medium">Decision</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                        {visibleRuleTrace.map((row, idx) => (
+                          <tr key={`${row.time}-${idx}`}>
+                            <td className="p-3 text-slate-600 dark:text-gray-400">{new Date(row.time).toLocaleString()}</td>
+                            <td className="p-3 font-mono text-slate-900 dark:text-white">{row.close.toFixed(2)}</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${row.regime === 'TRENDING' ? 'bg-samp-primary/15 text-samp-primary' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-gray-300'}`}>
+                                {row.regime}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${row.decision === 'ENTER' ? 'bg-green-500/15 text-green-600 dark:text-green-400' : row.decision === 'EXIT' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-gray-300'}`}>
+                                {row.decision}
+                              </span>
+                              <div className="text-[10px] text-slate-500 mt-1">{row.signals.join(' | ')}</div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] overflow-hidden shadow-xl">
+                  <div className="p-4 border-b border-slate-100 dark:border-white/5 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Activity size={16} className="text-samp-primary" />
+                      Trade Ledger
+                    </h3>
+                    <button className="text-xs font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-2">
+                      <Download size={12} /> EXPORT CSV
+                    </button>
+                  </div>
+                  <div className="max-h-[280px] overflow-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 dark:bg-black/20 text-slate-500 dark:text-gray-500 sticky top-0">
+                        <tr>
+                          <th className="p-3 font-medium">Entry</th>
+                          <th className="p-3 font-medium text-right">Qty</th>
+                          <th className="p-3 font-medium text-right">Exit</th>
+                          <th className="p-3 font-medium text-right">P&L</th>
+                          <th className="p-3 font-medium">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                        {result.trades.map((trade, i) => (
+                          <tr key={i}>
+                            <td className="p-3 font-mono text-slate-900 dark:text-white">{trade.entryPrice.toFixed(2)}</td>
+                            <td className="p-3 text-right text-slate-700 dark:text-gray-300">{trade.qty}</td>
+                            <td className="p-3 text-right font-mono text-slate-900 dark:text-white">{trade.exitPrice.toFixed(2)}</td>
+                            <td className={`p-3 text-right font-mono font-bold ${trade.pnl >= 0 ? 'text-samp-success' : 'text-samp-danger'}`}>
+                              {trade.pnl >= 0 ? '+' : ''}{trade.pnl.toFixed(2)}
+                            </td>
+                            <td className="p-3 text-slate-600 dark:text-gray-400">{trade.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="flex-1 bg-white dark:bg-samp-surface border-2 border-dashed border-slate-200 dark:border-white/5 rounded-[48px] flex flex-col items-center justify-center text-center p-12 space-y-6">
-               <div className="w-24 h-24 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300 dark:text-gray-600">
-                  <Activity size={48} />
-               </div>
-               <div>
-                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Ready for Simulation?</h3>
-                  <p className="text-slate-500 dark:text-gray-500 max-w-sm mt-2 leading-relaxed font-medium">
-                     Select a strategy from the left panel and click initialize to see performance analytics based on historical data.
-                  </p>
-               </div>
-               <div className="flex gap-4">
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                     <div className="w-1.5 h-1.5 rounded-full bg-samp-primary"></div>
-                     Monte Carlo Enabled
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                     <div className="w-1.5 h-1.5 rounded-full bg-samp-accent"></div>
-                     Full Depth History
-                  </div>
-               </div>
+            <div className="flex-1 bg-white dark:bg-samp-surface border-2 border-dashed border-slate-200 dark:border-white/5 rounded-[32px] flex flex-col items-center justify-center text-center p-12 space-y-6">
+              <div className="w-20 h-20 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300 dark:text-gray-600">
+                <Activity size={36} />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Ready for Backtest Replay?</h3>
+                <p className="text-slate-500 dark:text-gray-500 max-w-sm mt-2 leading-relaxed font-medium">
+                  Select strategy + timeframe and run to simulate real historical candles with bar-by-bar rule trace.
+                </p>
+              </div>
             </div>
           )}
         </div>
@@ -252,29 +317,199 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
 };
 
 const StatCard: React.FC<{ label: string; value: string; icon: React.ReactNode; color: string }> = ({ label, value, icon, color }) => {
-   const colorClasses: Record<string, string> = {
-      success: 'bg-samp-success/10 text-samp-success border-samp-success/20',
-      danger: 'bg-samp-danger/10 text-samp-danger border-samp-danger/20',
-      primary: 'bg-samp-primary/10 text-samp-primary border-samp-primary/20',
-      accent: 'bg-samp-accent/10 text-samp-accent border-samp-accent/20'
-   };
+  const colorClasses: Record<string, string> = {
+    success: 'bg-samp-success/10 text-samp-success border-samp-success/20',
+    danger: 'bg-samp-danger/10 text-samp-danger border-samp-danger/20',
+    primary: 'bg-samp-primary/10 text-samp-primary border-samp-primary/20',
+    accent: 'bg-samp-accent/10 text-samp-accent border-samp-accent/20'
+  };
 
-   return (
-      <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[32px] p-6 shadow-lg flex flex-col gap-4">
-         <div className="flex justify-between items-start">
-            <span className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">{label}</span>
-            <div className={`p-2 rounded-xl border ${colorClasses[color]}`}>
-               {icon}
-            </div>
-         </div>
-         <div className="flex items-end gap-2">
-            <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">{value}</span>
-            <span className={`text-[10px] font-bold mb-1 ${value.startsWith('₹') || value.includes('%') ? 'text-samp-success' : 'text-slate-400'}`}>
-               {value.startsWith('₹') ? <ArrowUpRight size={10} className="inline mr-1"/> : null}
-            </span>
-         </div>
+  return (
+    <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[16px] p-4 shadow-lg flex flex-col gap-3">
+      <div className="flex justify-between items-start">
+        <span className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">{label}</span>
+        <div className={`p-2 rounded-xl border ${colorClasses[color]}`}>
+          {icon}
+        </div>
       </div>
-   );
-}
+      <div className="text-xl font-black text-slate-900 dark:text-white font-mono">{value}</div>
+    </div>
+  );
+};
+
+const sma = (values: number[], period: number, i: number) => {
+  if (i < period - 1) return null;
+  let sum = 0;
+  for (let idx = i - period + 1; idx <= i; idx++) sum += values[idx];
+  return sum / period;
+};
+
+const rsi = (values: number[], period: number, i: number) => {
+  if (i <= period) return null;
+  let gains = 0;
+  let losses = 0;
+  for (let idx = i - period + 1; idx <= i; idx++) {
+    const delta = values[idx] - values[idx - 1];
+    if (delta >= 0) gains += delta;
+    else losses += Math.abs(delta);
+  }
+  if (losses === 0) return 100;
+  const rs = gains / losses;
+  return 100 - 100 / (1 + rs);
+};
+
+const performBacktest = (candles: Candle[], strategy: TradingStrategy, days: number): BacktestResult => {
+  const closes = candles.map(c => c.close);
+  const trades: BacktestTrade[] = [];
+  const ruleTrace: BacktestRuleTrace[] = [];
+  const equityCurve: number[] = [100000];
+  let equity = 100000;
+
+  let position: { entryPrice: number; entryTime: number; qty: number; regime: 'TRENDING' | 'SIDEWAYS' } | null = null;
+  let wins = 0;
+  let losses = 0;
+  let grossProfit = 0;
+  let grossLoss = 0;
+  let maxEquity = equity;
+  let maxDrawdown = 0;
+  let trendingTrades = 0;
+  let sidewaysTrades = 0;
+  let trendingPnl = 0;
+  let sidewaysPnl = 0;
+
+  const stopLossPct = Math.max(0.1, strategy.riskConfig.stopLossPct || 1);
+  const takeProfitPct = Math.max(stopLossPct * 2, strategy.riskConfig.takeProfitPct || stopLossPct * 2);
+  const qty = Math.max(1, strategy.qty || 1);
+
+  for (let i = 20; i < candles.length; i++) {
+    const candle = candles[i];
+    const sma20 = sma(closes, 20, i);
+    const rsi14 = rsi(closes, 14, i);
+    if (sma20 === null || rsi14 === null) continue;
+
+    const regime: 'TRENDING' | 'SIDEWAYS' = Math.abs((candle.close - sma20) / sma20) > 0.003 ? 'TRENDING' : 'SIDEWAYS';
+    const signals = [
+      `Close ${candle.close.toFixed(2)}`,
+      `SMA20 ${sma20.toFixed(2)}`,
+      `RSI14 ${rsi14.toFixed(1)}`
+    ];
+
+    let decision: 'ENTER' | 'EXIT' | 'HOLD' = 'HOLD';
+    const entrySignal = candle.close > sma20 && rsi14 >= 55;
+    const exitSignal = candle.close < sma20 || rsi14 <= 45;
+
+    if (!position && entrySignal) {
+      position = { entryPrice: candle.close, entryTime: candle.time, qty, regime };
+      decision = 'ENTER';
+    } else if (position) {
+      const stopPrice = position.entryPrice * (1 - stopLossPct / 100);
+      const targetPrice = position.entryPrice * (1 + takeProfitPct / 100);
+      let exitPrice: number | null = null;
+      let reason = '';
+
+      if (candle.low <= stopPrice) {
+        exitPrice = stopPrice;
+        reason = 'STOP_LOSS';
+      } else if (candle.high >= targetPrice) {
+        exitPrice = targetPrice;
+        reason = 'TARGET';
+      } else if (exitSignal) {
+        exitPrice = candle.close;
+        reason = 'RULE_EXIT';
+      }
+
+      if (exitPrice !== null) {
+        const turnover = (position.entryPrice + exitPrice) * position.qty;
+        const fees = turnover * 0.0003;
+        const slippage = turnover * 0.0002;
+        const pnl = (exitPrice - position.entryPrice) * position.qty - fees - slippage;
+        const pnlPct = ((exitPrice - position.entryPrice) / position.entryPrice) * 100;
+
+        const trade: BacktestTrade = {
+          type: 'BUY',
+          qty: position.qty,
+          entryPrice: position.entryPrice,
+          exitPrice,
+          entryTime: position.entryTime,
+          exitTime: candle.time,
+          pnl,
+          pnlPct,
+          reason,
+          fees,
+          slippage,
+          regime: position.regime
+        };
+
+        trades.push(trade);
+        equity += pnl;
+        equityCurve.push(equity);
+        maxEquity = Math.max(maxEquity, equity);
+        maxDrawdown = Math.max(maxDrawdown, ((maxEquity - equity) / maxEquity) * 100);
+
+        if (pnl >= 0) {
+          wins += 1;
+          grossProfit += pnl;
+        } else {
+          losses += 1;
+          grossLoss += Math.abs(pnl);
+        }
+
+        if (trade.regime === 'TRENDING') {
+          trendingTrades += 1;
+          trendingPnl += pnl;
+        } else {
+          sidewaysTrades += 1;
+          sidewaysPnl += pnl;
+        }
+
+        position = null;
+        decision = 'EXIT';
+      }
+    }
+
+    ruleTrace.push({
+      time: candle.time,
+      close: candle.close,
+      regime,
+      signals,
+      decision
+    });
+  }
+
+  const totalTrades = trades.length;
+  const netPnl = equity - 100000;
+  const winRate = totalTrades ? (wins / totalTrades) * 100 : 0;
+  const tradeReturns = trades.map(t => t.pnl / 100000);
+  const avgReturn = tradeReturns.length ? tradeReturns.reduce((a, b) => a + b, 0) / tradeReturns.length : 0;
+  const stdDev = tradeReturns.length
+    ? Math.sqrt(tradeReturns.reduce((acc, v) => acc + Math.pow(v - avgReturn, 2), 0) / tradeReturns.length)
+    : 0;
+  const sharpeRatio = stdDev > 0 ? (avgReturn / stdDev) * Math.sqrt(252) : 0;
+  const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 99 : 0;
+  const expectancy = totalTrades ? netPnl / totalTrades : 0;
+  const cagr = days > 0 ? ((Math.pow(equity / 100000, 365 / days) - 1) * 100) : 0;
+
+  return {
+    totalTrades,
+    winningTrades: wins,
+    losingTrades: losses,
+    winRate,
+    netPnl,
+    maxDrawdown,
+    sharpeRatio,
+    profitFactor,
+    expectancy,
+    cagr,
+    trades,
+    equityCurve,
+    ruleTrace,
+    regimeStats: {
+      trendingTrades,
+      sidewaysTrades,
+      trendingPnl,
+      sidewaysPnl
+    }
+  };
+};
 
 export default BacktestPanel;

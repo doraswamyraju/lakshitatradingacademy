@@ -55,9 +55,22 @@ export interface Order {
 }
 
 export interface UserFunds {
-  available: number;
-  used: number;
-  total: number;
+  walletBalance: number;
+  availableMargin: number;
+  usedMargin: number;
+  collateral: number;
+  dayPnl: number;
+}
+
+export interface FeedStatus {
+  source: 'BROKER_WS' | 'DISCONNECTED' | 'ERROR';
+  message: string;
+  broker?: string;
+  at?: string;
+  lastTickAt?: string | null;
+  latencyMs?: number | null;
+  reconnectCount?: number;
+  tokenAgeMinutes?: number | null;
 }
 
 export type IndicatorType = 'PRICE' | 'RSI' | 'SMA' | 'EMA' | 'MACD' | 'VOLUME' | 'BOLLINGER_UPPER' | 'BOLLINGER_LOWER' | 'BOLLINGER_MIDDLE' | 'ADX' | 'DI_PLUS' | 'DI_MINUS' | 'HEIKIN_ASHI_CANDLE';
@@ -132,12 +145,25 @@ export interface ChatMessage {
 
 export interface BacktestTrade {
   type: 'BUY' | 'SELL';
+  qty: number;
   entryPrice: number;
   exitPrice: number;
   entryTime: number;
   exitTime: number;
   pnl: number;
   pnlPct: number;
+  reason: string;
+  fees: number;
+  slippage: number;
+  regime: 'TRENDING' | 'SIDEWAYS';
+}
+
+export interface BacktestRuleTrace {
+  time: number;
+  close: number;
+  regime: 'TRENDING' | 'SIDEWAYS';
+  signals: string[];
+  decision: 'ENTER' | 'EXIT' | 'HOLD';
 }
 
 export interface BacktestResult {
@@ -148,8 +174,18 @@ export interface BacktestResult {
   netPnl: number;
   maxDrawdown: number;
   sharpeRatio: number;
+  profitFactor: number;
+  expectancy: number;
+  cagr: number;
   trades: BacktestTrade[];
   equityCurve: number[];
+  ruleTrace: BacktestRuleTrace[];
+  regimeStats: {
+    trendingTrades: number;
+    sidewaysTrades: number;
+    trendingPnl: number;
+    sidewaysPnl: number;
+  };
 }
 
 export interface ClassSession {

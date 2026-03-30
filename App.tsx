@@ -227,7 +227,7 @@ const App: React.FC = () => {
         </header>
 
         <div className="flex-1 overflow-hidden">
-           {activeTab === 'dashboard' && <MarketDashboard strategies={userStrategies} brokerConfig={brokerConfig} userRole={currentUser?.role || 'USER'} onRemoveStrategy={removeUserStrategy} />}
+           {activeTab === 'dashboard' && <MarketDashboard strategies={userStrategies} brokerConfig={brokerConfig} userRole={currentUser?.role || 'USER'} token={token} onRemoveStrategy={removeUserStrategy} />}
            {/* {activeTab === 'strategy' && <AILab />} */}
            {activeTab === 'admin' && (
             <AdminPanel strategies={masterStrategies} setStrategies={setMasterStrategies} token={token} />

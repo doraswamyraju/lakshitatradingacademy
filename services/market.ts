@@ -77,3 +77,32 @@ export const generateOrderBook = (currentPrice: number): { bids: OrderBookItem[]
 
   return { bids, asks };
 };
+
+export const fetchHistoricalCandles = async (params: {
+  token: string;
+  instrumentToken: number;
+  interval: 'minute' | '3minute' | '5minute' | '15minute' | '30minute' | '60minute' | 'day';
+  fromISO: string;
+  toISO: string;
+}): Promise<Candle[]> => {
+  const url = `/api/market-data/kite/historical?instrumentToken=${params.instrumentToken}&interval=${params.interval}&from=${encodeURIComponent(params.fromISO)}&to=${encodeURIComponent(params.toISO)}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${params.token}`
+    }
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error || 'Historical fetch failed.');
+  }
+
+  const candles = Array.isArray(data.candles) ? data.candles : [];
+  return candles.map((c: any, idx: number) => ({
+    time: Date.parse(c.time) || Date.now() + idx * 60000,
+    open: Number(c.open),
+    high: Number(c.high),
+    low: Number(c.low),
+    close: Number(c.close),
+    volume: Number(c.volume || 0)
+  }));
+};

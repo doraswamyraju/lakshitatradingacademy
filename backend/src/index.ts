@@ -23,6 +23,24 @@ export const systemErrors: any[] = [];
 const MARKET_DATA_CONFIG_ID = 'GLOBAL';
 const KITE_DEFAULT_REDIRECT = 'https://lakshitatradingacademy.com/kite/callback';
 
+const getGlobalKiteClient = async () => {
+  const config = await prisma.marketDataConfig.findUnique({ where: { id: MARKET_DATA_CONFIG_ID } });
+  if (!config) throw new Error('Market data config not found.');
+  if (config.brokerName !== 'Kite') throw new Error(`Unsupported broker ${config.brokerName}`);
+  if (!config.appKey || !config.appSecret || !config.accessToken) {
+    throw new Error('Kite credentials missing. Complete Kite login flow.');
+  }
+  return {
+    client: new KiteService({
+      apiKey: config.appKey,
+      apiSecret: config.appSecret,
+      accessToken: config.accessToken,
+      instrumentToken: config.bankNiftyInstrumentToken
+    }),
+    config
+  };
+};
+
 // Basic health check route
 app.get(['/api/health', '/health'], (req: Request, res: Response) => {
   res.json({ status: 'live', message: 'Lakshita Trading Academy Engine Running' });
@@ -246,6 +264,77 @@ app.get(['/api/market-data/kite/callback', '/market-data/kite/callback'], async 
   } catch (error: any) {
     console.error('[Kite Callback] Error:', error);
     res.status(500).send(`Kite authorization failed: ${error?.message || 'unknown error'}`);
+  }
+});
+
+app.get(['/api/market-data/kite/token-status', '/market-data/kite/token-status'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { config } = await getGlobalKiteClient();
+    const updatedAt = config.accessTokenUpdatedAt;
+    const tokenAgeMinutes = updatedAt ? Math.max(0, Math.round((Date.now() - updatedAt.getTime()) / 60000)) : null;
+    const shouldReconnect = !updatedAt || tokenAgeMinutes === null || tokenAgeMinutes > 1440;
+    res.json({
+      broker: config.brokerName,
+      isEnabled: config.isEnabled,
+      hasAccessToken: Boolean(config.accessToken),
+      accessTokenUpdatedAt: updatedAt,
+      tokenAgeMinutes,
+      shouldReconnect
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || 'Failed to get token status.' });
+  }
+});
+
+app.get(['/api/market-data/wallet', '/market-data/wallet'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { client } = await getGlobalKiteClient();
+    const wallet = await client.fetchWallet();
+    res.json({
+      broker: 'Kite',
+      wallet
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || 'Failed to fetch broker wallet.' });
+  }
+});
+
+app.get(['/api/market-data/kite/historical', '/market-data/kite/historical'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { client, config } = await getGlobalKiteClient();
+    const token = Number(req.query.instrumentToken || config.bankNiftyInstrumentToken || 260105);
+    const interval = String(req.query.interval || '5minute') as
+      | 'minute'
+      | '3minute'
+      | '5minute'
+      | '15minute'
+      | '30minute'
+      | '60minute'
+      | 'day';
+    const from = String(req.query.from || '');
+    const to = String(req.query.to || '');
+
+    const allowed = new Set(['minute', '3minute', '5minute', '15minute', '30minute', '60minute', 'day']);
+    if (!allowed.has(interval)) return res.status(400).json({ error: 'Invalid interval.' });
+    if (!from || !to) return res.status(400).json({ error: 'from and to query params are required.' });
+
+    const candles = await client.fetchHistoricalCandles({
+      instrumentToken: token,
+      interval,
+      from,
+      to
+    });
+
+    res.json({
+      instrumentToken: token,
+      interval,
+      from,
+      to,
+      count: candles.length,
+      candles
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || 'Failed to fetch historical candles.' });
   }
 });
 

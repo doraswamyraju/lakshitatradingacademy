@@ -11,6 +11,23 @@ interface KiteConfig {
   instrumentToken: number;
 }
 
+export interface KiteWalletSnapshot {
+  walletBalance: number;
+  availableMargin: number;
+  usedMargin: number;
+  collateral: number;
+  dayPnl: number;
+}
+
+export interface KiteHistoricalCandle {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 export class KiteService {
   private config: KiteConfig;
   private ws: WebSocket | null = null;
@@ -114,6 +131,63 @@ export class KiteService {
     } catch {
       return null;
     }
+  }
+
+  async fetchWallet(): Promise<KiteWalletSnapshot> {
+    const response = await axios.get('https://api.kite.trade/user/margins', {
+      headers: {
+        'X-Kite-Version': '3',
+        Authorization: `token ${this.config.apiKey}:${this.config.accessToken}`
+      }
+    });
+
+    const equity = (response.data as any)?.data?.equity || {};
+    const liveBalance = Number(equity.live_balance || 0);
+    const available = Number(equity.available?.live_balance ?? liveBalance);
+    const used = Number(equity.utilised?.debits || 0);
+    const collateral = Number(equity.available?.collateral || 0);
+    const net = Number(equity.net || liveBalance);
+    const dayPnl = net - liveBalance;
+
+    return {
+      walletBalance: Number.isFinite(liveBalance) ? liveBalance : 0,
+      availableMargin: Number.isFinite(available) ? available : 0,
+      usedMargin: Number.isFinite(used) ? used : 0,
+      collateral: Number.isFinite(collateral) ? collateral : 0,
+      dayPnl: Number.isFinite(dayPnl) ? dayPnl : 0
+    };
+  }
+
+  async fetchHistoricalCandles(params: {
+    instrumentToken: number;
+    interval: 'minute' | '3minute' | '5minute' | '15minute' | '30minute' | '60minute' | 'day';
+    from: string;
+    to: string;
+  }): Promise<KiteHistoricalCandle[]> {
+    const url = `https://api.kite.trade/instruments/historical/${params.instrumentToken}/${params.interval}`;
+    const response = await axios.get(url, {
+      params: {
+        from: params.from,
+        to: params.to,
+        oi: 0
+      },
+      headers: {
+        'X-Kite-Version': '3',
+        Authorization: `token ${this.config.apiKey}:${this.config.accessToken}`
+      }
+    });
+
+    const raw = (response.data as any)?.data?.candles;
+    if (!Array.isArray(raw)) return [];
+
+    return raw.map((item: any[]) => ({
+      time: String(item[0]),
+      open: Number(item[1]),
+      high: Number(item[2]),
+      low: Number(item[3]),
+      close: Number(item[4]),
+      volume: Number(item[5] || 0)
+    }));
   }
 
   private parseBinaryTicks(buffer: Buffer): { instrumentToken: number; lp: number; bids: any[]; asks: any[]; receivedAt: string }[] {

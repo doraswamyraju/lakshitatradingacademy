@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Zap, IndianRupee, Search, Activity, Play, Square, Globe, Clock, X, Trash2, LayoutGrid, Layers } from 'lucide-react';
-import { MarketState, UserFunds, Position, Order, TradingStrategy, BrokerConfig, UserRole, ChartType } from '../types';
+import { IndianRupee, Search, Activity, Play, Square, Globe, Clock, X, Trash2, LayoutGrid, Layers, Wallet, ShieldAlert, RefreshCcw } from 'lucide-react';
+import { MarketState, UserFunds, Position, Order, TradingStrategy, BrokerConfig, UserRole, ChartType, FeedStatus } from '../types';
 import { io } from 'socket.io-client';
 import LightweightMarketChart from './LightweightMarketChart';
 import TradingPanel from './TradingPanel';
@@ -10,10 +10,11 @@ interface MarketDashboardProps {
   strategies: TradingStrategy[];
   brokerConfig: BrokerConfig;
   userRole: UserRole;
+  token?: string | null;
   onRemoveStrategy?: (id: string) => void;
 }
 
-const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerConfig, onRemoveStrategy }) => {
+const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerConfig, token, onRemoveStrategy }) => {
   const [market, setMarket] = useState<MarketState>({
     symbol: 'NSE:BANKNIFTY',
     price: 0,
@@ -23,19 +24,28 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     trend: 'neutral',
     feedSource: 'DISCONNECTED'
   });
-  const [feedStatusMessage, setFeedStatusMessage] = useState('Waiting for market feed...');
+  const [feedStatus, setFeedStatus] = useState<FeedStatus>({
+    source: 'DISCONNECTED',
+    message: 'Waiting for market feed...'
+  });
 
   const [activeStrategyId, setActiveStrategyId] = useState<string | null>(null);
   const [isAutomationOn, setIsAutomationOn] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [timeframe, setTimeframe] = useState<'1m'|'5m'|'15m'|'1h'|'D'>('1m');
+  const [timeframe, setTimeframe] = useState<'1m' | '5m' | '15m' | '1h' | 'D'>('1m');
   const [chartType, setChartType] = useState<ChartType>('HEIKIN_ASHI');
   const [showSMA, setShowSMA] = useState(false);
   const [showEMA, setShowEMA] = useState(false);
   const [logs, setLogs] = useState<string[]>(['[SYSTEM] Waiting for live market data...']);
 
-  const [funds, setFunds] = useState<UserFunds>({ available: 500000.00, used: 0, total: 500000.00 });
+  const [funds, setFunds] = useState<UserFunds>({
+    walletBalance: 0,
+    availableMargin: 0,
+    usedMargin: 0,
+    collateral: 0,
+    dayPnl: 0
+  });
   const [positions, setPositions] = useState<Position[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
 
@@ -45,8 +55,44 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   useEffect(() => { strategyRef.current = activeStrategyId; }, [activeStrategyId]);
 
   const addLog = (msg: string) => {
-    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 15));
+    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 20));
   };
+
+  const fetchWallet = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/market-data/wallet', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Wallet fetch failed.');
+      setFunds(data.wallet);
+    } catch (error: any) {
+      addLog(`[WALLET] ${error.message}`);
+    }
+  };
+
+  const fetchTokenStatus = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/market-data/kite/token-status', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Token status fetch failed.');
+      if (data.shouldReconnect) {
+        addLog('[TOKEN] Kite session likely stale. Reconnect Kite before market hours.');
+      }
+    } catch (error: any) {
+      addLog(`[TOKEN] ${error.message}`);
+    }
+  };
+
+  useEffect(() => {
+    fetchWallet();
+    fetchTokenStatus();
+    const interval = setInterval(() => {
+      fetchWallet();
+      fetchTokenStatus();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [token]);
 
   useEffect(() => {
     const socket = io({ path: '/api/socket.io' });
@@ -66,9 +112,9 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
       }
     });
 
-    socket.on('feed_status', (payload: { source: 'BROKER_WS' | 'DISCONNECTED' | 'ERROR'; message: string }) => {
+    socket.on('feed_status', (payload: FeedStatus) => {
       setMarket(prev => ({ ...prev, feedSource: payload.source }));
-      setFeedStatusMessage(payload.message);
+      setFeedStatus(payload);
       addLog(`[FEED] ${payload.message}`);
     });
 
@@ -103,8 +149,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     const orderValue = executionPrice * quantity;
     const marginRequired = product === 'MIS' ? orderValue / 5 : orderValue;
 
-    if (side === 'BUY' && funds.available < marginRequired) {
-      addLog(`[ORDER REJECTED] Insufficient funds for Rs.${marginRequired.toFixed(2)} margin.`);
+    if (side === 'BUY' && funds.availableMargin < marginRequired) {
+      addLog(`[ORDER REJECTED] Insufficient margin for ₹${marginRequired.toFixed(2)}.`);
       return;
     }
 
@@ -122,9 +168,17 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     setOrders(prev => [newOrder, ...prev]);
 
     if (side === 'BUY') {
-      setFunds(prev => ({ ...prev, available: prev.available - marginRequired, used: prev.used + marginRequired }));
+      setFunds(prev => ({
+        ...prev,
+        availableMargin: Math.max(0, prev.availableMargin - marginRequired),
+        usedMargin: prev.usedMargin + marginRequired
+      }));
     } else {
-      setFunds(prev => ({ ...prev, available: prev.available + marginRequired, used: prev.used - marginRequired }));
+      setFunds(prev => ({
+        ...prev,
+        availableMargin: prev.availableMargin + marginRequired,
+        usedMargin: Math.max(0, prev.usedMargin - marginRequired)
+      }));
     }
   };
 
@@ -134,6 +188,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     setIsAutomationOn(!isAutomationOn);
     addLog(`AUTO: ${!isAutomationOn ? 'ACTIVE' : 'IDLE'}`);
   };
+
+  const totalPnl = positions.reduce((acc, p) => acc + p.pnl, 0);
 
   return (
     <div className="h-full flex flex-col p-6 gap-6 overflow-hidden">
@@ -151,7 +207,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
           </div>
           <div className="flex flex-col">
             <span className={`text-3xl font-mono font-bold tracking-tighter ${market.trend === 'bullish' ? 'text-samp-success' : 'text-samp-danger'}`}>{market.price > 0 ? market.price.toFixed(2) : '--'}</span>
-            <span className="text-xs font-mono font-medium text-slate-500">{feedStatusMessage}</span>
+            <span className="text-xs font-mono font-medium text-slate-500">{feedStatus.message}</span>
           </div>
         </div>
 
@@ -164,7 +220,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                 {strategies.map(s => (<option key={s.id} value={s.id} className="bg-white dark:bg-[#151725]">{s.name} ({s.qty} Units)</option>))}
               </select>
               {activeStrategyId && !isAutomationOn && onRemoveStrategy && (
-                <button onClick={() => { onRemoveStrategy(activeStrategyId); setActiveStrategyId(null); }} className="p-1 text-slate-400 hover:text-samp-danger transition-colors"><Trash2 size={14}/></button>
+                <button onClick={() => { onRemoveStrategy(activeStrategyId); setActiveStrategyId(null); }} className="p-1 text-slate-400 hover:text-samp-danger transition-colors"><Trash2 size={14} /></button>
               )}
             </div>
           </div>
@@ -174,10 +230,20 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
           </div>
         </div>
 
-        <div className="flex items-center gap-8 pr-4">
-          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Free Margin</p><p className="text-xl text-slate-900 dark:text-white font-mono font-bold">Rs.{funds.available.toLocaleString()}</p></div>
-          <div className="text-right min-w-[100px]"><p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Portfolio P&L</p><p className={`text-xl font-mono font-bold ${positions.reduce((acc, p) => acc + p.pnl, 0) >= 0 ? 'text-samp-success' : 'text-samp-danger'}`}>{positions.reduce((acc, p) => acc + p.pnl, 0) >= 0 ? '+' : ''}Rs.{positions.reduce((acc, p) => acc + p.pnl, 0).toFixed(2)}</p></div>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 pr-4 min-w-[350px]">
+          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Wallet Balance</p><p className="text-lg text-slate-900 dark:text-white font-mono font-bold">₹{funds.walletBalance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
+          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Available Margin</p><p className="text-lg text-samp-success font-mono font-bold">₹{funds.availableMargin.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
+          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Used Margin</p><p className="text-lg text-slate-900 dark:text-white font-mono font-bold">₹{funds.usedMargin.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
+          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Day P&L</p><p className={`text-lg font-mono font-bold ${funds.dayPnl >= 0 ? 'text-samp-success' : 'text-samp-danger'}`}>{funds.dayPnl >= 0 ? '+' : ''}₹{funds.dayPnl.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
         </div>
+      </div>
+
+      <div className="grid grid-cols-5 gap-3 shrink-0">
+        <FeedBadge icon={<Globe size={14} />} label="Broker" value={feedStatus.broker || 'Kite'} />
+        <FeedBadge icon={<Clock size={14} />} label="Last Tick" value={feedStatus.lastTickAt ? new Date(feedStatus.lastTickAt).toLocaleTimeString() : '--'} />
+        <FeedBadge icon={<Activity size={14} />} label="Latency" value={typeof feedStatus.latencyMs === 'number' ? `${feedStatus.latencyMs} ms` : '--'} />
+        <FeedBadge icon={<RefreshCcw size={14} />} label="Reconnects" value={String(feedStatus.reconnectCount ?? 0)} />
+        <FeedBadge icon={<ShieldAlert size={14} />} label="Token Age" value={feedStatus.tokenAgeMinutes !== undefined && feedStatus.tokenAgeMinutes !== null ? `${feedStatus.tokenAgeMinutes} min` : '--'} />
       </div>
 
       <div className="flex-1 grid grid-cols-12 gap-6 min-h-0 overflow-hidden">
@@ -191,6 +257,9 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                   <button onClick={() => setChartType('CANDLE')} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${chartType === 'CANDLE' ? 'bg-white dark:bg-samp-surface text-samp-primary shadow-sm' : 'text-slate-500'}`}><LayoutGrid size={12} /> Standard</button>
                   <button onClick={() => setChartType('HEIKIN_ASHI')} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${chartType === 'HEIKIN_ASHI' ? 'bg-white dark:bg-samp-surface text-samp-primary shadow-sm' : 'text-slate-500'}`}><Layers size={12} /> Heikin Ashi</button>
                 </div>
+                <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-2 self-center"></div>
+                <button onClick={() => setShowSMA(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showSMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>SMA 20</button>
+                <button onClick={() => setShowEMA(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showEMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>EMA 9</button>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono"><Globe size={12} className="text-samp-accent" />FEED: {market.feedSource}</div>
@@ -203,7 +272,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                 <div className="absolute inset-0 flex items-center justify-center bg-slate-900/35 rounded-xl">
                   <div className="text-center">
                     <p className="text-white font-bold text-sm">No live market data</p>
-                    <p className="text-gray-300 text-xs mt-1">{feedStatusMessage}</p>
+                    <p className="text-gray-300 text-xs mt-1">{feedStatus.message}</p>
                   </div>
                 </div>
               )}
@@ -222,8 +291,23 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
               {market.bids.slice(0, 5).map((b, i) => (<div key={i} className="flex justify-between py-1 px-2 relative group hover:bg-samp-success/5"><span className="text-samp-success z-10">{b.price.toFixed(2)}</span><span className="text-slate-400 z-10">{b.amount}</span></div>))}
             </div>
           </div>
-          <div className="bg-slate-100 dark:bg-black border border-slate-200 dark:border-white/5 rounded-[24px] p-5 flex flex-col h-[240px] shrink-0 font-mono shadow-inner transition-colors duration-300">
-            <h3 className="text-[10px] font-bold text-slate-600 mb-3 uppercase tracking-widest">Operation Log</h3>
+          <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-4 shrink-0 transition-colors duration-300">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <Wallet size={14} className="text-samp-primary" /> Wallet Snapshot
+            </h3>
+            <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div className="rounded-xl border border-slate-200 dark:border-white/5 p-3 bg-slate-50 dark:bg-black/20">
+                <div className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">Wallet</div>
+                <div className="font-bold text-slate-900 dark:text-white">₹{funds.walletBalance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 dark:border-white/5 p-3 bg-slate-50 dark:bg-black/20">
+                <div className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">Collateral</div>
+                <div className="font-bold text-slate-900 dark:text-white">₹{funds.collateral.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-slate-100 dark:bg-black border border-slate-200 dark:border-white/5 rounded-[24px] p-5 flex flex-col h-[220px] shrink-0 font-mono shadow-inner transition-colors duration-300">
+            <h3 className="text-[10px] font-bold text-slate-600 mb-3 uppercase tracking-widest">Audit Log</h3>
             <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-hide">{logs.map((log, i) => (<div key={i} className="text-[10px] leading-relaxed text-slate-600 dark:text-gray-500 border-l border-slate-300 dark:border-white/5 pl-2">{log}</div>))}</div>
           </div>
         </div>
@@ -246,5 +330,15 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     </div>
   );
 };
+
+const FeedBadge: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
+  <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-xl p-3 flex items-center justify-between shadow-sm">
+    <div className="flex items-center gap-2 text-slate-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+      {icon}
+      {label}
+    </div>
+    <div className="text-xs font-mono font-bold text-slate-900 dark:text-white">{value}</div>
+  </div>
+);
 
 export default MarketDashboard;
