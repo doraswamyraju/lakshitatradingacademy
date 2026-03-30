@@ -29,54 +29,65 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   // Transform and aggregate data based on Timeframe
   const formattedData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    
-    // Determine compression factor
-    let factor = 1;
-    if (timeframe === '5m') factor = 5;
-    if (timeframe === '15m') factor = 15;
-    if (timeframe === '1h') factor = 60;
-    if (timeframe === 'D') factor = 60 * 24;
 
-    const aggregated = [];
-    // Aggregate from oldest to newest
-    for (let i = 0; i < data.length; i += factor) {
-       const chunk = data.slice(i, i + factor);
-       if (chunk.length === 0) break;
-       
-       const open = chunk[0].open;
-       const close = chunk[chunk.length - 1].close;
-       const high = Math.max(...chunk.map(c => c.high));
-       const low = Math.min(...chunk.map(c => c.low));
-       const volume = chunk.reduce((sum, c) => sum + c.volume, 0);
-       
-       aggregated.push({ ...chunk[0], open, high, low, close, volume });
+    const bucketSecondsMap: Record<string, number> = {
+      '1m': 60,
+      '3m': 180,
+      '5m': 300,
+      '15m': 900,
+      '30m': 1800,
+      '1h': 3600,
+      'D': 86400
+    };
+    const bucketSeconds = bucketSecondsMap[timeframe] || 60;
+
+    const sorted = [...data]
+      .filter(d => Number.isFinite(d.time))
+      .sort((a, b) => a.time - b.time);
+
+    if (sorted.length === 0) return [];
+
+    const aggregated: Array<{
+      time: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }> = [];
+
+    for (const candle of sorted) {
+      const tsSec = Math.floor(candle.time / 1000);
+      const bucketStart = Math.floor(tsSec / bucketSeconds) * bucketSeconds;
+      const last = aggregated[aggregated.length - 1];
+
+      if (!last || last.time !== bucketStart) {
+        aggregated.push({
+          time: bucketStart,
+          open: candle.open,
+          high: candle.high,
+          low: candle.low,
+          close: candle.close,
+          volume: candle.volume
+        });
+        continue;
+      }
+
+      last.high = Math.max(last.high, candle.high);
+      last.low = Math.min(last.low, candle.low);
+      last.close = candle.close;
+      last.volume += candle.volume;
     }
 
-    // Assign Chronological Unix Timestamps shifted to IST (+5 hours 30 mins)
-    const now = new Date();
-    // Force Market Freeze at 15:30 IST on the UI clock mathematically
-    const currentHourIST = now.getUTCHours() + 5 + Math.floor((now.getUTCMinutes() + 30) / 60);
-    const currentMinuteIST = (now.getUTCMinutes() + 30) % 60;
-    const isMarketClosed = currentHourIST > 15 || (currentHourIST === 15 && currentMinuteIST >= 30) || currentHourIST < 9;
-    
-    const uiTime = isMarketClosed ? (() => { const d = new Date(now); d.setUTCHours(10, 0, 0, 0); return d; })() : now;
-    
-    const nowSecs = Math.floor(uiTime.getTime() / 1000);
-    const IST_OFFSET_SECONDS = 19800; // 5.5 hours * 3600
-    
-    const result = aggregated.map((d, index) => {
-        const minutesAgo = (aggregated.length - 1 - index) * factor;
-        const ts = nowSecs - (minutesAgo * 60) + IST_OFFSET_SECONDS;
-
-        let o = d.open; let c = d.close; let h = d.high; let l = d.low;
-
-        return {
-           time: ts as Time, 
-           open: o, high: h, low: l, close: c,
-           value: c, // for line charts
-           volume: d.volume
-        };
-    });
+    const result = aggregated.map((d) => ({
+      time: d.time as Time,
+      open: d.open,
+      high: d.high,
+      low: d.low,
+      close: d.close,
+      value: d.close,
+      volume: d.volume
+    }));
 
     if (chartType === 'HEIKIN_ASHI' && result.length > 0) {
         // Compute strict HA transformation over the raw set
@@ -108,7 +119,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     }
 
     return result;
-  }, [data, chartType]);
+  }, [data, chartType, timeframe]);
 
   const smaData = useMemo(() => {
     if (!showSMA || formattedData.length === 0) return [];
