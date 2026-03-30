@@ -51,6 +51,8 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
   const [selectedStrategyId, setSelectedStrategyId] = useState<string | null>(null);
   const [days, setDays] = useState(30);
   const [timeframe, setTimeframe] = useState<'1m' | '3m' | '5m' | '15m' | '30m' | '1h' | 'D'>('5m');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [isSimulating, setIsSimulating] = useState(false);
   const [result, setResult] = useState<BacktestResult | null>(null);
   const [historicalData, setHistoricalData] = useState<Candle[]>([]);
@@ -76,9 +78,18 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
     setError(null);
 
     try {
-      const toDate = new Date();
+      const hasCustomRange = Boolean(customFrom && customTo);
+      const toDate = hasCustomRange ? new Date(customTo) : new Date();
       // Fetch with a calendar buffer so weekends/holidays don't collapse the selected trading window.
-      const fromDate = new Date(Date.now() - (days + 10) * 24 * 60 * 60 * 1000);
+      const fromDate = hasCustomRange
+        ? new Date(customFrom)
+        : new Date(Date.now() - (days + 10) * 24 * 60 * 60 * 1000);
+      if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+        throw new Error('Invalid From/To date.');
+      }
+      if (fromDate >= toDate) {
+        throw new Error('From date must be earlier than To date.');
+      }
 
       const rawCandles = await fetchHistoricalCandles({
         token,
@@ -88,8 +99,9 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
         toISO: toDate.toISOString()
       });
 
-      const targetCandles = estimateTargetCandles(days, timeframe);
-      const candles = rawCandles.slice(-targetCandles);
+      const candles = hasCustomRange
+        ? rawCandles.filter(c => c.time >= fromDate.getTime() && c.time <= toDate.getTime())
+        : rawCandles.slice(-estimateTargetCandles(days, timeframe));
 
       if (candles.length < 50) {
         throw new Error('Not enough historical candles returned from broker.');
@@ -163,6 +175,26 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] ml-1">From (Optional)</label>
+                <input
+                  type="datetime-local"
+                  value={customFrom}
+                  onChange={e => setCustomFrom(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-xl py-3 px-3 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all font-bold text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] ml-1">To (Optional)</label>
+                <input
+                  type="datetime-local"
+                  value={customTo}
+                  onChange={e => setCustomTo(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-xl py-3 px-3 text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-all font-bold text-sm"
+                />
+              </div>
+
               <button
                 onClick={runSimulation}
                 disabled={!selectedStrategyId || isSimulating || !token}
@@ -189,7 +221,7 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
             </div>
             <div className="text-xs text-slate-700 dark:text-gray-300 flex items-center justify-between">
               <span>Window</span>
-              <span className="font-bold">{days}D</span>
+              <span className="font-bold">{customFrom && customTo ? 'Custom' : `${days}D`}</span>
             </div>
             <div className="text-xs text-slate-700 dark:text-gray-300 flex items-center justify-between">
               <span>Candles</span>
