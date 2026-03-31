@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Key, Shield, Globe, Power, CheckCircle2, AlertCircle, X } from 'lucide-react';
-import { BrokerConfig } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Key, Shield, Globe, Power, CheckCircle2, AlertCircle, X, ExternalLink, RefreshCw } from 'lucide-react';
+import { BrokerConfig, UserRole } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 interface SettingsPanelProps {
@@ -9,10 +9,81 @@ interface SettingsPanelProps {
 }
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<'success' | 'error' | null>(null);
+
+  // System Config State (for Admins)
+  const [sysConfig, setSysConfig] = useState<any>(null);
+  const [isSysLoading, setIsSysLoading] = useState(false);
+  const [sysStatus, setSysStatus] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    if (user?.role === 'ADMIN' && token) {
+      fetchSystemConfig();
+    }
+  }, [user, token]);
+
+  const fetchSystemConfig = async () => {
+    setIsSysLoading(true);
+    try {
+      const res = await fetch('/api/market-data/config', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) setSysConfig(data);
+    } catch (err) {
+      console.error('Failed to fetch system config:', err);
+    } finally {
+      setIsSysLoading(false);
+    }
+  };
+
+  const saveSystemConfig = async () => {
+    if (!sysConfig || !token) return;
+    setIsSysLoading(true);
+    setSysStatus(null);
+    try {
+      const res = await fetch('/api/market-data/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(sysConfig)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save system config');
+      setSysStatus({ msg: 'System configuration saved successfully.', type: 'success' });
+      // Refresh to get any server-side defaults
+      fetchSystemConfig();
+    } catch (err: any) {
+      setSysStatus({ msg: err.message, type: 'error' });
+    } finally {
+      setIsSysLoading(false);
+    }
+  };
+
+  const handleKiteLoginInitiate = async () => {
+    if (!token) return;
+    setIsSysLoading(true);
+    try {
+      const res = await fetch('/api/market-data/kite/login-url', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to get login URL');
+      if (data.loginUrl) {
+        window.open(data.loginUrl, '_blank');
+        setSysStatus({ msg: 'Kite login tab opened. Please complete login there.', type: 'success' });
+      }
+    } catch (err: any) {
+      setSysStatus({ msg: err.message, type: 'error' });
+    } finally {
+      setIsSysLoading(false);
+    }
+  };
 
   const persistConfig = async (newConfig: BrokerConfig) => {
     if (!token) {
@@ -86,14 +157,15 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* User Broker Config */}
         <div className="bg-samp-surface border border-white/5 rounded-2xl p-6 space-y-6">
           <div className="flex items-center gap-3 mb-2">
              <div className="p-2 bg-samp-primary/10 rounded-lg text-samp-primary">
                 <Globe size={20} />
              </div>
-             <h3 className="font-bold text-white">Select Broker</h3>
+             <h3 className="font-bold text-white">Your Personal Broker</h3>
           </div>
-
+          {/* ... (existing user broker config fields) ... */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
              {['AngelOne', 'Zerodha', 'Upstox', 'AliceBlue'].map(b => (
                <button
@@ -171,43 +243,126 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
           )}
         </div>
 
-        <div className="space-y-6">
-           <div className="bg-samp-surface border border-white/5 rounded-2xl p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-samp-success/10 rounded-lg text-samp-success">
-                    <Shield size={20} />
+        {/* System Broker Config (Admin Only) */}
+        {user?.role === 'ADMIN' && (
+          <div className="bg-samp-surface border border-samp-primary/20 rounded-2xl p-6 space-y-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-2 opacity-10">
+              <Shield size={80} />
+            </div>
+            <div className="flex items-center gap-3 mb-2">
+               <div className="p-2 bg-samp-primary/10 rounded-lg text-samp-primary">
+                  <Shield size={20} />
+               </div>
+               <div>
+                 <h3 className="font-bold text-white">System Broker (Global)</h3>
+                 <p className="text-[10px] text-samp-accent font-bold uppercase tracking-widest">Feeds Terminal Dashboard</p>
+               </div>
+            </div>
+
+            {!sysConfig ? (
+              <div className="py-10 flex flex-col items-center justify-center text-gray-500">
+                <RefreshCw size={24} className="animate-spin mb-2" />
+                <p className="text-xs">Loading system configuration...</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] text-gray-500 uppercase font-bold mb-1 block">Global Kite API Key</label>
+                    <input
+                      type="text"
+                      value={sysConfig.appKey || ''}
+                      onChange={e => setSysConfig({ ...sysConfig, appKey: e.target.value })}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-2 px-4 text-white outline-none focus:border-samp-primary"
+                      placeholder="Zerodha API Key"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 uppercase font-bold mb-1 block">Global Kite API Secret</label>
+                    <input
+                      type="password"
+                      value={sysConfig.appSecret || ''}
+                      onChange={e => setSysConfig({ ...sysConfig, appSecret: e.target.value })}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-2 px-4 text-white outline-none focus:border-samp-primary"
+                      placeholder="Zerodha API Secret"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
+                    <span className="text-xs text-gray-400">Status</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sysConfig.accessToken ? 'bg-samp-success/20 text-samp-success' : 'bg-samp-danger/20 text-samp-danger'}`}>
+                      {sysConfig.accessToken ? 'AUTHENTICATED' : 'TOKEN MISSING'}
+                    </span>
+                  </div>
                 </div>
-                <h3 className="font-bold text-white">Security Status</h3>
-              </div>
 
-              <div className="space-y-4">
-                 <div className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                       <CheckCircle2 size={16} className="text-samp-success" />
-                       Encryption Active
-                    </div>
-                    <span className="text-[10px] font-mono text-gray-600">AES-256</span>
-                 </div>
-                 <div className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                       <CheckCircle2 size={16} className="text-samp-success" />
-                       TOTP Configured
-                    </div>
-                    <span className="text-[10px] font-mono text-gray-600">ENABLED</span>
-                 </div>
-              </div>
-           </div>
+                {sysStatus && (
+                  <div className={`text-xs rounded-xl border px-3 py-2 ${sysStatus.type === 'error' ? 'text-red-300 border-red-500/40 bg-red-500/10' : 'text-emerald-300 border-emerald-500/40 bg-emerald-500/10'}`}>
+                    {sysStatus.msg}
+                  </div>
+                )}
 
-           <div className="bg-amber-950/20 border border-amber-500/20 rounded-2xl p-6 flex gap-4">
-              <AlertCircle className="text-amber-500 shrink-0" size={20} />
-              <div className="space-y-2">
-                 <h4 className="text-sm font-bold text-amber-500">Important Note</h4>
-                 <p className="text-xs text-amber-500/70 leading-relaxed">
-                    Automated trading carries high risk. Ensure your API keys have restricted permissions (only 'Trade' and 'Order' access). Never share your API Secret.
-                 </p>
+                <div className="flex flex-col gap-3 pt-2">
+                  <button
+                    onClick={saveSystemConfig}
+                    disabled={isSysLoading}
+                    className="w-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-white/10 disabled:opacity-50"
+                  >
+                    {isSysLoading ? 'Processing...' : 'Save Meta-Config'}
+                  </button>
+                  
+                  {sysConfig.appKey && sysConfig.appSecret && (
+                    <button
+                      onClick={handleKiteLoginInitiate}
+                      disabled={isSysLoading}
+                      className="w-full bg-samp-primary hover:bg-indigo-500 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-samp-primary/20 disabled:opacity-50 group"
+                    >
+                      <ExternalLink size={18} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                      Establish Live Kite Session
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+         <div className="bg-samp-surface border border-white/5 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-samp-success/10 rounded-lg text-samp-success">
+                  <Shield size={20} />
               </div>
-           </div>
-        </div>
+              <h3 className="font-bold text-white">Security Status</h3>
+            </div>
+
+            <div className="space-y-4">
+               <div className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                     <CheckCircle2 size={16} className="text-samp-success" />
+                     Encryption Active
+                  </div>
+                  <span className="text-[10px] font-mono text-gray-600">AES-256</span>
+               </div>
+               <div className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                     <CheckCircle2 size={16} className="text-samp-success" />
+                     TOTP Configured
+                  </div>
+                  <span className="text-[10px] font-mono text-gray-600">ENABLED</span>
+               </div>
+            </div>
+         </div>
+
+         <div className="bg-amber-950/20 border border-amber-500/20 rounded-2xl p-6 flex gap-4">
+            <AlertCircle className="text-amber-500 shrink-0" size={20} />
+            <div className="space-y-2">
+               <h4 className="text-sm font-bold text-amber-500">Important Note</h4>
+               <p className="text-xs text-amber-500/70 leading-relaxed">
+                  Automated trading carries high risk. Ensure your API keys have restricted permissions (only 'Trade' and 'Order' access). Never share your API Secret.
+               </p>
+            </div>
+         </div>
       </div>
     </div>
   );

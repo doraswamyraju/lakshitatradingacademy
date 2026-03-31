@@ -67,7 +67,7 @@ const App: React.FC = () => {
       timeframe: '5m',
       qty: 1,
       productType: 'MIS',
-      riskConfig: { stopLossPct: 30, takeProfitPct: 0, trailingStopLoss: false }, // Represents SL fallback. Target handled fundamentally by RR 1:3 rules in backend
+      riskConfig: { stopLossPct: 30, takeProfitPct: 0, trailingStopLoss: false }, 
       isActive: true,
       createdBy: 'admin',
       isMaster: true
@@ -107,6 +107,18 @@ const App: React.FC = () => {
         setBrokerConfig(prev => ({ ...prev, isConnected: false }));
       });
   }, [token]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['dashboard', 'strategy', 'admin', 'settings', 'backtest', 'hub', 'learn'].includes(hash)) {
+        setActiveTab(hash as any);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    handleHashChange(); // Initial check
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   useEffect(() => {
     const root = window.document.documentElement;

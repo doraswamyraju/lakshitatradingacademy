@@ -24,21 +24,23 @@ const MARKET_DATA_CONFIG_ID = 'GLOBAL';
 const KITE_DEFAULT_REDIRECT = 'https://lakshitatradingacademy.com/kite/callback';
 
 const getGlobalKiteClient = async () => {
-  const config = await prisma.marketDataConfig.findUnique({ where: { id: MARKET_DATA_CONFIG_ID } });
-  if (!config) throw new Error('Market data config not found.');
-  if (config.brokerName !== 'Kite') throw new Error(`Unsupported broker ${config.brokerName}`);
-  if (!config.appKey || !config.appSecret || !config.accessToken) {
-    throw new Error('Kite credentials missing. Complete Kite login flow.');
+  try {
+    const config = await prisma.marketDataConfig.findUnique({ where: { id: MARKET_DATA_CONFIG_ID } });
+    if (!config || config.brokerName !== 'Kite' || !config.appKey || !config.appSecret || !config.accessToken) {
+      return null;
+    }
+    return {
+      client: new KiteService({
+        apiKey: config.appKey,
+        apiSecret: config.appSecret,
+        accessToken: config.accessToken,
+        instrumentToken: config.bankNiftyInstrumentToken
+      }),
+      config
+    };
+  } catch (error) {
+    return null;
   }
-  return {
-    client: new KiteService({
-      apiKey: config.appKey,
-      apiSecret: config.appSecret,
-      accessToken: config.accessToken,
-      instrumentToken: config.bankNiftyInstrumentToken
-    }),
-    config
-  };
 };
 
 const formatKiteDateTime = (raw: string): string => {
@@ -284,7 +286,18 @@ app.get(['/api/market-data/kite/callback', '/market-data/kite/callback'], async 
 
 app.get(['/api/market-data/kite/token-status', '/market-data/kite/token-status'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { config } = await getGlobalKiteClient();
+    const kite = await getGlobalKiteClient();
+    if (!kite) {
+      return res.json({
+        broker: 'Kite',
+        isEnabled: false,
+        hasAccessToken: false,
+        accessTokenUpdatedAt: null,
+        tokenAgeMinutes: null,
+        shouldReconnect: true
+      });
+    }
+    const { config } = kite;
     const updatedAt = config.accessTokenUpdatedAt;
     const tokenAgeMinutes = updatedAt ? Math.max(0, Math.round((Date.now() - updatedAt.getTime()) / 60000)) : null;
     const shouldReconnect = !updatedAt || tokenAgeMinutes === null || tokenAgeMinutes > 1440;
@@ -297,26 +310,33 @@ app.get(['/api/market-data/kite/token-status', '/market-data/kite/token-status']
       shouldReconnect
     });
   } catch (error: any) {
-    res.status(400).json({ error: error?.message || 'Failed to get token status.' });
+    res.json({ error: 'Failed to get token status', isEnabled: false });
   }
 });
 
 app.get(['/api/market-data/wallet', '/market-data/wallet'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { client } = await getGlobalKiteClient();
-    const wallet = await client.fetchWallet();
+    const kite = await getGlobalKiteClient();
+    if (!kite) {
+      return res.json({ broker: 'Kite', wallet: { walletBalance: 0, availableMargin: 0, usedMargin: 0, dayPnl: 0 } });
+    }
+    const wallet = await kite.client.fetchWallet();
     res.json({
       broker: 'Kite',
       wallet
     });
   } catch (error: any) {
-    res.status(400).json({ error: error?.message || 'Failed to fetch broker wallet.' });
+    res.json({ error: 'Failed to fetch wallet', wallet: { walletBalance: 0, availableMargin: 0, usedMargin: 0, dayPnl: 0 } });
   }
 });
 
 app.get(['/api/market-data/kite/historical', '/market-data/kite/historical'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { client, config } = await getGlobalKiteClient();
+    const kite = await getGlobalKiteClient();
+    if (!kite) {
+      return res.json({ candles: [], count: 0, message: 'Broker not linked' });
+    }
+    const { client, config } = kite;
     const token = Number(req.query.instrumentToken || config.bankNiftyInstrumentToken || 260105);
     const interval = String(req.query.interval || '5minute') as
       | 'minute'
@@ -330,8 +350,8 @@ app.get(['/api/market-data/kite/historical', '/market-data/kite/historical'], au
     const to = String(req.query.to || '');
 
     const allowed = new Set(['minute', '3minute', '5minute', '15minute', '30minute', '60minute', 'day']);
-    if (!allowed.has(interval)) return res.status(400).json({ error: 'Invalid interval.' });
-    if (!from || !to) return res.status(400).json({ error: 'from and to query params are required.' });
+    if (!allowed.has(interval)) return res.json({ error: 'Invalid interval.', candles: [] });
+    if (!from || !to) return res.json({ error: 'from and to required.', candles: [] });
 
     const candles = await client.fetchHistoricalCandles({
       instrumentToken: token,
@@ -349,17 +369,21 @@ app.get(['/api/market-data/kite/historical', '/market-data/kite/historical'], au
       candles
     });
   } catch (error: any) {
-    res.status(400).json({ error: error?.message || 'Failed to fetch historical candles.' });
+    res.json({ error: 'Failed to fetch historical data', candles: [] });
   }
 });
 
 app.get(['/api/market-data/kite/option-chain', '/market-data/kite/option-chain'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { client, config } = await getGlobalKiteClient();
+    const kite = await getGlobalKiteClient();
+    if (!kite) {
+      return res.json({ rows: [], message: 'Broker not linked' });
+    }
+    const { client, config } = kite;
     const spotLtp = await client.fetchLtp('NSE:NIFTY BANK');
     const spot = Number(req.query.spot || spotLtp || 0);
     if (!Number.isFinite(spot) || spot <= 0) {
-      return res.status(400).json({ error: 'Unable to determine BANKNIFTY spot.' });
+      return res.json({ error: 'Unable to determine spot.', rows: [] });
     }
     const expiry = req.query.expiry ? String(req.query.expiry) : undefined;
     const strikesAround = Number(req.query.strikesAround || 6);
@@ -376,13 +400,17 @@ app.get(['/api/market-data/kite/option-chain', '/market-data/kite/option-chain']
       rows: chain.rows
     });
   } catch (error: any) {
-    res.status(400).json({ error: error?.message || 'Failed to fetch option chain.' });
+    res.json({ error: 'Failed to fetch option chain', rows: [] });
   }
 });
 
 app.post(['/api/algo/order', '/algo/order'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { client } = await getGlobalKiteClient();
+    const kite = await getGlobalKiteClient();
+    if (!kite) {
+      return res.status(400).json({ error: 'Broker not linked. Please connect Kite first.' });
+    }
+    const { client } = kite;
     const {
       tradingsymbol = 'NIFTY BANK',
       exchange = 'NSE',
@@ -414,8 +442,11 @@ app.post(['/api/algo/order', '/algo/order'], authenticateToken, async (req: Requ
 
 app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (_req: Request, res: Response) => {
   try {
-    const { client } = await getGlobalKiteClient();
-    const rows = await client.fetchOrders();
+    const kite = await getGlobalKiteClient();
+    if (!kite) {
+      return res.json({ orders: [], message: 'Broker not linked' });
+    }
+    const rows = await kite.client.fetchOrders();
     const orders = rows.slice(0, 200).map((o: any) => ({
       order_id: o.order_id,
       symbol: `${o.exchange}:${o.tradingsymbol}`,
@@ -429,14 +460,17 @@ app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (_req: Re
     }));
     res.json({ orders });
   } catch (error: any) {
-    res.status(400).json({ error: error?.message || 'Failed to fetch orders.' });
+    res.json({ orders: [], error: 'Failed to fetch orders' });
   }
 });
 
 app.get(['/api/algo/positions', '/algo/positions'], authenticateToken, async (_req: Request, res: Response) => {
   try {
-    const { client } = await getGlobalKiteClient();
-    const rows = await client.fetchPositions();
+    const kite = await getGlobalKiteClient();
+    if (!kite) {
+      return res.json({ positions: [], message: 'Broker not linked' });
+    }
+    const rows = await kite.client.fetchPositions();
     const positions = rows.map((p: any) => ({
       symbol: `${p.exchange}:${p.tradingsymbol}`,
       quantity: Number(p.quantity || 0),
@@ -447,7 +481,7 @@ app.get(['/api/algo/positions', '/algo/positions'], authenticateToken, async (_r
     }));
     res.json({ positions });
   } catch (error: any) {
-    res.status(400).json({ error: error?.message || 'Failed to fetch positions.' });
+    res.json({ positions: [], error: 'Failed to fetch positions' });
   }
 });
 

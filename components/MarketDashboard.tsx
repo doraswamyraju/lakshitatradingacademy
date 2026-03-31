@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { IndianRupee, Search, Activity, Play, Square, Globe, Clock, X, Trash2, LayoutGrid, Layers, Wallet, ShieldAlert, RefreshCcw } from 'lucide-react';
+import { IndianRupee, Search, Activity, Play, Square, Globe, Clock, X, Trash2, LayoutGrid, Layers, Wallet, ShieldAlert, RefreshCcw, Settings } from 'lucide-react';
 import { MarketState, UserFunds, Position, Order, TradingStrategy, BrokerConfig, UserRole, ChartType, FeedStatus } from '../types';
 import { io } from 'socket.io-client';
 import LightweightMarketChart from './LightweightMarketChart';
@@ -24,7 +24,7 @@ interface OptionChainRow {
   peSymbol?: string | null;
 }
 
-const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerConfig, token, onRemoveStrategy }) => {
+const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerConfig, token, userRole, onRemoveStrategy }) => {
   const [market, setMarket] = useState<MarketState>({
     symbol: 'NSE:BANKNIFTY',
     price: 0,
@@ -362,7 +362,17 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                   <div className="text-center p-6 bg-slate-800/90 rounded-2xl shadow-xl">
                     <p className="text-white font-bold text-sm">No live market data</p>
                     <p className="text-gray-300 text-xs mt-1">{feedStatus.message}</p>
-                    <p className="text-samp-primary text-[10px] mt-3 uppercase tracking-widest font-bold">Please Login to Broker</p>
+                    <div className="mt-4 flex flex-col gap-2 items-center">
+                      <p className="text-samp-primary text-[10px] uppercase tracking-widest font-black">Authentication Required</p>
+                      {userRole === 'ADMIN' && (
+                        <button 
+                          onClick={() => window.location.hash = '#settings'} 
+                          className="px-6 py-2 bg-samp-primary hover:bg-indigo-500 text-white text-[10px] font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2"
+                        >
+                          <Settings size={12} /> CONFIGURE SYSTEM BROKER
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
