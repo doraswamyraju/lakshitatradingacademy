@@ -319,11 +319,11 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 pr-4 min-w-[350px]">
-          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Wallet Balance</p><p className="text-lg text-slate-900 dark:text-white font-mono font-bold">₹{funds.walletBalance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
-          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Available Margin</p><p className="text-lg text-samp-success font-mono font-bold">₹{funds.availableMargin.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
-          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Used Margin</p><p className="text-lg text-slate-900 dark:text-white font-mono font-bold">₹{funds.usedMargin.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
-          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Day P&L</p><p className={`text-lg font-mono font-bold ${funds.dayPnl >= 0 ? 'text-samp-success' : 'text-samp-danger'}`}>{funds.dayPnl >= 0 ? '+' : ''}₹{funds.dayPnl.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
+        <div className="flex gap-10 items-end px-4">
+          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Wallet Balance</p><p className="text-lg text-slate-900 dark:text-white font-mono font-bold">₹{(funds?.walletBalance ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
+          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Available Margin</p><p className="text-lg text-samp-success font-mono font-bold">₹{(funds?.availableMargin ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
+          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Used Margin</p><p className="text-lg text-slate-900 dark:text-white font-mono font-bold">₹{(funds?.usedMargin ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
+          <div className="text-right"><p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mb-1">Day P&L</p><p className={`text-lg font-mono font-bold ${(funds?.dayPnl ?? 0) >= 0 ? 'text-samp-success' : 'text-samp-danger'}`}>{(funds?.dayPnl ?? 0) >= 0 ? '+' : ''}₹{(funds?.dayPnl ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p></div>
         </div>
       </div>
 
@@ -418,11 +418,11 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
             <div className="grid grid-cols-2 gap-3 text-xs font-mono">
               <div className="rounded-xl border border-slate-200 dark:border-white/5 p-3 bg-slate-50 dark:bg-black/20">
                 <div className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">Wallet</div>
-                <div className="font-bold text-slate-900 dark:text-white">₹{funds.walletBalance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+                <div className="font-bold text-slate-900 dark:text-white">₹{(funds?.walletBalance ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
               </div>
               <div className="rounded-xl border border-slate-200 dark:border-white/5 p-3 bg-slate-50 dark:bg-black/20">
                 <div className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">Collateral</div>
-                <div className="font-bold text-slate-900 dark:text-white">₹{funds.collateral.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
+                <div className="font-bold text-slate-900 dark:text-white">₹{(funds?.collateral ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
               </div>
             </div>
           </div>

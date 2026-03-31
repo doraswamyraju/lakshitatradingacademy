@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ShoppingCart } from 'lucide-react';
-import { UserFunds } from '../types';
+import { UserFunds, MarketState, FeedStatus, BrokerConfig } from '../types';
 
 interface OptionChainRow {
   strike: number;
@@ -52,10 +52,11 @@ const TradingPanel: React.FC<TradingPanelProps> = ({ funds, optionChain, onPlace
   const estimatedValue = (orderType === 'MARKET' ? optionLtp : limitPrice) * quantity;
   const marginRequired = product === 'MIS' ? estimatedValue / 5 : estimatedValue;
   const hasOptionPrice = Number.isFinite(optionLtp) && optionLtp > 0;
-  const canSubmit = hasOptionPrice && selectedStrike > 0 && funds.availableMargin >= marginRequired;
+  const canSubmit = hasOptionPrice && selectedStrike > 0 && (funds?.availableMargin ?? 0) >= marginRequired;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if ((funds?.availableMargin ?? 0) < marginRequired) return;
     onPlaceOptionOrder(
       side,
       quantity,
@@ -198,12 +199,12 @@ const TradingPanel: React.FC<TradingPanelProps> = ({ funds, optionChain, onPlace
         <div className="pt-2 border-t border-slate-200 dark:border-white/5">
           <div className="flex justify-between text-[9px] mb-0.5 font-bold uppercase tracking-widest">
             <span className="text-slate-500 dark:text-gray-400">Margin Required</span>
-            <span className="text-slate-900 dark:text-white">₹{marginRequired.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
+            <span className="text-slate-900 dark:text-white">₹{(marginRequired ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest">
             <span className="text-slate-500 dark:text-gray-400">Available Margin</span>
-            <span className={funds.availableMargin < marginRequired ? 'text-samp-danger' : 'text-samp-success'}>
-              ₹{funds.availableMargin.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+            <span className={(funds?.availableMargin ?? 0) < marginRequired ? 'text-samp-danger' : 'text-samp-success'}>
+              ₹{(funds?.availableMargin ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
             </span>
           </div>
         </div>

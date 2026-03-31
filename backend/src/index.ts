@@ -340,7 +340,7 @@ app.get(['/api/market-data/wallet', '/market-data/wallet'], authenticateToken, a
     const userId = (req as any).user.id;
     const kite = await getUserKiteClient(userId);
     if (!kite) {
-      return res.json({ broker: 'Kite', wallet: { walletBalance: 0, availableMargin: 0, usedMargin: 0, dayPnl: 0 } });
+      return res.json({ broker: 'Kite', wallet: { walletBalance: 0, availableMargin: 0, usedMargin: 0, collateral: 0, dayPnl: 0 } });
     }
     const wallet = await kite.client.fetchWallet();
     res.json({
@@ -348,7 +348,7 @@ app.get(['/api/market-data/wallet', '/market-data/wallet'], authenticateToken, a
       wallet
     });
   } catch (error: any) {
-    res.json({ error: 'Failed to fetch wallet', wallet: { walletBalance: 0, availableMargin: 0, usedMargin: 0, dayPnl: 0 } });
+    res.json({ error: 'Failed to fetch wallet', wallet: { walletBalance: 0, availableMargin: 0, usedMargin: 0, collateral: 0, dayPnl: 0 } });
   }
 });
 

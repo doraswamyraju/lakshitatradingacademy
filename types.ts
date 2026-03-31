@@ -100,6 +100,11 @@ export interface TradingStrategy {
     trailingStopLoss: boolean;
   };
   qty: number;
+  productType: 'MIS' | 'CNC';
+  isActive: boolean;
+  createdBy?: string;
+}
+
 export type UserRole = 'ADMIN' | 'USER';
 
 export interface User {
@@ -187,4 +192,12 @@ export interface ClassSession {
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   category: 'Strategy' | 'Python' | 'Psychology' | 'Technical Analysis';
   progress?: number;
+}
+
+export interface BrokerConfig {
+  brokerName: string;
+  isEnabled: boolean;
+  isConnected?: boolean;
+  apiKey?: string;
+  apiSecret?: string;
 }
