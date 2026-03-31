@@ -13,6 +13,7 @@ interface AdminPanelProps {
   strategies: TradingStrategy[];
   setStrategies: React.Dispatch<React.SetStateAction<TradingStrategy[]>>;
   token: string | null;
+  initialTab?: 'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue';
 }
 
 const INDICATORS: IndicatorType[] = [
@@ -33,8 +34,13 @@ const OPERATORS: { value: OperatorType; label: string }[] = [
   { value: 'PATTERN_MATCH', label: 'Matches Pattern' }
 ];
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, token }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue'>('architect');
+const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, token, initialTab }) => {
+  const [activeSubTab, setActiveSubTab] = useState<'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue'>(initialTab || 'architect');
+  
+  React.useEffect(() => {
+    if (initialTab) setActiveSubTab(initialTab);
+  }, [initialTab]);
+
   const [systemErrors, setSystemErrors] = useState<any[]>([]);
   const [isLoadingErrors, setIsLoadingErrors] = useState(false);
   const [inquiries, setInquiries] = useState<any[]>([]);
@@ -196,7 +202,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-6">
             <button 
-              onClick={() => setActiveSubTab('admissions')}
+              onClick={() => setActiveSubTab('architect')}
+              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'architect' || activeSubTab === 'errors' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
+            >
+               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'architect' || activeSubTab === 'errors' ? 'bg-samp-primary/10 text-samp-primary' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                  <Sliders size={32} />
+               </div>
+               Strategy Panel
+            </button>
+            <div className="w-px h-10 bg-slate-200 dark:bg-white/10"></div>
+            <button 
+              onClick={() => setActiveSubTab('inquiries')}
               className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'admissions' || activeSubTab === 'inquiries' || activeSubTab === 'aliceblue' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
             >
                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'admissions' || activeSubTab === 'inquiries' || activeSubTab === 'aliceblue' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
@@ -206,32 +222,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
             </button>
           </div>
           <p className="text-slate-500 dark:text-gray-500 text-lg font-medium max-w-2xl leading-relaxed">
-            {activeSubTab === 'architect' 
+            {activeSubTab === 'architect' || activeSubTab === 'errors'
               ? "Design limitless automated execution flows. Combine institutional indicators with advanced price action logic."
-              : activeSubTab === 'errors' 
-              ? "Monitor system stability and troubleshoot runtime execution failures."
               : "Manage student enrollments, broker partnerships, and incoming inquiries."}
           </p>
         </div>
-        {!isAdding && activeSubTab === 'architect' && (
+      </div>
+
+      {(activeSubTab === 'architect' || activeSubTab === 'errors') && (
+        <div className="flex gap-4 mb-8">
+            <button onClick={() => setActiveSubTab('architect')} className={`px-6 py-2.5 rounded-2xl font-bold transition-all ${activeSubTab === 'architect' ? 'bg-blue-900 text-white shadow-lg' : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-slate-200'}`}>Strategy Architect</button>
+            <button onClick={() => setActiveSubTab('errors')} className={`px-6 py-2.5 rounded-2xl font-bold transition-all ${activeSubTab === 'errors' ? 'bg-blue-900 text-white shadow-lg' : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-slate-200'}`}>Error Reports</button>
+        </div>
+      )}
+
+      {!isAdding && activeSubTab === 'architect' && (
           <button 
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-3 bg-samp-primary hover:bg-indigo-500 text-white px-8 py-4 rounded-[20px] shadow-2xl shadow-samp-primary/30 transition-all transform hover:-translate-y-1 active:scale-95 font-bold text-lg"
+            className="flex items-center gap-3 bg-samp-primary hover:bg-indigo-500 text-white px-8 py-4 rounded-[20px] shadow-2xl shadow-samp-primary/30 transition-all transform hover:-translate-y-1 active:scale-95 font-bold text-lg mb-8"
           >
             <Plus size={24} /> New Architect Draft
           </button>
-        )}
-        {activeSubTab === 'errors' && (
+      )}
+      {activeSubTab === 'errors' && (
           <button 
             onClick={fetchErrors}
-            className="flex items-center gap-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-white px-8 py-4 rounded-[20px] border border-slate-200 dark:border-white/10 transition-all active:scale-95 font-bold text-lg"
+            className="flex items-center gap-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-white px-8 py-4 rounded-[20px] border border-slate-200 dark:border-white/10 transition-all active:scale-95 font-bold text-lg mb-8"
           >
             <Activity className={isLoadingErrors ? 'animate-spin' : ''} size={24} /> Refresh Logs
           </button>
-        )}
-      </div>
+      )}
 
       <div className="grid grid-cols-12 gap-8">
+
         {activeSubTab === 'architect' ? (
           <div className={`transition-all duration-500 ease-in-out ${isAdding ? 'col-span-12' : 'col-span-8'}`}>
             {isAdding ? (

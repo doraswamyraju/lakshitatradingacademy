@@ -20,6 +20,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendContactEmail = async (data: { name: string; email?: string; phone: string; message: string }) => {
+  console.log(`[MAILER] Preparing to send email. Host: ${SMTP_HOST}, User: ${SMTP_USER}, Configured: ${isConfigured}`);
   if (!isConfigured) {
     console.log('[MAILER-STUB] New Contact Inquiry logged (SMTP not configured):', data);
     return;

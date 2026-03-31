@@ -1,14 +1,15 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import RegistrationModal from './RegistrationModal';
 import AliceBlueModal from './AliceBlueModal';
 import FloatingButtons from './FloatingButtons';
 import {
   Play, Users, TrendingUp, ShieldCheck,
-  ArrowRight, Star, CheckCircle2, MonitorPlay,
-  Award, Globe, Zap, ChevronRight, ChevronDown, ChevronUp, Menu, X,
-  MessageCircle, BookOpen, GraduationCap, Phone, Mail, MapPin,
-  Clock, Heart, Target, Sparkles
+  ChevronDown, ChevronUp, MapPin, Phone,
+  Mail, Instagram, Facebook, Twitter,
+  CheckCircle2, ArrowRight, BarChart, FlaskConical,
+  Target, GraduationCap, Star, BookOpen, Heart, MonitorPlay,
+  Zap, Menu, X, Sparkles, Globe, MessageCircle
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -19,6 +20,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isEnrollOpen, setIsEnrollOpen] = React.useState(false);
   const [isAliceBlueOpen, setIsAliceBlueOpen] = React.useState(false);
+  const [comingSoon, setComingSoon] = React.useState<string | null>(null);
   const [activeFaq, setActiveFaq] = React.useState<number | null>(null);
   
   const [contactForm, setContactForm] = React.useState({ name: '', email: '', phone: '', message: '' });
@@ -43,24 +45,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       alert('Failed to send message.');
     } finally {
       setIsSubmittingContact(false);
-    }
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1
     }
   };
 
@@ -328,7 +312,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
           <div className="order-1 lg:order-2 grid grid-cols-2 gap-4">
             <div className="space-y-4">
-              <img src="/trader_setup_pro.png" className="rounded-3xl shadow-lg" alt="Trading" />
+              <img src="/1a.jpg" className="rounded-3xl shadow-lg w-full h-[300px] object-cover" alt="Trading Analysis" />
               <div className="bg-blue-900 p-8 rounded-3xl text-white">
                 <h4 className="text-4xl font-black mb-2">5+</h4>
                 <p className="text-blue-200 text-sm">Years Experience</p>
@@ -339,7 +323,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 <h4 className="text-4xl font-black mb-2 text-blue-900">100+</h4>
                 <p className="text-slate-500 text-sm">Live Sessions</p>
               </div>
-              <img src="/market_analysis_view.png" className="rounded-3xl shadow-lg" alt="Analysis" />
+              <img src="/1b.jpg" className="rounded-3xl shadow-lg w-full h-[300px] object-cover" alt="Founder Trading Room" />
             </div>
           </div>
         </div>
@@ -484,9 +468,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 </h3>
                 <div className="grid sm:grid-cols-3 gap-4 mb-8">
                   {[
-                    { period: "1 Month", price: "₹999", tag: "Basic" },
-                    { period: "3 Months", price: "₹1,999", tag: "Popular", highlight: true },
-                    { period: "6 Months", price: "₹3,999", tag: "Best Value" }
+                    { period: "1 Month", price: "₹1,999", tag: "Basic" },
+                    { period: "3 Months", price: "₹3,999", tag: "Popular", highlight: true },
+                    { period: "6 Months", price: "₹6,999", tag: "Best Value" }
                   ].map((plan, i) => (
                     <div key={i} className={`p-6 rounded-3xl border ${plan.highlight ? 'bg-white text-blue-900 border-white' : 'bg-blue-950/40 border-blue-800/50 text-white'}`}>
                       <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">{plan.tag}</p>
@@ -515,7 +499,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <p className="text-slate-600">Open your free Demat account and get exclusive benefits.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 name: 'Alice Blue',
@@ -543,22 +527,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 textColor: 'text-green-900'
               }
             ].map((broker, idx) => (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ y: -8 }} key={idx} className={`p-8 rounded-3xl ${broker.color} border border-transparent hover:border-slate-200 transition-all shadow-sm hover:shadow-xl`}>
-                <h3 className={`text-2xl font-black mb-6 ${broker.textColor}`}>{broker.name}</h3>
-                <ul className="space-y-3 mb-8">
-                  {broker.benefits.map((b, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm font-medium text-slate-600">
-                      <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
-                      {b}
-                    </li>
-                  ))}
-                </ul>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ y: -8 }} key={idx} className={`p-6 rounded-3xl ${broker.color} border border-transparent hover:border-slate-200 transition-all shadow-sm hover:shadow-xl flex flex-col justify-between`}>
+                <div>
+                   <h3 className={`text-xl font-black mb-4 ${broker.textColor}`}>{broker.name}</h3>
+                   <ul className="space-y-2 mb-6">
+                     {broker.benefits.map((b, i) => (
+                       <li key={i} className="flex items-center gap-2 text-[11px] font-bold text-slate-600/80">
+                         <div className="w-1 h-1 rounded-full bg-slate-400"></div>
+                         {b}
+                       </li>
+                     ))}
+                   </ul>
+                </div>
                 <button 
                     onClick={() => {
                         if (broker.name === 'Alice Blue') setIsAliceBlueOpen(true);
-                        else alert('Coming Soon...');
+                        else {
+                           setComingSoon(broker.name);
+                           setTimeout(() => setComingSoon(null), 3000);
+                        }
                     }}
-                    className="w-full py-3 bg-white rounded-xl font-bold text-slate-900 shadow-sm hover:shadow-md transition-all active:scale-95"
+                    className="w-full py-2.5 bg-white rounded-xl font-bold text-sm text-slate-900 shadow-sm hover:shadow-md transition-all active:scale-95"
                 >
                   Open Account
                 </button>
@@ -568,28 +557,58 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-24 px-6 bg-slate-50">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-4xl font-black text-center mb-12 text-blue-950">Frequently Asked Questions</h2>
-          <div className="space-y-4">
+      <section id="faq" className="py-32 px-6 bg-slate-50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-100/50 blur-[120px] rounded-full pointer-events-none -mr-48 -mt-48"></div>
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-red-50/50 blur-[120px] rounded-full pointer-events-none -ml-48 -mb-48"></div>
+        
+        <div className="max-w-4xl mx-auto relative z-10">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest mb-4">Support Center</div>
+            <h2 className="text-4xl md:text-5xl font-black mb-4 text-blue-950">Expert Answers</h2>
+            <p className="text-slate-500 font-medium">Everything you need to know about our trading programs.</p>
+          </div>
+
+          <div className="grid gap-4">
             {[
-              { q: "Is this course suitable for complete beginners?", a: "Yes! Our Full Stock Market Course is specifically designed to take you from zero to advanced level." },
-              { q: "In which language are the classes conducted?", a: "We teach exclusively in Telugu to ensure maximum clarity for our students from Telugu states." },
-              { q: "Do you provide live market support?", a: "Yes, we conduct live market trading sessions and have daily doubt clarification sessions." },
-              { q: "How long is the course duration?", a: "Most of our comprehensive modules are designed to be completed in one month of intensive learning." }
+              { q: "Is this course suitable for complete beginners?", a: "Yes! Our Basic Trading Course is specifically designed to take you from zero understanding to a professional level with 15 days of intensive theory and 1 month of practice." },
+              { q: "In which language are the classes conducted?", a: "We teach exclusively in Telugu to ensure maximum clarity and comfort for our students from Andhra Pradesh and Telangana." },
+              { q: "Do you provide live market support?", a: "Absolutely. We conduct live trading sessions where you can see the strategies being applied in real-time. We also have daily doubt clarification sessions." },
+              { q: "What is the specialized LTA setup?", a: "Our signature setup combines Heikinashi candles with ADX/DMI and Bollinger Bands for high-probability intraday and scalping opportunities." },
+              { q: "How long until I become a profitable trader?", a: "While this varies, our structured 30-day Advanced program combined with 2 months of mandatory practice is designed to instill the discipline required for consistency." },
+              { q: "Do you offer offline classes in Tirupati?", a: "Yes, we have a physical training center in Daminedu, Tirupati, for those who prefer face-to-face mentoring and a classroom environment." }
             ].map((faq, i) => (
-              <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 cursor-pointer hover:shadow-md transition-all duration-300" onClick={() => setActiveFaq(activeFaq === i ? null : i)}>
-                <div className="flex justify-between items-center">
-                  <h4 className={`font-bold transition-colors ${activeFaq === i ? 'text-blue-600' : 'text-blue-900'}`}>{faq.q}</h4>
-                  {activeFaq === i ? <ChevronUp size={20} className="text-blue-600" /> : <ChevronDown size={20} className="text-blue-400" />}
-                </div>
-                {activeFaq === i && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 pt-4 border-t border-slate-100">
-                    <p className="text-slate-600 text-sm leading-relaxed">{faq.a}</p>
-                  </motion.div>
-                )}
-              </div>
+              <motion.div 
+                key={i} 
+                initial={false}
+                className={`group border-2 transition-all duration-500 rounded-[32px] overflow-hidden ${activeFaq === i ? 'bg-white border-blue-200 shadow-xl' : 'bg-slate-100/50 border-transparent hover:border-slate-200'}`}
+              >
+                <button 
+                  className="w-full px-8 py-6 text-left flex justify-between items-center"
+                  onClick={() => setActiveFaq(activeFaq === i ? null : i)}
+                >
+                  <span className={`text-lg font-black transition-colors ${activeFaq === i ? 'text-blue-900' : 'text-slate-700'}`}>
+                    {faq.q}
+                  </span>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${activeFaq === i ? 'bg-blue-600 text-white rotate-180' : 'bg-slate-200 text-slate-500'}`}>
+                    <ChevronDown size={18} />
+                  </div>
+                </button>
+                <AnimatePresence>
+                  {activeFaq === i && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.4, ease: "circOut" }}
+                    >
+                      <div className="px-8 pb-8 text-slate-600 leading-relaxed font-medium">
+                        <div className="h-px bg-slate-100 mb-6"></div>
+                        {faq.a}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -811,6 +830,27 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       </footer>
       <RegistrationModal isOpen={isEnrollOpen} onClose={() => setIsEnrollOpen(false)} />
       <AliceBlueModal isOpen={isAliceBlueOpen} onClose={() => setIsAliceBlueOpen(false)} />
+
+      <AnimatePresence>
+        {comingSoon && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] w-full max-w-sm px-4"
+          >
+            <div className="bg-slate-900 text-white p-6 rounded-[32px] shadow-2xl border border-white/10 flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center shrink-0">
+                <Zap className="text-samp-primary animate-pulse" size={24} />
+              </div>
+              <div>
+                <h4 className="font-bold text-lg">{comingSoon} Integration</h4>
+                <p className="text-slate-400 text-sm">Feature coming soon! Currently accepting Alice Blue partners.</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, ShieldCheck, Activity, LineChart, Code2, Settings, User, LogOut, Bell, Menu, X, Sun, Moon, FlaskConical, BookOpen, GraduationCap, Database } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Activity, LineChart, Code2, Settings, User, LogOut, Bell, Menu, X, Sun, Moon, FlaskConical, BookOpen, GraduationCap, Database, ArrowRight, Star, CheckCircle2, MonitorPlay, Award, Globe, Zap, ChevronRight, ChevronDown, ChevronUp, MessageCircle, Phone, Mail, MapPin, Clock, Heart, Target, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import MarketDashboard from './components/MarketDashboard';
 // import AILab from './components/AILab';
 import AdminPanel from './components/AdminPanel';
@@ -16,7 +17,8 @@ import { AuthModal } from './components/AuthModal';
 const App: React.FC = () => {
   const { user: currentUser, isAuthenticated, token, logout } = useAuth();
   const [showLanding, setShowLanding] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'admin' | 'settings' | 'backtest' | 'hub' | 'learn'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'backtest' | 'settings' | 'hub' | 'learn' | 'admin'>('dashboard');
+  const [adminInitialTab, setAdminInitialTab] = useState<'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue'>('architect');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
@@ -199,8 +201,9 @@ const App: React.FC = () => {
              {/* <NavItem icon={<Code2 size={20} />} label="Quant Lab" active={activeTab === 'strategy'} onClick={() => setActiveTab('strategy')} collapsed={!isSidebarOpen} /> */}
              {currentUser?.role === 'ADMIN' && (
                <>
-                <NavItem icon={<ShieldCheck size={20} />} label="Strategy Panel" active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} accent="warning" collapsed={!isSidebarOpen} />
-                <NavItem icon={<Database size={20} />} label="Student Leads" active={activeTab === 'admin'} onClick={() => {
+                <NavItem icon={<ShieldCheck size={20} />} label="Strategy Panel" active={activeTab === 'admin' && (adminInitialTab === 'architect' || adminInitialTab === 'errors')} onClick={() => { setAdminInitialTab('architect'); setActiveTab('admin'); }} accent="warning" collapsed={!isSidebarOpen} />
+                <NavItem icon={<Database size={20} />} label="Student Leads" active={activeTab === 'admin' && (adminInitialTab === 'inquiries' || adminInitialTab === 'admissions' || adminInitialTab === 'aliceblue')} onClick={() => {
+                   setAdminInitialTab('inquiries');
                    setActiveTab('admin');
                 }} collapsed={!isSidebarOpen} accent="primary" />
                </>
