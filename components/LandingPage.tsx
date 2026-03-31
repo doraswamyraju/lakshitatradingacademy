@@ -285,7 +285,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <span className="text-xs font-bold tracking-widest uppercase text-blue-900/80">About the Trainer</span>
             </div>
             <h2 className="text-4xl font-black mb-4 text-blue-950">K. Y. Sampangi</h2>
-            <p className="text-lg font-bold text-blue-700 mb-6">Founder &mdash; Lakshita Trading Academy<br/><span className="text-slate-500 font-medium tracking-wide text-sm uppercase mt-1 inline-block">Profit Trader | Mentor | Market Analyst</span></p>
+            <p className="text-lg font-bold text-blue-700 mb-6">Founder &mdash; Lakshita Trading Academy<br/><span className="text-slate-500 font-medium tracking-wide text-sm uppercase mt-1 inline-block">Prof. Trader | Mentor | Market Analyst</span></p>
             <p className="text-slate-600 text-lg mb-8 leading-relaxed">
               With practical market experience and a disciplined approach, he focuses on building confident and emotionally strong traders.
             </p>
