@@ -39,7 +39,7 @@ async function main() {
   } else {
     console.log(`Creating new ${adminUsername} user with ADMIN role...`);
     const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash('admin123', salt);
+    const passwordHash = await bcrypt.hash('adminpassword123', salt);
     
     await prisma.user.create({
       data: {
@@ -48,7 +48,7 @@ async function main() {
         role: 'ADMIN'
       }
     });
-    console.log('Default admin created: admin / admin123');
+    console.log('Default admin created: admin / adminpassword123');
   }
 
   console.log('✅ Seed Finished!');
