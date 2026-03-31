@@ -250,7 +250,13 @@ const App: React.FC = () => {
            {activeTab === 'dashboard' && <MarketDashboard strategies={userStrategies} brokerConfig={brokerConfig} userRole={currentUser?.role || 'USER'} token={token} onRemoveStrategy={removeUserStrategy} />}
            {/* {activeTab === 'strategy' && <AILab />} */}
            {activeTab === 'admin' && (
-            <AdminPanel strategies={masterStrategies} setStrategies={setMasterStrategies} token={token} />
+            <AdminPanel 
+              key={adminInitialTab === 'architect' || adminInitialTab === 'errors' ? 'strategy' : 'leads'}
+              strategies={masterStrategies} 
+              setStrategies={setMasterStrategies} 
+              token={token} 
+              initialTab={adminInitialTab} 
+            />
           )}
            {activeTab === 'settings' && <SettingsPanel config={brokerConfig} setConfig={setBrokerConfig} />}
            {activeTab === 'backtest' && <BacktestPanel strategies={masterStrategies} />}

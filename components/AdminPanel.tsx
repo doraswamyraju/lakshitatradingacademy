@@ -201,25 +201,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
       <div className="flex justify-between items-end border-b border-slate-200 dark:border-white/5 pb-8">
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-6">
-            <button 
-              onClick={() => setActiveSubTab('architect')}
-              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'architect' || activeSubTab === 'errors' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
-            >
-               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'architect' || activeSubTab === 'errors' ? 'bg-samp-primary/10 text-samp-primary' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
-                  <Sliders size={32} />
-               </div>
-               Strategy Panel
-            </button>
-            <div className="w-px h-10 bg-slate-200 dark:bg-white/10"></div>
-            <button 
-              onClick={() => setActiveSubTab('inquiries')}
-              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'admissions' || activeSubTab === 'inquiries' || activeSubTab === 'aliceblue' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
-            >
-               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'admissions' || activeSubTab === 'inquiries' || activeSubTab === 'aliceblue' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
-                  <Database size={32} />
-               </div>
-               Lead Management
-            </button>
+            {(activeSubTab === 'architect' || activeSubTab === 'errors') ? (
+              <div className="text-4xl font-black flex items-center gap-4 text-slate-900 dark:text-white">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-samp-primary/10 text-samp-primary">
+                    <Sliders size={32} />
+                </div>
+                Strategy Panel
+              </div>
+            ) : (
+              <div className="text-4xl font-black flex items-center gap-4 text-slate-900 dark:text-white">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-emerald-500/10 text-emerald-500">
+                    <Database size={32} />
+                </div>
+                Lead Management
+              </div>
+            )}
           </div>
           <p className="text-slate-500 dark:text-gray-500 text-lg font-medium max-w-2xl leading-relaxed">
             {activeSubTab === 'architect' || activeSubTab === 'errors'
@@ -229,12 +225,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
         </div>
       </div>
 
-      {(activeSubTab === 'architect' || activeSubTab === 'errors') && (
+      {(activeSubTab === 'architect' || activeSubTab === 'errors') ? (
         <div className="flex gap-4 mb-8">
             <button onClick={() => setActiveSubTab('architect')} className={`px-6 py-2.5 rounded-2xl font-bold transition-all ${activeSubTab === 'architect' ? 'bg-blue-900 text-white shadow-lg' : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-slate-200'}`}>Strategy Architect</button>
             <button onClick={() => setActiveSubTab('errors')} className={`px-6 py-2.5 rounded-2xl font-bold transition-all ${activeSubTab === 'errors' ? 'bg-blue-900 text-white shadow-lg' : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-slate-200'}`}>Error Reports</button>
         </div>
+      ) : (
+        <div className="flex gap-4 mb-8">
+            <button onClick={() => setActiveSubTab('inquiries')} className={`px-6 py-2.5 rounded-2xl font-bold transition-all ${activeSubTab === 'inquiries' ? 'bg-blue-900 text-white shadow-lg' : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-slate-200'}`}>General Inquiries</button>
+            <button onClick={() => setActiveSubTab('admissions')} className={`px-6 py-2.5 rounded-2xl font-bold transition-all ${activeSubTab === 'admissions' ? 'bg-blue-900 text-white shadow-lg' : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-slate-200'}`}>Course Admissions</button>
+            <button onClick={() => setActiveSubTab('aliceblue')} className={`px-6 py-2.5 rounded-2xl font-bold transition-all ${activeSubTab === 'aliceblue' ? 'bg-blue-900 text-white shadow-lg' : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-slate-200'}`}>Alice Blue Partnership</button>
+        </div>
       )}
+
 
       {!isAdding && activeSubTab === 'architect' && (
           <button 
