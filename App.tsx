@@ -29,15 +29,25 @@ const App: React.FC = () => {
       version: '1.0',
       mode: 'INTRADAY',
       instruments: ['NIFTY', 'BANKNIFTY', 'CRUDEOIL'],
-      description: 'Handwritten Rules v1.0: Trade only 09:30-11:00 & 12:45-14:50. Entry on Strong HA + ADX(18-50) + DMI + Breakout. Exit only after 1:1 RR on Weak/Opposite candle.',
+      description: 'Handwritten Rules v1.0: Trade only 09:30-11:00 & 12:45-14:50. Entry on [BUY: +DI>-DI & High Breakout] or [SELL: -DI>+DI & Low Breakdown]. Exit only after 1:1 RR.',
       entryConditions: [
-        { id: 'c5', source: 'ADX', operator: 'BETWEEN', targetType: 'VALUE', minValue: 18, maxValue: 50, sourceParams: { period: 10 } },
-        { id: 'c6', source: 'DI_PLUS', operator: '>', targetType: 'INDICATOR', targetIndicator: 'DI_MINUS', sourceParams: {} },
-        { id: 'c8', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'STRONG_BULLISH', sourceParams: {} },
-        { id: 'c11', source: 'LATEST_HIGH', operator: '>', targetType: 'INDICATOR', targetIndicator: 'PREV_HIGH', sourceParams: {} }
+        // BUY BRANCH
+        { id: 'c5', side: 'BUY', source: 'ADX', operator: 'BETWEEN', targetType: 'VALUE', minValue: 18, maxValue: 50, sourceParams: { period: 10 } },
+        { id: 'c6', side: 'BUY', source: 'DI_PLUS', operator: '>', targetType: 'INDICATOR', targetIndicator: 'DI_MINUS', sourceParams: {} },
+        { id: 'c8', side: 'BUY', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'STRONG_BULLISH', sourceParams: {} },
+        { id: 'c11', side: 'BUY', source: 'LATEST_HIGH', operator: '>', targetType: 'INDICATOR', targetIndicator: 'PREV_HIGH', sourceParams: {} },
+        
+        // SELL BRANCH
+        { id: 'c5s', side: 'SELL', source: 'ADX', operator: 'BETWEEN', targetType: 'VALUE', minValue: 18, maxValue: 50, sourceParams: { period: 10 } },
+        { id: 'c6s', side: 'SELL', source: 'DI_MINUS', operator: '>', targetType: 'INDICATOR', targetIndicator: 'DI_PLUS', sourceParams: {} },
+        { id: 'c8s', side: 'SELL', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'STRONG_BEARISH', sourceParams: {} },
+        { id: 'c11s', side: 'SELL', source: 'LATEST_LOW', operator: '<', targetType: 'INDICATOR', targetIndicator: 'PREV_LOW', sourceParams: {} }
       ],
       exitConditions: [
-        { id: 'c9', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'WEAK_CANDLE', sourceParams: {} }
+        { id: 'c9', side: 'BUY', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'WEAK_CANDLE', sourceParams: {} },
+        { id: 'c9o', side: 'BUY', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'STRONG_BEARISH', sourceParams: {} },
+        { id: 'c9s', side: 'SELL', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'WEAK_CANDLE', sourceParams: {} },
+        { id: 'c9os', side: 'SELL', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'STRONG_BULLISH', sourceParams: {} }
       ],
       timeframe: '5m',
       qty: 1,

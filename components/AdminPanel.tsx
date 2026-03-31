@@ -516,14 +516,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
                            <p className="text-xl font-bold text-slate-900 dark:text-white font-mono">{s.entryConditions.length + s.exitConditions.length}</p>
                         </div>
                         <div className="text-center border-x border-slate-100 dark:border-white/5 px-2">
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Lot Units</p>
-                           <p className="text-xl font-bold text-slate-900 dark:text-white font-mono">{s.qty}</p>
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Risk Mode</p>
+                           <p className="text-sm font-bold text-slate-900 dark:text-white uppercase">{s.riskConfig.pointBased ? 'POINTS' : 'PCT'}</p>
+                           <p className="text-[10px] font-mono text-slate-400">{s.riskConfig.pointBased ? `STEP: ${s.riskConfig.trailStep}` : ''}</p>
                         </div>
                         <div className="text-center">
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.riskConfig.pointBased ? 'Risk (Points)' : 'Target P&L'}</p>
-                           <p className={`text-xl font-bold font-mono ${s.riskConfig.pointBased ? 'text-samp-danger' : (s.isActive ? 'text-samp-success' : 'text-slate-400')}`}>
-                              {s.riskConfig.pointBased ? `-${s.riskConfig.stopLossPoints}` : `+${s.riskConfig.takeProfitPct}%`}
-                           </p>
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">RR Gating</p>
+                           <div className="flex flex-col items-center">
+                              <p className="text-sm font-bold text-samp-success font-mono">1:{s.riskConfig.minRR || '1.0'}</p>
+                              <span className="text-[8px] bg-samp-success/10 text-samp-success px-1.5 rounded-full font-black uppercase tracking-tighter">LOCKED</span>
+                           </div>
+                        </div>
+                     </div>
+
+                     <div className="mb-8 space-y-4">
+                        <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5">
+                           <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg">
+                              <Settings size={14} />
+                           </div>
+                           <div className="flex-1">
+                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Time Guardians</p>
+                              <p className="text-[11px] font-bold text-slate-700 dark:text-gray-300">09:30-11:00, 12:45-14:50 (IST)</p>
+                           </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5">
+                           <div className="p-2 bg-samp-danger/10 text-samp-danger rounded-lg">
+                              <ShieldCheck size={14} />
+                           </div>
+                           <div className="flex-1">
+                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Risk Matrix (Points)</p>
+                              <div className="flex gap-3 text-[10px] font-bold text-slate-600 dark:text-gray-400">
+                                 <span className="flex items-center gap-1">BN: <b className="text-slate-900 dark:text-white">60</b></span>
+                                 <span className="flex items-center gap-1">NF: <b className="text-slate-900 dark:text-white">30</b></span>
+                                 <span className="flex items-center gap-1">CO: <b className="text-slate-900 dark:text-white">20</b></span>
+                              </div>
+                           </div>
                         </div>
                      </div>
 
@@ -806,10 +834,19 @@ const LogicBlock: React.FC<LogicBlockProps> = ({ index, condition, onRemove, onU
        </button>
        
        <div className="grid grid-cols-12 gap-6 items-center">
-          <div className="col-span-1">
+          <div className="col-span-1 space-y-2">
              <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-[11px] font-black text-slate-400 dark:text-gray-600 border border-slate-200 dark:border-white/10">
                 #{index + 1}
              </div>
+             <select 
+               value={condition.side || 'ANY'}
+               onChange={e => onUpdate({ side: e.target.value as any })}
+               className={`text-[8px] font-black px-1 py-0.5 rounded outline-none border transition-colors ${condition.side === 'BUY' ? 'bg-samp-primary/10 border-samp-primary text-samp-primary' : condition.side === 'SELL' ? 'bg-samp-danger/10 border-samp-danger text-samp-danger' : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400'}`}
+             >
+                <option value="ANY">ANY</option>
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+             </select>
           </div>
 
           <div className="col-span-3 space-y-1.5">

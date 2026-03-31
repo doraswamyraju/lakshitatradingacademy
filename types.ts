@@ -85,7 +85,8 @@ export interface StrategyCondition {
   targetValue?: number;
   minValue?: number;
   maxValue?: number;
-  pattern?: 'STRONG_BULLISH' | 'STRONG_BEAR_ISH' | 'WEAK_CANDLE';
+  pattern?: 'STRONG_BULLISH' | 'STRONG_BEARISH' | 'WEAK_CANDLE';
+  side?: 'BUY' | 'SELL' | 'ANY';
   targetIndicator?: IndicatorType;
   targetParams?: Record<string, any>;
 }

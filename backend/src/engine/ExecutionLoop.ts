@@ -145,10 +145,30 @@ export class ExecutionLoop {
     if (!trade.isRRReached && pnlPoints >= trade.riskPoints) {
       console.log(`[Engine] RR 1:1 Hit for ${symbol}. Trailing & Sentiment exits ACTIVATED.`);
       trade.isRRReached = true;
+      // When RR 1:1 hit, move SL to Entry (for protection)
+      trade.slPrice = trade.entryPrice;
     }
 
-    // C. Exit Logic (ONLY after RR 1:1 is hit)
+    // C. Trailing SL Logic (ONLY after RR 1:1 is hit)
     if (trade.isRRReached) {
+      const trailStep = 30; // 30 point step as per handwritten rules
+      const currentPrice = latest.close;
+
+      if (trade.side === 'BUY') {
+        const potentialNewSL = currentPrice - trade.riskPoints; // Keep distance of 30 pts (or original risk)
+        if (potentialNewSL > trade.slPrice + trailStep) {
+           trade.slPrice += trailStep;
+           console.log(`[Engine] Trailing Up: New SL @ ${trade.slPrice}`);
+        }
+      } else {
+        const potentialNewSL = currentPrice + trade.riskPoints;
+        if (potentialNewSL < trade.slPrice - trailStep) {
+           trade.slPrice -= trailStep;
+           console.log(`[Engine] Trailing Down: New SL @ ${trade.slPrice}`);
+        }
+      }
+
+      // D. Exit Logic (ONLY after RR 1:1 is hit)
       const isOppositeCandle = trade.side === 'BUY' ? latestHA.close < latestHA.open : latestHA.close > latestHA.open;
       if (isOppositeCandle || latestHA.isWeak) {
         await this.closeTrade(symbol, 'EXIT_SENTIMENT', latest.close);
