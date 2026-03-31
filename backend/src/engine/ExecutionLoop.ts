@@ -169,7 +169,7 @@ export class ExecutionLoop {
       }
 
       // D. Exit Logic (ONLY after RR 1:1 is hit)
-      const isOppositeCandle = trade.side === 'BUY' ? latestHA.close < latestHA.open : latestHA.close > latestHA.open;
+      const isOppositeCandle = trade.side === 'BUY' ? latestHA.isStrongBearish : latestHA.isStrongBullish;
       if (isOppositeCandle || latestHA.isWeak) {
         await this.closeTrade(symbol, 'EXIT_SENTIMENT', latest.close);
       }
