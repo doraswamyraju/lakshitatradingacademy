@@ -17,6 +17,7 @@ export class ExecutionLoop {
     slPrice: number;
     riskPoints: number;
     isRRReached: boolean;
+    trailStepsDone: number;
     side: 'BUY' | 'SELL';
     timestamp: number;
   }> = new Map();
@@ -123,6 +124,7 @@ export class ExecutionLoop {
       slPrice,
       riskPoints,
       isRRReached: false,
+      trailStepsDone: 0,
       side,
       timestamp: Date.now()
     });
@@ -151,21 +153,22 @@ export class ExecutionLoop {
 
     // C. Trailing SL Logic (ONLY after RR 1:1 is hit)
     if (trade.isRRReached) {
-      const trailStep = 30; // 30 point step as per handwritten rules
-      const currentPrice = latest.close;
+      if (!trade.trailStepsDone) trade.trailStepsDone = 0;
+      
+      const move = pnlPoints;
+      const step = 30; // 30 point step as per handwritten rules
+      const steps = Math.floor(move / step);
 
-      if (trade.side === 'BUY') {
-        const potentialNewSL = currentPrice - trade.riskPoints; // Keep distance of 30 pts (or original risk)
-        if (potentialNewSL > trade.slPrice + trailStep) {
-           trade.slPrice += trailStep;
-           console.log(`[Engine] Trailing Up: New SL @ ${trade.slPrice}`);
+      if (steps > trade.trailStepsDone) {
+        trade.trailStepsDone = steps;
+
+        if (trade.side === 'BUY') {
+          trade.slPrice = trade.entryPrice + (steps - 1) * step;
+        } else {
+          trade.slPrice = trade.entryPrice - (steps - 1) * step;
         }
-      } else {
-        const potentialNewSL = currentPrice + trade.riskPoints;
-        if (potentialNewSL < trade.slPrice - trailStep) {
-           trade.slPrice -= trailStep;
-           console.log(`[Engine] Trailing Down: New SL @ ${trade.slPrice}`);
-        }
+
+        console.log(`[Engine] Trailing Updated SL: ${trade.slPrice}`);
       }
 
       // D. Exit Logic (ONLY after RR 1:1 is hit)
