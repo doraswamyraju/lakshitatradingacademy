@@ -137,9 +137,45 @@ app.post(['/api/auth/login', '/auth/login'], async (req: Request, res: Response)
 
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
     
-    res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role } });
+    res.json({ 
+      success: true, 
+      token, 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        role: user.role,
+        isPaperTrading: user.isPaperTrading 
+      } 
+    });
   } catch (error) {
     res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// --- USER ROUTES ---
+
+// Update paper trading mode
+app.put(['/api/user/mode', '/user/mode'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { isPaperTrading } = req.body;
+
+    if (typeof isPaperTrading !== 'boolean') {
+      return res.status(400).json({ error: 'isPaperTrading must be a boolean' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { isPaperTrading }
+    });
+
+    res.json({ 
+      success: true, 
+      isPaperTrading: updatedUser.isPaperTrading,
+      message: `Trading mode updated to ${updatedUser.isPaperTrading ? 'PAPER' : 'LIVE'}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update trading mode' });
   }
 });
 

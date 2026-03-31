@@ -4,6 +4,7 @@ interface User {
   id: string;
   username: string;
   role: 'ADMIN' | 'USER';
+  isPaperTrading: boolean;
 }
 
 interface AuthContextType {
@@ -11,6 +12,7 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, user: any) => void;
   logout: () => void;
+  setPaperMode: (isPaper: boolean) => void;
   isAuthenticated: boolean;
 }
 
@@ -19,6 +21,7 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   login: () => {},
   logout: () => {},
+  setPaperMode: () => {},
   isAuthenticated: false
 });
 
@@ -54,10 +57,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const setPaperMode = (isPaper: boolean) => {
+    if (user) {
+      const updatedUser = { ...user, isPaperTrading: isPaper };
+      localStorage.setItem('lakshita_user', JSON.stringify(updatedUser));
+      setUser(updatedUser);
+    }
+  };
+
   if (isLoading) return <div className="min-h-screen bg-samp-dark text-white flex items-center justify-center">Loading Engine...</div>;
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, token, login, logout, setPaperMode, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   );

@@ -232,10 +232,22 @@ const App: React.FC = () => {
                  activeTab === 'learn' ? 'Lakshita Academy' : 'Quantitative Strategy Lab'}
               </h2>
            </div>
-           <div className="flex items-center gap-4">
-              <button onClick={toggleTheme} className="p-2.5 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-all">{theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}</button>
-              <button className="relative p-2.5 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-all"><Bell size={20} /><span className="absolute top-2.5 right-2.5 w-2 h-2 bg-samp-danger rounded-full ring-2 ring-white dark:ring-samp-bg"></span></button>
-           </div>
+            <div className="flex items-center gap-4">
+               {currentUser?.isPaperTrading && (
+                 <div className="flex items-center gap-2 px-3 py-1.5 bg-samp-primary/10 border border-samp-primary/20 rounded-xl">
+                   <div className="w-2 h-2 rounded-full bg-samp-primary animate-pulse shadow-[0_0_8px_#6366f1]"></div>
+                   <span className="text-[10px] font-bold text-samp-primary uppercase tracking-[0.1em]">Paper Trading Active</span>
+                 </div>
+               )}
+               {!currentUser?.isPaperTrading && (
+                 <div className="flex items-center gap-2 px-3 py-1.5 bg-samp-danger/10 border border-samp-danger/20 rounded-xl">
+                    <div className="w-2 h-2 rounded-full bg-samp-danger shadow-[0_0_8px_#ef4444]"></div>
+                    <span className="text-[10px] font-bold text-samp-danger uppercase tracking-[0.1em]">Live Execution Terminal</span>
+                 </div>
+               )}
+               <button onClick={toggleTheme} className="p-2.5 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-all">{theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}</button>
+               <button className="relative p-2.5 text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/5 rounded-xl transition-all"><Bell size={20} /><span className="absolute top-2.5 right-2.5 w-2 h-2 bg-samp-danger rounded-full ring-2 ring-white dark:ring-samp-bg"></span></button>
+            </div>
         </header>
 
         <div className="flex-1 overflow-y-scroll">

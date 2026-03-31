@@ -5,6 +5,7 @@ import { io } from 'socket.io-client';
 import LightweightMarketChart from './LightweightMarketChart';
 import TradingPanel from './TradingPanel';
 import PortfolioPanel from './PortfolioPanel';
+import { useAuth } from '../context/AuthContext';
 
 interface MarketDashboardProps {
   strategies: TradingStrategy[];
@@ -25,6 +26,7 @@ interface OptionChainRow {
 }
 
 const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerConfig, token, userRole, onRemoveStrategy }) => {
+  const { user } = useAuth();
   const [market, setMarket] = useState<MarketState>({
     symbol: 'NSE:BANKNIFTY',
     price: 0,
@@ -68,7 +70,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   useEffect(() => { strategyRef.current = activeStrategyId; }, [activeStrategyId]);
 
   const addLog = (msg: string) => {
-    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev].slice(0, 25));
+    const prefix = user?.isPaperTrading ? '[SIMULATED] ' : '';
+    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${prefix}${msg}`, ...prev].slice(0, 25));
   };
 
   const authHeaders = useMemo(() => (

@@ -122,12 +122,17 @@ export class ExecutionLoop {
   // ---------------- ENTRY ----------------
   private async enterTrade(symbol: string, side: 'BUY' | 'SELL', price: number) {
     const risk = this.getInstrumentSL(symbol);
+    const sl = side === 'BUY' ? price - risk : price + risk;
 
-    const sl = side === 'BUY'
-      ? price - risk
-      : price + risk;
+    // Fetch user settings (Defaulting to system-admin for now)
+    const user = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    const isPaper = user?.isPaperTrading ?? true;
 
-    console.log(`🚀 ENTRY ${side} @ ${price} | SL: ${sl}`);
+    console.log(`🚀 [${isPaper ? 'PAPER' : 'LIVE'}] ENTRY ${side} @ ${price} | SL: ${sl}`);
+
+    if (!isPaper && this.brokerService) {
+      // Real broker logic would go here: this.brokerService.placeOrder(...)
+    }
 
     this.activeTrades.set(symbol, {
       symbol,
@@ -141,7 +146,7 @@ export class ExecutionLoop {
     });
 
     this.dailyTradeCount++;
-    await this.logTrade(symbol, `ENTRY_${side}`, price);
+    await this.logTrade(symbol, `ENTRY_${side}`, price, isPaper);
   }
 
   // ---------------- TRADE MANAGEMENT ----------------
@@ -204,23 +209,33 @@ export class ExecutionLoop {
 
   // ---------------- EXIT ----------------
   private async exitTrade(symbol: string, reason: string, price: number) {
-    console.log(`❌ EXIT (${reason}) @ ${price}`);
+    const user = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    const isPaper = user?.isPaperTrading ?? true;
+
+    console.log(`❌ [${isPaper ? 'PAPER' : 'LIVE'}] EXIT (${reason}) @ ${price}`);
+
+    if (!isPaper && this.brokerService) {
+      // Real broker logic would go here: this.brokerService.placeOrder(...)
+    }
 
     this.activeTrades.delete(symbol);
-    await this.logTrade(symbol, `EXIT_${reason}`, price);
+    await this.logTrade(symbol, `EXIT_${reason}`, price, isPaper);
   }
 
   // ---------------- LOG ----------------
-  private async logTrade(symbol: string, action: string, price: number) {
+  private async logTrade(symbol: string, action: string, price: number, isSimulated: boolean = false) {
+    const user = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+    
     await prisma.strategyLog.create({
       data: {
-        userId: "system-admin",
+        userId: user?.id || "system-admin",
         strategyId: "m3",
         action,
         symbol,
         price,
         qty: 1,
-        status: "SUCCESS"
+        status: "SUCCESS",
+        isSimulated
       }
     }).catch(() => { });
   }

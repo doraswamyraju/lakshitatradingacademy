@@ -25,6 +25,7 @@ model User {
   requestToken         String?
   accessToken          String?
   accessTokenUpdatedAt DateTime?
+  isPaperTrading       Boolean  @default(true)
   
   // Strategy Subscription Logs
   StrategyLog StrategyLog[]
@@ -40,6 +41,7 @@ model StrategyLog {
   price      Float
   qty        Int
   status     String   // "SUCCESS", "FAILED"
+  isSimulated Boolean @default(false)
   message    String?
   timestamp  DateTime @default(now())
 }
@@ -58,6 +60,7 @@ model MarketDataConfig {
   isEnabled          Boolean  @default(true)
   updatedAt          DateTime @updatedAt
 }
+
 model ContactInquiry {
   id        String   @id @default(uuid())
   name      String

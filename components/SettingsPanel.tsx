@@ -9,7 +9,7 @@ interface SettingsPanelProps {
 }
 
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
-  const { token, user } = useAuth();
+  const { token, user, setPaperMode } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusType, setStatusType] = useState<'success' | 'error' | null>(null);
@@ -394,6 +394,64 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+         {/* Execution Mode Toggle */}
+         <div className="bg-samp-surface border border-samp-primary/20 rounded-2xl p-6 space-y-6">
+            <div className="flex items-center gap-3 mb-2">
+               <div className="p-2 bg-samp-primary/10 rounded-lg text-samp-primary">
+                  <RefreshCw size={20} />
+               </div>
+               <div>
+                 <h3 className="font-bold text-white">Execution Mode</h3>
+                 <p className="text-[10px] text-gray-500 uppercase font-bold">Paper vs Live Sentinel</p>
+               </div>
+            </div>
+
+            <div className="p-4 bg-black/20 rounded-2xl border border-white/5 flex items-center justify-between">
+               <div className="space-y-1">
+                  <p className="text-sm font-bold text-white">{user?.isPaperTrading ? 'Paper Trading Active' : 'Live Trading Enabled'}</p>
+                  <p className="text-[10px] text-gray-500 max-w-[200px]">
+                     {user?.isPaperTrading 
+                       ? 'Signals will be processed on live data but NO real orders will be placed.' 
+                       : 'CAUTION: Real orders will be sent to your broker terminal.'}
+                  </p>
+               </div>
+               
+               <div className="flex items-center">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={!user?.isPaperTrading}
+                      disabled={isSubmitting}
+                      onChange={async () => {
+                         const nextMode = !user?.isPaperTrading;
+                         setIsSubmitting(true);
+                         try {
+                           const res = await fetch('/api/user/mode', {
+                              method: 'PUT',
+                              headers: { 
+                                 'Content-Type': 'application/json',
+                                 'Authorization': `Bearer ${token}` 
+                              },
+                              body: JSON.stringify({ isPaperTrading: nextMode })
+                           });
+                           if (res.ok) {
+                              const data = await res.json();
+                              if (data.success) {
+                                 setPaperMode(nextMode);
+                              }
+                           }
+                         } catch(e) {
+                           console.error('Mode toggle failed:', e);
+                         } finally { setIsSubmitting(false); }
+                      }}
+                    />
+                    <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-samp-primary"></div>
+                  </label>
+               </div>
+            </div>
+         </div>
+
          <div className="bg-samp-surface border border-white/5 rounded-2xl p-6">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-samp-success/10 rounded-lg text-samp-success">
@@ -417,16 +475,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
                   </div>
                   <span className="text-[10px] font-mono text-gray-600">ENABLED</span>
                </div>
-            </div>
-         </div>
-
-         <div className="bg-amber-950/20 border border-amber-500/20 rounded-2xl p-6 flex gap-4">
-            <AlertCircle className="text-amber-500 shrink-0" size={20} />
-            <div className="space-y-2">
-               <h4 className="text-sm font-bold text-amber-500">Important Note</h4>
-               <p className="text-xs text-amber-500/70 leading-relaxed">
-                  Automated trading carries high risk. Ensure your API keys have restricted permissions (only 'Trade' and 'Order' access). Never share your API Secret.
-               </p>
             </div>
          </div>
       </div>
