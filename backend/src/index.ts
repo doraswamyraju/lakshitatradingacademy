@@ -43,6 +43,27 @@ const getGlobalKiteClient = async () => {
   }
 };
 
+const getUserKiteClient = async (userId: string) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.brokerName !== 'Kite' || !user.apiKey || !user.apiSecret || !user.accessToken) {
+      return null;
+    }
+    const config = await prisma.marketDataConfig.findUnique({ where: { id: MARKET_DATA_CONFIG_ID } });
+    return {
+      client: new KiteService({
+        apiKey: user.apiKey,
+        apiSecret: user.apiSecret,
+        accessToken: user.accessToken,
+        instrumentToken: config?.bankNiftyInstrumentToken || 260105
+      }),
+      user
+    };
+  } catch (error) {
+    return null;
+  }
+};
+
 const formatKiteDateTime = (raw: string): string => {
   // Accept ISO and convert to Kite expected "YYYY-MM-DD HH:mm:ss"
   const dt = new Date(raw);
@@ -316,7 +337,8 @@ app.get(['/api/market-data/kite/token-status', '/market-data/kite/token-status']
 
 app.get(['/api/market-data/wallet', '/market-data/wallet'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const kite = await getGlobalKiteClient();
+    const userId = (req as any).user.id;
+    const kite = await getUserKiteClient(userId);
     if (!kite) {
       return res.json({ broker: 'Kite', wallet: { walletBalance: 0, availableMargin: 0, usedMargin: 0, dayPnl: 0 } });
     }
@@ -406,9 +428,10 @@ app.get(['/api/market-data/kite/option-chain', '/market-data/kite/option-chain']
 
 app.post(['/api/algo/order', '/algo/order'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const kite = await getGlobalKiteClient();
+    const userId = (req as any).user.id;
+    const kite = await getUserKiteClient(userId);
     if (!kite) {
-      return res.status(400).json({ error: 'Broker not linked. Please connect Kite first.' });
+      return res.status(400).json({ error: 'Personal Broker not linked. Please connect Kite first.' });
     }
     const { client } = kite;
     const {
@@ -440,11 +463,12 @@ app.post(['/api/algo/order', '/algo/order'], authenticateToken, async (req: Requ
   }
 });
 
-app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (_req: Request, res: Response) => {
+app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const kite = await getGlobalKiteClient();
+    const userId = (req as any).user.id;
+    const kite = await getUserKiteClient(userId);
     if (!kite) {
-      return res.json({ orders: [], message: 'Broker not linked' });
+      return res.json({ orders: [], message: 'Personal Broker not linked' });
     }
     const rows = await kite.client.fetchOrders();
     const orders = rows.slice(0, 200).map((o: any) => ({
@@ -464,11 +488,12 @@ app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (_req: Re
   }
 });
 
-app.get(['/api/algo/positions', '/algo/positions'], authenticateToken, async (_req: Request, res: Response) => {
+app.get(['/api/algo/positions', '/algo/positions'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const kite = await getGlobalKiteClient();
+    const userId = (req as any).user.id;
+    const kite = await getUserKiteClient(userId);
     if (!kite) {
-      return res.json({ positions: [], message: 'Broker not linked' });
+      return res.json({ positions: [], message: 'Personal Broker not linked' });
     }
     const rows = await kite.client.fetchPositions();
     const positions = rows.map((p: any) => ({
@@ -533,6 +558,87 @@ app.post(['/api/config', '/config'], authenticateToken, async (req: Request, res
     console.error('[API Config POST] Fatal Error during Broker saving:', error);
     systemErrors.push({ timestamp: new Date(), context: 'Broker Config', error: error.message });
     res.status(500).json({ error: 'Failed to save configuration' });
+  }
+});
+
+// User Kite Authentication
+app.get(['/api/user/kite/login-url', '/user/kite/login-url'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.brokerName !== 'Kite' || !user.apiKey) {
+      return res.status(400).json({ error: 'Kite API key missing in your profile.' });
+    }
+    // We pass userId in state so the callback knows who this is
+    const loginUrl = KiteService.buildLoginUrl(user.apiKey, userId);
+    res.json({ loginUrl });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to generate User login URL.' });
+  }
+});
+
+// Since the callback from Kite will just hit /api/user/kite/callback directly from the browser, we CANNOT use authenticateToken.
+// We must extract the userId from the 'state' query param instead.
+app.get(['/api/user/kite/callback', '/user/kite/callback'], async (req: Request, res: Response) => {
+  try {
+    const requestToken = String(req.query.request_token || '');
+    const state = String(req.query.state || '');
+    const status = String(req.query.status || '');
+    
+    if (!requestToken || status.toLowerCase() !== 'success') {
+      return res.status(400).send('Kite callback missing valid request_token or status is not success.');
+    }
+    if (!state) {
+      return res.status(400).send('Missing user state parameter in redirect.');
+    }
+
+    const userId = state;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.apiKey || !user.apiSecret) {
+      return res.status(400).send('API credentials not configured for this user.');
+    }
+
+    const session = await KiteService.exchangeRequestToken({
+      apiKey: user.apiKey,
+      apiSecret: user.apiSecret,
+      requestToken
+    });
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        requestToken,
+        accessToken: session.accessToken,
+        accessTokenUpdatedAt: new Date(),
+        clientCode: session.userId || user.clientCode
+      }
+    });
+
+    res.redirect('/#settings');
+  } catch (error: any) {
+    console.error('[User Kite Callback] Error:', error);
+    res.status(500).send(`Authentication failed: ${error?.message || 'unknown error'}`);
+  }
+});
+
+app.get(['/api/user/kite/token-status', '/user/kite/token-status'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.brokerName !== 'Kite') {
+      return res.json({ hasAccessToken: false, tokenAgeMinutes: null, shouldReconnect: true });
+    }
+    const updatedAt = user.accessTokenUpdatedAt;
+    const tokenAgeMinutes = updatedAt ? Math.max(0, Math.round((Date.now() - updatedAt.getTime()) / 60000)) : null;
+    const shouldReconnect = !updatedAt || tokenAgeMinutes === null || tokenAgeMinutes > 1440;
+    res.json({
+      hasAccessToken: Boolean(user.accessToken),
+      accessTokenUpdatedAt: updatedAt,
+      tokenAgeMinutes,
+      shouldReconnect
+    });
+  } catch (error: any) {
+    res.json({ error: 'Failed to get token status', hasAccessToken: false });
   }
 });
 

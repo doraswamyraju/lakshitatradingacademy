@@ -19,11 +19,50 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
   const [isSysLoading, setIsSysLoading] = useState(false);
   const [sysStatus, setSysStatus] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
+  const [userTokenStatus, setUserTokenStatus] = useState<any>(null);
+
   useEffect(() => {
-    if (user?.role === 'ADMIN' && token) {
-      fetchSystemConfig();
+    if (token) {
+      if (user?.role === 'ADMIN') fetchSystemConfig();
+      fetchUserTokenStatus();
     }
   }, [user, token]);
+
+  const fetchUserTokenStatus = async () => {
+    try {
+      const res = await fetch('/api/user/kite/token-status', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setUserTokenStatus(await res.json());
+      }
+    } catch (err) {
+      console.log('Failed to fetch user token status');
+    }
+  };
+
+  const handleUserKiteLoginInitiate = async () => {
+    if (!token) return;
+    setIsSubmitting(true);
+    setStatusMessage(null);
+    try {
+      const res = await fetch('/api/user/kite/login-url', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to get login URL');
+      if (data.loginUrl) {
+        window.open(data.loginUrl, '_blank');
+        setStatusType('success');
+        setStatusMessage('Kite login tab opened. Please complete login there.');
+      }
+    } catch (err: any) {
+      setStatusType('error');
+      setStatusMessage(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const fetchSystemConfig = async () => {
     setIsSysLoading(true);
@@ -233,13 +272,40 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ config, setConfig }) => {
               <Power size={18} /> {isSubmitting ? 'Verifying...' : 'Connect API'}
             </button>
           ) : (
-            <button
-              onClick={handleDisconnect}
-              disabled={isSubmitting}
-              className="w-full bg-samp-danger/20 hover:bg-samp-danger/30 text-samp-danger font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-samp-danger/20 disabled:opacity-50"
-            >
-              <X size={18} /> {isSubmitting ? 'Disconnecting...' : 'Disconnect Broker'}
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={handleDisconnect}
+                disabled={isSubmitting}
+                className="w-full bg-samp-danger/20 hover:bg-samp-danger/30 text-samp-danger font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-samp-danger/20 disabled:opacity-50"
+              >
+                <X size={18} /> {isSubmitting ? 'Disconnecting...' : 'Disconnect Broker'}
+              </button>
+
+              {config.brokerName === 'Kite' && (
+                <div className="pt-4 border-t border-white/10 space-y-4">
+                  {userTokenStatus && userTokenStatus.hasAccessToken && !userTokenStatus.shouldReconnect ? (
+                     <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-sm justify-between">
+                       <span className="flex items-center gap-2"><CheckCircle2 size={16} /> Live Feed Active</span>
+                       {userTokenStatus.tokenAgeMinutes !== null && <span className="text-xs opacity-70">({userTokenStatus.tokenAgeMinutes}m ago)</span>}
+                     </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2 p-3 bg-orange-500/10 border border-orange-500/20 text-orange-400 rounded-xl text-xs">
+                        <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                        <p>Your Kite broker is registered, but requires your daily login to issue a fresh viewing token.</p>
+                      </div>
+                      <button
+                        onClick={handleUserKiteLoginInitiate}
+                        disabled={isSubmitting}
+                        className="w-full bg-[#FF5722] hover:bg-[#F4511E] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
+                      >
+                       <ExternalLink size={18} /> Establish Live Broker Session
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
 

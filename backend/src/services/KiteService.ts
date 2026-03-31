@@ -47,8 +47,10 @@ export class KiteService {
     this.config = config;
   }
 
-  static buildLoginUrl(apiKey: string): string {
-    return `https://kite.zerodha.com/connect/login?v=3&api_key=${encodeURIComponent(apiKey)}`;
+  static buildLoginUrl(apiKey: string, state?: string): string {
+    let url = `https://kite.zerodha.com/connect/login?v=3&api_key=${encodeURIComponent(apiKey)}`;
+    if (state) url += `&state=${encodeURIComponent(state)}`;
+    return url;
   }
 
   static async exchangeRequestToken(params: {

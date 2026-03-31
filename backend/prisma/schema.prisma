@@ -18,10 +18,13 @@ model User {
   createdAt DateTime @default(now())
 
   // Broker Credentials
-  brokerName  String?
-  apiKey      String?
-  apiSecret   String?
-  clientCode  String?
+  brokerName           String?
+  apiKey               String?
+  apiSecret            String?
+  clientCode           String?
+  requestToken         String?
+  accessToken          String?
+  accessTokenUpdatedAt DateTime?
   
   // Strategy Subscription Logs
   StrategyLog StrategyLog[]

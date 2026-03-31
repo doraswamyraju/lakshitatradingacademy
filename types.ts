@@ -100,20 +100,6 @@ export interface TradingStrategy {
     trailingStopLoss: boolean;
   };
   qty: number;
-  productType: 'MIS' | 'CNC';
-  isActive: boolean;
-  createdBy: 'admin' | 'user';
-  isMaster?: boolean;
-}
-
-export interface BrokerConfig {
-  brokerName: 'AngelOne' | 'Zerodha' | 'Upstox' | 'AliceBlue';
-  apiKey: string;
-  apiSecret: string;
-  clientCode: string;
-  isConnected: boolean;
-}
-
 export type UserRole = 'ADMIN' | 'USER';
 
 export interface User {

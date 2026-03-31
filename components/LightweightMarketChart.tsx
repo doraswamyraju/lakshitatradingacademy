@@ -42,20 +42,65 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     const normalized = data
       .map((d) => ({ ...d, __tsMs: normalizeTimeToMs((d as any).time) }))
       .filter((d) => d.__tsMs !== null) as Array<Candle & { __tsMs: number }>;
-    const sorted = normalized.sort((a, b) => a.__tsMs - b.__tsMs);
-    if (sorted.length === 0) return [];
     
-    const result = sorted.map((d) => ({
-      time: (Math.floor(d.__tsMs / 1000)) as LightweightCharts.Time,
-      open: d.open,
-      high: d.high,
-      low: d.low,
-      close: d.close,
-      value: d.close,
-      volume: d.volume
-    }));
-    return result;
-  }, [data, timeframe]);
+    const uniqueMap = new Map<number, Candle & { __tsMs: number }>();
+    for (const d of normalized) {
+      const timeSecs = Math.floor(d.__tsMs / 1000);
+      uniqueMap.set(timeSecs, d);
+    }
+    const uniqueSorted = Array.from(uniqueMap.values()).sort((a, b) => a.__tsMs - b.__tsMs);
+    if (uniqueSorted.length === 0) return [];
+    
+    let finalData: Array<any> = [];
+
+    if (chartType === 'HEIKIN_ASHI') {
+      let prevOpen = (uniqueSorted[0].open + uniqueSorted[0].close) / 2;
+      let prevClose = (uniqueSorted[0].open + uniqueSorted[0].high + uniqueSorted[0].low + uniqueSorted[0].close) / 4;
+
+      finalData.push({
+        time: Math.floor(uniqueSorted[0].__tsMs / 1000) as LightweightCharts.Time,
+        open: prevOpen,
+        high: Math.max(uniqueSorted[0].high, prevOpen, prevClose),
+        low: Math.min(uniqueSorted[0].low, prevOpen, prevClose),
+        close: prevClose,
+        value: prevClose,
+        volume: uniqueSorted[0].volume
+      });
+
+      for (let i = 1; i < uniqueSorted.length; i++) {
+        const current = uniqueSorted[i];
+        const haClose = (current.open + current.high + current.low + current.close) / 4;
+        const haOpen = (prevOpen + prevClose) / 2;
+        const haHigh = Math.max(current.high, haOpen, haClose);
+        const haLow = Math.min(current.low, haOpen, haClose);
+
+        finalData.push({
+          time: Math.floor(current.__tsMs / 1000) as LightweightCharts.Time,
+          open: haOpen,
+          high: haHigh,
+          low: haLow,
+          close: haClose,
+          value: haClose,
+          volume: current.volume
+        });
+
+        prevOpen = haOpen;
+        prevClose = haClose;
+      }
+    } else {
+      finalData = uniqueSorted.map((d) => ({
+        time: (Math.floor(d.__tsMs / 1000)) as LightweightCharts.Time,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+        value: d.close,
+        volume: d.volume
+      }));
+    }
+
+    return finalData;
+  }, [data, timeframe, chartType]);
 
   const smaData = useMemo(() => {
     if (!showSMA || formattedData.length === 0) return [];

@@ -11,7 +11,7 @@ import {
   Layers,
   SlidersHorizontal
 } from 'lucide-react';
-import { TradingStrategy, BacktestResult, BacktestTrade, Candle, BacktestRuleTrace } from '../types';
+import { TradingStrategy, BacktestResult, BacktestTrade, Candle, BacktestRuleTrace, ChartType } from '../types';
 import { fetchHistoricalCandles } from '../services/market';
 import LightweightMarketChart from './LightweightMarketChart';
 import { useAuth } from '../context/AuthContext';
@@ -58,6 +58,7 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
   const [historicalData, setHistoricalData] = useState<Candle[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [replayIndex, setReplayIndex] = useState(0);
+  const [chartType, setChartType] = useState<ChartType>('CANDLE');
 
   const selectedStrategy = useMemo(
     () => strategies.find(s => s.id === selectedStrategyId),
@@ -262,11 +263,17 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
                     <Activity size={18} className="text-samp-primary" />
                     Replay Chart + Rule Engine
                   </h3>
-                  <div className="text-xs font-mono text-slate-500">
-                    Bar {replayIndex + 1} / {historicalData.length}
+                  <div className="flex items-center gap-4">
+                    <div className="flex p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5">
+                      <button onClick={() => setChartType('CANDLE')} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center ${chartType === 'CANDLE' ? 'bg-white dark:bg-samp-surface text-samp-primary shadow-sm' : 'text-slate-500'}`}>Standard</button>
+                      <button onClick={() => setChartType('HEIKIN_ASHI')} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center ${chartType === 'HEIKIN_ASHI' ? 'bg-white dark:bg-samp-surface text-samp-primary shadow-sm' : 'text-slate-500'}`}>Heikin Ashi</button>
+                    </div>
+                    <div className="text-xs font-mono text-slate-500">
+                      Bar {replayIndex + 1} / {historicalData.length}
+                    </div>
                   </div>
                 </div>
-                <LightweightMarketChart data={replayData} height={320} chartType="CANDLE" showSMA={true} showEMA={true} timeframe={timeframe} />
+                <LightweightMarketChart data={replayData} height={320} chartType={chartType} showSMA={true} showEMA={true} timeframe={timeframe} />
                 <div className="mt-4">
                   <input
                     type="range"
