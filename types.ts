@@ -73,7 +73,7 @@ export interface FeedStatus {
   tokenAgeMinutes?: number | null;
 }
 
-export type IndicatorType = 'PRICE' | 'RSI' | 'SMA' | 'EMA' | 'MACD' | 'VOLUME' | 'BOLLINGER_UPPER' | 'BOLLINGER_LOWER' | 'BOLLINGER_MIDDLE' | 'ADX' | 'DI_PLUS' | 'DI_MINUS' | 'HEIKIN_ASHI_CANDLE' | 'LATEST_HIGH' | 'LATEST_LOW' | 'PREV_HIGH' | 'PREV_LOW';
+export type IndicatorType = 'PRICE' | 'RSI' | 'SMA' | 'EMA' | 'MACD' | 'VOLUME' | 'BOLLINGER_UPPER' | 'BOLLINGER_LOWER' | 'BOLLINGER_MIDDLE' | 'ADX' | 'DI_PLUS' | 'DI_MINUS' | 'HEIKIN_ASHI_CANDLE' | 'CURRENT_HIGH' | 'CURRENT_LOW' | 'PREVIOUS_HIGH' | 'PREVIOUS_LOW';
 export type OperatorType = '>' | '<' | '==' | '>=' | '<=' | 'CROSSOVER' | 'CROSSUNDER' | 'NEAR' | 'BETWEEN' | 'PATTERN_MATCH';
 
 export interface StrategyCondition {

@@ -35,13 +35,13 @@ const App: React.FC = () => {
         { id: 'c5', side: 'BUY', source: 'ADX', operator: 'BETWEEN', targetType: 'VALUE', minValue: 18, maxValue: 50, sourceParams: { period: 10 } },
         { id: 'c6', side: 'BUY', source: 'DI_PLUS', operator: '>', targetType: 'INDICATOR', targetIndicator: 'DI_MINUS', sourceParams: {} },
         { id: 'c8', side: 'BUY', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'STRONG_BULLISH', sourceParams: {} },
-        { id: 'c11', side: 'BUY', source: 'LATEST_HIGH', operator: '>', targetType: 'INDICATOR', targetIndicator: 'PREV_HIGH', sourceParams: {} },
+        { id: 'c11', side: 'BUY', source: 'CURRENT_HIGH', operator: '>', targetType: 'INDICATOR', targetIndicator: 'PREVIOUS_HIGH', sourceParams: {} },
         
         // SELL BRANCH
         { id: 'c5s', side: 'SELL', source: 'ADX', operator: 'BETWEEN', targetType: 'VALUE', minValue: 18, maxValue: 50, sourceParams: { period: 10 } },
         { id: 'c6s', side: 'SELL', source: 'DI_MINUS', operator: '>', targetType: 'INDICATOR', targetIndicator: 'DI_PLUS', sourceParams: {} },
         { id: 'c8s', side: 'SELL', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'STRONG_BEARISH', sourceParams: {} },
-        { id: 'c11s', side: 'SELL', source: 'LATEST_LOW', operator: '<', targetType: 'INDICATOR', targetIndicator: 'PREV_LOW', sourceParams: {} }
+        { id: 'c11s', side: 'SELL', source: 'CURRENT_LOW', operator: '<', targetType: 'INDICATOR', targetIndicator: 'PREVIOUS_LOW', sourceParams: {} }
       ],
       exitConditions: [
         { id: 'c9', side: 'BUY', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'WEAK_CANDLE', sourceParams: {} },

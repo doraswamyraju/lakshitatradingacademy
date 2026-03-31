@@ -19,7 +19,8 @@ interface AdminPanelProps {
 const INDICATORS: IndicatorType[] = [
   'PRICE', 'RSI', 'SMA', 'EMA', 'MACD', 'VOLUME', 
   'BOLLINGER_UPPER', 'BOLLINGER_LOWER', 'BOLLINGER_MIDDLE', 
-  'ADX', 'DI_PLUS', 'DI_MINUS', 'HEIKIN_ASHI_CANDLE'
+  'ADX', 'DI_PLUS', 'DI_MINUS', 'HEIKIN_ASHI_CANDLE',
+  'CURRENT_HIGH', 'CURRENT_LOW', 'PREVIOUS_HIGH', 'PREVIOUS_LOW'
 ];
 const OPERATORS: { value: OperatorType; label: string }[] = [
   { value: '>', label: 'Greater Than' },
