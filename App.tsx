@@ -29,24 +29,27 @@ const App: React.FC = () => {
       version: '1.0',
       mode: 'INTRADAY',
       instruments: ['NIFTY', 'BANKNIFTY', 'CRUDEOIL'],
-      description: 'Trade continuation moves near mid-band using strong HA candles with ADX-confirmed trend.',
+      description: 'Handwritten Rules v1.0: Trade only 09:30-11:00 & 12:45-14:50. Entry on Strong HA + ADX(18-50) + DMI + Breakout. Exit only after 1:1 RR on Weak/Opposite candle.',
       entryConditions: [
-        { id: 'c5', source: 'ADX', operator: 'BETWEEN', targetType: 'VALUE', targetValue: 50, sourceParams: { period: 10, min: 18 } },
+        { id: 'c5', source: 'ADX', operator: 'BETWEEN', targetType: 'VALUE', minValue: 18, maxValue: 50, sourceParams: { period: 10 } },
         { id: 'c6', source: 'DI_PLUS', operator: '>', targetType: 'INDICATOR', targetIndicator: 'DI_MINUS', sourceParams: {} },
-        { id: 'c8', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', targetValue: 1, sourceParams: { pattern: 'STRONG_BULLISH' } }
+        { id: 'c8', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'STRONG_BULLISH', sourceParams: {} },
+        { id: 'c11', source: 'LATEST_HIGH', operator: '>', targetType: 'INDICATOR', targetIndicator: 'PREV_HIGH', sourceParams: {} }
       ],
       exitConditions: [
-        { id: 'c9', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', targetValue: 1, sourceParams: { pattern: 'STRONG_BEARISH' } }
+        { id: 'c9', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', pattern: 'WEAK_CANDLE', sourceParams: {} }
       ],
       timeframe: '5m',
       qty: 1,
       productType: 'MIS',
       riskConfig: { 
-        stopLossPct: 0, // Using points-based SL in engine
+        stopLossPct: 0,
         takeProfitPct: 0, 
+        stopLossPoints: 30,
         trailingStopLoss: true,
         trailStep: 30,
-        minRR: 1
+        minRR: 1.0,
+        pointBased: true
       },
       isActive: true,
       createdBy: 'admin',

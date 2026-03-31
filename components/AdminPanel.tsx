@@ -59,7 +59,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
     riskConfig: {
       stopLossPct: 1.5,
       takeProfitPct: 3.0,
-      trailingStopLoss: false
+      trailingStopLoss: false,
+      pointBased: false,
+      stopLossPoints: 30,
+      trailStep: 30,
+      minRR: 1.0
     },
     qty: 100,
     productType: 'MIS',
@@ -318,28 +322,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
                             <h4 className="font-bold text-slate-900 dark:text-white text-lg">Risk Guardian</h4>
                          </div>
                          
-                         <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                               <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Stop Loss %</label>
-                               <input 
-                                  type="number" 
-                                  step="0.1"
-                                  value={newStrategy.riskConfig?.stopLossPct}
-                                  onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, stopLossPct: parseFloat(e.target.value) }}))}
-                                  className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-danger transition-colors"
-                               />
-                            </div>
-                            <div className="space-y-2">
-                               <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Take Profit %</label>
-                               <input 
-                                  type="number" 
-                                  step="0.1"
-                                  value={newStrategy.riskConfig?.takeProfitPct}
-                                  onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, takeProfitPct: parseFloat(e.target.value) }}))}
-                                  className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-success transition-colors"
-                               />
-                            </div>
-                         </div>
+                          <div className="flex items-center justify-between p-4 bg-white dark:bg-samp-surface rounded-2xl border border-slate-200 dark:border-white/10 mb-6">
+                            <span className="text-xs font-bold text-slate-700 dark:text-gray-300">Risk Mode: {newStrategy.riskConfig?.pointBased ? 'POINTS' : 'PERCENTAGE'}</span>
+                            <button 
+                               onClick={() => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, pointBased: !s.riskConfig!.pointBased }}))}
+                               className="px-4 py-1.5 bg-samp-primary/10 text-samp-primary rounded-xl text-[10px] font-black uppercase hover:bg-samp-primary hover:text-white transition-all"
+                            >
+                               Switch to {newStrategy.riskConfig?.pointBased ? '%' : 'PTS'}
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-6">
+                             {newStrategy.riskConfig?.pointBased ? (
+                               <>
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">SL Points</label>
+                                    <input 
+                                       type="number" 
+                                       value={newStrategy.riskConfig?.stopLossPoints}
+                                       onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, stopLossPoints: parseFloat(e.target.value) }}))}
+                                       className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-danger transition-colors"
+                                    />
+                                 </div>
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Min RR Activation</label>
+                                    <input 
+                                       type="number" 
+                                       step="0.1"
+                                       value={newStrategy.riskConfig?.minRR}
+                                       onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, minRR: parseFloat(e.target.value) }}))}
+                                       className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-success transition-colors"
+                                    />
+                                 </div>
+                               </>
+                             ) : (
+                               <>
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Stop Loss %</label>
+                                    <input 
+                                       type="number" 
+                                       step="0.1"
+                                       value={newStrategy.riskConfig?.stopLossPct}
+                                       onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, stopLossPct: parseFloat(e.target.value) }}))}
+                                       className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-danger transition-colors"
+                                    />
+                                 </div>
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Take Profit %</label>
+                                    <input 
+                                       type="number" 
+                                       step="0.1"
+                                       value={newStrategy.riskConfig?.takeProfitPct}
+                                       onChange={e => setNewStrategy(s => ({...s, riskConfig: { ...s.riskConfig!, takeProfitPct: parseFloat(e.target.value) }}))}
+                                       className="w-full bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl py-3 px-4 text-slate-900 dark:text-white font-mono font-bold outline-none focus:border-samp-success transition-colors"
+                                    />
+                                 </div>
+                               </>
+                             )}
+                          </div>
 
                          <div className="flex items-center justify-between p-4 bg-white dark:bg-samp-surface rounded-2xl border border-slate-200 dark:border-white/10">
                             <div className="flex items-center gap-3">
@@ -480,8 +520,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
                            <p className="text-xl font-bold text-slate-900 dark:text-white font-mono">{s.qty}</p>
                         </div>
                         <div className="text-center">
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target P&L</p>
-                           <p className={`text-xl font-bold font-mono ${s.isActive ? 'text-samp-success' : 'text-slate-400'}`}>+{s.riskConfig.takeProfitPct}%</p>
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.riskConfig.pointBased ? 'Risk (Points)' : 'Target P&L'}</p>
+                           <p className={`text-xl font-bold font-mono ${s.riskConfig.pointBased ? 'text-samp-danger' : (s.isActive ? 'text-samp-success' : 'text-slate-400')}`}>
+                              {s.riskConfig.pointBased ? `-${s.riskConfig.stopLossPoints}` : `+${s.riskConfig.takeProfitPct}%`}
+                           </p>
                         </div>
                      </div>
 
@@ -795,7 +837,7 @@ const LogicBlock: React.FC<LogicBlockProps> = ({ index, condition, onRemove, onU
           <div className="col-span-5 flex gap-4">
              <div className="flex-1 space-y-1.5">
                 <label className="text-[9px] font-black text-slate-400 dark:text-gray-600 uppercase tracking-widest ml-1 flex justify-between">
-                   Target
+                   Target Setup
                    <button 
                      onClick={() => onUpdate({ targetType: condition.targetType === 'VALUE' ? 'INDICATOR' : 'VALUE' })}
                      className="text-samp-primary hover:underline lowercase italic text-[8px]"
@@ -803,7 +845,34 @@ const LogicBlock: React.FC<LogicBlockProps> = ({ index, condition, onRemove, onU
                       to {condition.targetType === 'VALUE' ? 'indicator' : 'value'}
                    </button>
                 </label>
-                {condition.targetType === 'VALUE' ? (
+                {condition.source === 'HEIKIN_ASHI_CANDLE' ? (
+                   <select 
+                     value={condition.pattern}
+                     onChange={e => onUpdate({ pattern: e.target.value as any })}
+                     className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-colors"
+                   >
+                      <option value="STRONG_BULLISH">STRONG BULLISH</option>
+                      <option value="STRONG_BEARISH">STRONG BEARISH</option>
+                      <option value="WEAK_CANDLE">WEAK CANDLE</option>
+                   </select>
+                ) : condition.operator === 'BETWEEN' ? (
+                   <div className="flex gap-2">
+                      <input 
+                        type="number"
+                        placeholder="Min"
+                        value={condition.minValue}
+                        onChange={e => onUpdate({ minValue: parseFloat(e.target.value) })}
+                        className="w-1/2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-colors font-mono"
+                      />
+                      <input 
+                        type="number"
+                        placeholder="Max"
+                        value={condition.maxValue}
+                        onChange={e => onUpdate({ maxValue: parseFloat(e.target.value) })}
+                        className="w-1/2 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-samp-primary transition-colors font-mono"
+                      />
+                   </div>
+                ) : condition.targetType === 'VALUE' ? (
                   <input 
                     type="number"
                     value={condition.targetValue}

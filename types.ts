@@ -73,7 +73,7 @@ export interface FeedStatus {
   tokenAgeMinutes?: number | null;
 }
 
-export type IndicatorType = 'PRICE' | 'RSI' | 'SMA' | 'EMA' | 'MACD' | 'VOLUME' | 'BOLLINGER_UPPER' | 'BOLLINGER_LOWER' | 'BOLLINGER_MIDDLE' | 'ADX' | 'DI_PLUS' | 'DI_MINUS' | 'HEIKIN_ASHI_CANDLE';
+export type IndicatorType = 'PRICE' | 'RSI' | 'SMA' | 'EMA' | 'MACD' | 'VOLUME' | 'BOLLINGER_UPPER' | 'BOLLINGER_LOWER' | 'BOLLINGER_MIDDLE' | 'ADX' | 'DI_PLUS' | 'DI_MINUS' | 'HEIKIN_ASHI_CANDLE' | 'LATEST_HIGH' | 'LATEST_LOW' | 'PREV_HIGH' | 'PREV_LOW';
 export type OperatorType = '>' | '<' | '==' | '>=' | '<=' | 'CROSSOVER' | 'CROSSUNDER' | 'NEAR' | 'BETWEEN' | 'PATTERN_MATCH';
 
 export interface StrategyCondition {
@@ -83,6 +83,9 @@ export interface StrategyCondition {
   operator: OperatorType;
   targetType: 'VALUE' | 'INDICATOR';
   targetValue?: number;
+  minValue?: number;
+  maxValue?: number;
+  pattern?: 'STRONG_BULLISH' | 'STRONG_BEAR_ISH' | 'WEAK_CANDLE';
   targetIndicator?: IndicatorType;
   targetParams?: Record<string, any>;
 }
@@ -100,9 +103,11 @@ export interface TradingStrategy {
   riskConfig: {
     stopLossPct: number;
     takeProfitPct: number;
+    stopLossPoints?: number;
     trailingStopLoss: boolean;
     trailStep?: number;
     minRR?: number;
+    pointBased?: boolean;
   };
   qty: number;
   productType: 'MIS' | 'CNC';
