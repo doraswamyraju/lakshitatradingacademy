@@ -8,7 +8,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { MarketStreamer } from './services/MarketStreamer';
 import { KiteService } from './services/KiteService';
-
+import { sendContactEmail, sendEnrollmentEmail } from './services/mailer';
 dotenv.config();
 
 const app: Express = express();
@@ -648,6 +648,59 @@ app.get(['/api/admin/errors', '/admin/errors'], authenticateToken, async (req: R
   const user = (req as any).user;
   // For now return all, but in prod we'd check if user is admin
   res.json(systemErrors);
+});
+
+// Front-End Form Endpoints
+app.post(['/api/contact', '/contact'], async (req: Request, res: Response) => {
+  try {
+    const { name, phone, message } = req.body;
+    if (!name || !phone || !message) {
+      return res.status(400).json({ error: 'Name, phone, and message are required.' });
+    }
+    const inquiry = await prisma.contactInquiry.create({
+      data: { name, phone, message }
+    });
+    // Fire and forget email
+    sendContactEmail({ name, phone, message }).catch(console.error);
+    res.json({ success: true, inquiry });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to submit contact form.' });
+  }
+});
+
+app.post(['/api/enroll', '/enroll'], async (req: Request, res: Response) => {
+  try {
+    const { name, email, phone, course } = req.body;
+    if (!name || !email || !phone || !course) {
+      return res.status(400).json({ error: 'All fields are required.' });
+    }
+    const lead = await prisma.admissionLead.create({
+      data: { name, email, phone, course }
+    });
+    // Fire and forget email
+    sendEnrollmentEmail({ name, email, phone, course }).catch(console.error);
+    res.json({ success: true, lead });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to submit enrollment.' });
+  }
+});
+
+app.get(['/api/admin/inquiries', '/admin/inquiries'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const inquiries = await prisma.contactInquiry.findMany({ orderBy: { createdAt: 'desc' }});
+    res.json(inquiries);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch inquiries' });
+  }
+});
+
+app.get(['/api/admin/admissions', '/admin/admissions'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const leads = await prisma.admissionLead.findMany({ orderBy: { createdAt: 'desc' }});
+    res.json(leads);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch admissions' });
+  }
 });
 
 const server = createServer(app);

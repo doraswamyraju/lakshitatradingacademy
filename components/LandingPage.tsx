@@ -18,6 +18,31 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isEnrollOpen, setIsEnrollOpen] = React.useState(false);
   const [activeFaq, setActiveFaq] = React.useState<number | null>(null);
+  
+  const [contactForm, setContactForm] = React.useState({ name: '', phone: '', message: '' });
+  const [isSubmittingContact, setIsSubmittingContact] = React.useState(false);
+  const [contactSuccess, setContactSuccess] = React.useState(false);
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingContact(true);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contactForm)
+      });
+      if (res.ok) {
+        setContactSuccess(true);
+        setContactForm({ name: '', phone: '', message: '' });
+        setTimeout(() => setContactSuccess(false), 5000);
+      }
+    } catch {
+      alert('Failed to send message.');
+    } finally {
+      setIsSubmittingContact(false);
+    }
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -47,7 +72,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-900/20">
               <GraduationCap className="text-white" size={24} />
             </div>
-            <span className="font-bold text-xl tracking-tight text-blue-900">Lakshita Academy</span>
+            <span className="font-bold text-xl tracking-tight text-blue-900">Lakshita Trading Academy</span>
           </div>
 
           {/* Desktop Menu */}
@@ -276,7 +301,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <span className="text-xs font-bold tracking-widest uppercase text-blue-900/80">About the Trainer</span>
             </div>
             <h2 className="text-4xl font-black mb-4 text-blue-950">K. Y. Sampangi</h2>
-            <p className="text-lg font-bold text-blue-700 mb-6">Founder &mdash; Lakshita Trading Academy<br/><span className="text-slate-500 font-medium tracking-wide text-sm uppercase mt-1 inline-block">Trader | Mentor | Market Analyst</span></p>
+            <p className="text-lg font-bold text-blue-700 mb-6">Founder &mdash; Lakshita Trading Academy<br/><span className="text-slate-500 font-medium tracking-wide text-sm uppercase mt-1 inline-block">Profit Trader | Mentor | Market Analyst</span></p>
             <p className="text-slate-600 text-lg mb-8 leading-relaxed">
               With practical market experience and a disciplined approach, he focuses on building confident and emotionally strong traders.
             </p>
@@ -384,8 +409,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-slate-400 font-bold uppercase block">Special Fee</span>
-                  <span className="text-3xl font-black text-blue-900">₹5,999</span>
-                  <span className="text-sm text-slate-400 line-through ml-2">₹10,000</span>
+                  <span className="text-3xl font-black text-blue-900">₹9,999</span>
+                  <span className="text-sm text-slate-400 line-through ml-2">₹19,999</span>
                 </div>
                 <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 transition-all">Enroll Now</button>
               </div>
@@ -418,8 +443,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
                 <div>
                   <span className="text-xs text-slate-400 font-bold uppercase block">Special Fee</span>
-                  <span className="text-3xl font-black text-blue-900">₹9,999</span>
-                  <span className="text-sm text-slate-400 line-through ml-2">₹30,000</span>
+                  <span className="text-3xl font-black text-blue-900">₹19,999</span>
+                  <span className="text-sm text-slate-400 line-through ml-2">₹39,999</span>
                 </div>
                 <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 transition-all">Enroll Now</button>
               </div>
@@ -626,7 +651,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 </div>
                 <div>
                   <h4 className="font-bold text-lg mb-1">Office Location</h4>
-                  <p className="text-blue-200 text-sm leading-relaxed">Lakshita Trading Academy,<br />Hyderabad, Telangana</p>
+                  <p className="text-blue-200 text-sm leading-relaxed">Door no 9-84/15, Advaita Nagar,<br />Near collector office, Daminedu, Tirupati pin 517503</p>
                 </div>
               </div>
               <div className="flex items-start gap-4">
@@ -651,23 +676,31 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
           <div className="md:w-1/2 p-12 lg:p-16">
             <h3 className="text-2xl font-black mb-8 text-blue-950">Send us a Message</h3>
-            <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); alert('Message sent!'); }}>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Your Name</label>
-                <input type="text" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="John Doe" />
+            {contactSuccess ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center bg-green-50 rounded-3xl border border-green-100">
+                <CheckCircle2 size={48} className="text-green-500 mb-4" />
+                <h4 className="text-2xl font-black text-green-900 mb-2">Message Sent!</h4>
+                <p className="text-green-700">Thanks for reaching out. We will get back to you shortly.</p>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
-                <input type="tel" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="+91 999999999" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Message</label>
-                <textarea required rows={4} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none resize-none" placeholder="How can we help you?"></textarea>
-              </div>
-              <button type="submit" className="w-full py-4 bg-blue-900 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all active:scale-[0.98]">
-                Send Message
-              </button>
-            </form>
+            ) : (
+              <form className="space-y-6" onSubmit={handleContactSubmit}>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Your Name</label>
+                  <input type="text" required value={contactForm.name} onChange={e => setContactForm(p => ({ ...p, name: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="John Doe" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
+                  <input type="tel" required value={contactForm.phone} onChange={e => setContactForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="+91 9999999999" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Message</label>
+                  <textarea required rows={4} value={contactForm.message} onChange={e => setContactForm(p => ({ ...p, message: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none resize-none" placeholder="How can we help you?"></textarea>
+                </div>
+                <button type="submit" disabled={isSubmittingContact} className="w-full py-4 bg-blue-900 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed">
+                  {isSubmittingContact ? 'Sending...' : 'Send Message'}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </section>
@@ -707,7 +740,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
                   <GraduationCap className="text-blue-950" size={18} />
                 </div>
-                <span className="font-bold text-xl tracking-tight text-white">Lakshita Academy</span>
+                <span className="font-bold text-xl tracking-tight text-white">Lakshita Trading Academy</span>
               </div>
               <p className="text-blue-200/60 max-w-sm leading-relaxed">
                 Empowering retail traders with institutional-grade education in Telugu. Founded by Sampangi.

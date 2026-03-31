@@ -34,9 +34,11 @@ const OPERATORS: { value: OperatorType; label: string }[] = [
 ];
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, token }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'architect' | 'errors'>('architect');
+  const [activeSubTab, setActiveSubTab] = useState<'architect' | 'errors' | 'inquiries' | 'admissions'>('architect');
   const [systemErrors, setSystemErrors] = useState<any[]>([]);
   const [isLoadingErrors, setIsLoadingErrors] = useState(false);
+  const [inquiries, setInquiries] = useState<any[]>([]);
+  const [admissions, setAdmissions] = useState<any[]>([]);
 
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -154,10 +156,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
     }
   };
 
+  const fetchInquiries = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/admin/inquiries', { headers: { 'Authorization': `Bearer ${token}` } });
+      setInquiries(await res.json());
+    } catch {}
+  };
+
+  const fetchAdmissions = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/admin/admissions', { headers: { 'Authorization': `Bearer ${token}` } });
+      setAdmissions(await res.json());
+    } catch {}
+  };
+
   React.useEffect(() => {
     if (activeSubTab === 'errors') {
       fetchErrors();
     }
+    if (activeSubTab === 'inquiries') fetchInquiries();
+    if (activeSubTab === 'admissions') fetchAdmissions();
   }, [activeSubTab]);
 
   return (
@@ -184,11 +204,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
                </div>
                Error Reports
             </button>
+            <div className="w-px h-10 bg-slate-200 dark:bg-white/10"></div>
+            <button 
+              onClick={() => setActiveSubTab('inquiries')}
+              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'inquiries' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
+            >
+               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'inquiries' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                  <Activity size={32} />
+               </div>
+               Inquiries
+            </button>
+            <div className="w-px h-10 bg-slate-200 dark:bg-white/10"></div>
+            <button 
+              onClick={() => setActiveSubTab('admissions')}
+              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'admissions' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
+            >
+               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'admissions' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                  <Target size={32} />
+               </div>
+               Admissions
+            </button>
           </div>
           <p className="text-slate-500 dark:text-gray-500 text-lg font-medium max-w-2xl leading-relaxed">
             {activeSubTab === 'architect' 
               ? "Design limitless automated execution flows. Combine institutional indicators with advanced price action logic."
-              : "Monitor real-time system health and connectivity failures across the unified execution engine."}
+              : activeSubTab === 'errors'
+              ? "Monitor real-time system health and connectivity failures across the unified execution engine."
+              : activeSubTab === 'inquiries'
+              ? "Review general contact form submissions and callback requests."
+              : "Review course enrollment requests and student registrations."}
           </p>
         </div>
         {!isAdding && activeSubTab === 'architect' && (
@@ -459,7 +503,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
               </div>
             )}
           </div>
-        ) : (
+        ) : activeSubTab === 'errors' ? (
           <div className="col-span-12 space-y-6">
             <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-10 overflow-hidden relative">
               <div className="flex items-center justify-between mb-8">
@@ -494,7 +538,51 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
               </div>
             </div>
           </div>
-        )}
+        ) : activeSubTab === 'inquiries' ? (
+          <div className="col-span-12 space-y-6">
+            <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-10 overflow-hidden relative">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Contact Inquiries</h3>
+                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">{inquiries.length} queries</span>
+              </div>
+              <div className="space-y-4">
+                {inquiries.length > 0 ? inquiries.map((iq, i) => (
+                  <div key={i} className="flex flex-col gap-2 p-6 bg-slate-50 dark:bg-black/20 rounded-[32px] border border-slate-100 dark:border-white/5 items-start transition-all hover:border-indigo-500/30">
+                    <div className="flex justify-between w-full items-center">
+                       <h4 className="font-bold text-slate-900 dark:text-white text-lg">{iq.name} <span className="text-slate-400 dark:text-gray-500 text-sm font-mono ml-2">({iq.phone})</span></h4>
+                       <span className="text-xs font-mono text-slate-400">{new Date(iq.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="text-slate-600 dark:text-gray-400 text-sm mt-2">{iq.message}</p>
+                  </div>
+                )) : <div className="text-center py-10 text-slate-400">No inquiries found.</div>}
+              </div>
+            </div>
+          </div>
+        ) : activeSubTab === 'admissions' ? (
+          <div className="col-span-12 space-y-6">
+            <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-10 overflow-hidden relative">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Course Enrollments</h3>
+                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">{admissions.length} leads</span>
+              </div>
+              <div className="space-y-4">
+                {admissions.length > 0 ? admissions.map((adm, i) => (
+                  <div key={i} className="flex flex-col gap-2 p-6 bg-slate-50 dark:bg-black/20 rounded-[32px] border border-slate-100 dark:border-white/5 items-start transition-all hover:border-emerald-500/30">
+                    <div className="flex justify-between w-full items-center">
+                       <h4 className="font-bold text-slate-900 dark:text-white text-lg">{adm.name}</h4>
+                       <span className="bg-emerald-100 text-emerald-800 text-xs px-3 py-1 rounded-full font-bold">{adm.course}</span>
+                    </div>
+                    <div className="text-sm font-mono text-slate-500 dark:text-gray-400 mt-2 flex gap-6">
+                       <p className="flex items-center gap-2">✉ {adm.email}</p>
+                       <p className="flex items-center gap-2">☎ {adm.phone}</p>
+                    </div>
+                    <p className="text-xs mt-2 text-slate-400">{new Date(adm.createdAt).toLocaleString()}</p>
+                  </div>
+                )) : <div className="text-center py-10 text-slate-400">No enrollments found.</div>}
+              </div>
+            </div>
+          </div>
+        ) : null}
         
         {!isAdding && activeSubTab === 'architect' && (
            <div className="col-span-4 space-y-8">

@@ -58,3 +58,21 @@ model MarketDataConfig {
   isEnabled          Boolean  @default(true)
   updatedAt          DateTime @updatedAt
 }
+model ContactInquiry {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String
+  message   String
+  status    String   @default("NEW")
+  createdAt DateTime @default(now())
+}
+
+model AdmissionLead {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String
+  course    String
+  status    String   @default("NEW")
+  createdAt DateTime @default(now())
+}

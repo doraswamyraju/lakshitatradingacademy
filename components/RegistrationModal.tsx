@@ -9,6 +9,7 @@ interface RegistrationModalProps {
 
 const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }) => {
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -16,16 +17,30 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
         course: ''
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Simulate API call
-        console.log('Registration Data:', formData);
-        setIsSubmitted(true);
-        setTimeout(() => {
-            setIsSubmitted(false);
-            onClose();
-            setFormData({ name: '', email: '', phone: '', course: '' });
-        }, 3000);
+        setIsSubmitting(true);
+        try {
+            const res = await fetch('/api/enroll', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+            if (res.ok) {
+                setIsSubmitted(true);
+                setTimeout(() => {
+                    setIsSubmitted(false);
+                    onClose();
+                    setFormData({ name: '', email: '', phone: '', course: '' });
+                }, 3000);
+            } else {
+                alert('Failed to submit enrollment.');
+            }
+        } catch {
+            alert('Error connecting to server.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -121,17 +136,17 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-slate-700"
                                         >
                                             <option value="">Select a course</option>
-                                            <option value="full-market">Full Stock Market Course</option>
-                                            <option value="advanced-tech">Advanced Technicals Master Course</option>
-                                            <option value="options">Options Specialization</option>
-                                            <option value="demo">Free Demo Class</option>
+                                            <option value="Basic Trading Course">Basic Trading Course</option>
+                                            <option value="Advance Training Course">Advance Training Course</option>
+                                            <option value="Free Demo Class">Free Demo Class</option>
                                         </select>
                                     </div>
                                     <button
                                         type="submit"
-                                        className="w-full py-4 bg-blue-900 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all active:scale-[0.98]"
+                                        disabled={isSubmitting}
+                                        className="w-full py-4 bg-blue-900 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                                     >
-                                        Complete Registration
+                                        {isSubmitting ? 'Registering...' : 'Complete Registration'}
                                     </button>
                                 </form>
                             )}
