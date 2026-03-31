@@ -5,13 +5,13 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export class ExecutionLoop {
-  private isRunning: boolean = false;
+  private isRunning = false;
   private loopInterval: NodeJS.Timeout | null = null;
   private brokerService: AngelOneService | null = null;
 
-  // State Tracking
   private currentCandles: Candle[] = [];
-  private activeTrades: Map<string, {
+
+  private activeTrades = new Map<string, {
     symbol: string;
     entryPrice: number;
     slPrice: number;
@@ -20,19 +20,20 @@ export class ExecutionLoop {
     trailStepsDone: number;
     side: 'BUY' | 'SELL';
     timestamp: number;
-  }> = new Map();
-  
-  private dailyTradeCount: number = 0;
-  private lastResetDate: string = new Date().toISOString().split('T')[0];
+  }>();
 
-  constructor() {}
+  private dailyTradeCount = 0;
+  private lastResetDate = new Date().toISOString().split('T')[0];
 
   async start(brokerConfig: BrokerCredentials) {
     if (this.isRunning) return;
+
     this.brokerService = new AngelOneService(brokerConfig);
-    console.log('[Engine] Starting HA Trend Continuation (v1.0) Execution Loop...');
     this.isRunning = true;
-    this.loopInterval = setInterval(() => this.tick(), 5000); 
+
+    console.log('[Engine] 🚀 Strategy Started');
+
+    this.loopInterval = setInterval(() => this.tick(), 5000);
   }
 
   stop() {
@@ -40,28 +41,27 @@ export class ExecutionLoop {
     if (this.loopInterval) clearInterval(this.loopInterval);
   }
 
+  // ---------------- TIME FILTER ----------------
   private isTimeAllowed(): boolean {
     const now = new Date();
-    const currentTime = now.getHours() * 100 + now.getMinutes();
-    
-    // Allowed: 09:30-11:00, 12:45-14:50
-    const allowed = [
-      { start: 930, end: 1100 },
-      { start: 1245, end: 1450 }
-    ];
-    
-    return allowed.some(window => currentTime >= window.start && currentTime <= window.end);
+    const time = now.getHours() * 100 + now.getMinutes();
+
+    return (
+      (time >= 930 && time <= 1100) ||
+      (time >= 1245 && time <= 1450)
+    );
   }
 
+  // ---------------- SL LOGIC ----------------
   private getInstrumentSL(symbol: string): number {
     if (symbol.includes('BANKNIFTY')) return 60;
     if (symbol.includes('NIFTY')) return 30;
     if (symbol.includes('CRUDE')) return 20;
-    return 30; // Default
+    return 30;
   }
 
+  // ---------------- MAIN LOOP ----------------
   private async tick() {
-    // Reset daily count if date changed
     const today = new Date().toISOString().split('T')[0];
     if (today !== this.lastResetDate) {
       this.dailyTradeCount = 0;
@@ -73,91 +73,110 @@ export class ExecutionLoop {
 
     try {
       const haCandles = QuantEngine.generateHeikinAshi(this.currentCandles);
-      const adxResult = QuantEngine.calculateADX(this.currentCandles, 10);
-      
-      const latestHA = haCandles[haCandles.length - 1];
-      const prevHA = haCandles[haCandles.length - 2];
-      const latestOriginal = this.currentCandles[this.currentCandles.length - 1];
-      const prevOriginal = this.currentCandles[this.currentCandles.length - 2];
-      
-      const adxData = (adxResult as any)[adxResult.length - 1];
+      const adx = QuantEngine.calculateADX(this.currentCandles, 10);
+
+      const latestHA = haCandles.at(-1)!;
+      const latest = this.currentCandles.at(-1)!;
+      const prev = this.currentCandles.at(-2)!;
+
+      const adxData: any = adx.at(-1);
       if (!adxData) return;
 
-      const symbol = "NIFTY-OPT"; // In production, this iterates over user subscriptions
+      const symbol = "NIFTY-OPT";
 
-      // 1. MANAGE ACTIVE TRADES (RR Logic & Trailing)
-      const activeTrade = this.activeTrades.get(symbol);
-      if (activeTrade) {
-        await this.manageActiveTrade(symbol, activeTrade, latestOriginal, latestHA);
-        return; // Only one trade at a time as per risk node
+      // ---------------- ACTIVE TRADE ----------------
+      const trade = this.activeTrades.get(symbol);
+      if (trade) {
+        await this.manageTrade(symbol, trade, latest, latestHA);
+        return;
       }
 
-      // 2. ENTRY logic (Gatekeepers: ADX + Risk Limits)
+      // ---------------- ENTRY LIMIT ----------------
       if (this.dailyTradeCount >= 2) return;
-      
-      const hasStrongTrend = adxData.adx >= 18 && adxData.adx <= 50;
-      if (!hasStrongTrend) return;
 
-      // BULLISH Entry Node
-      if (latestHA.isStrongBullish && adxData.pdi > adxData.mdi && latestOriginal.high > prevOriginal.high) {
-        await this.executeEntry(symbol, 'BUY', latestOriginal.close);
-      } 
-      // BEARISH Entry Node
-      else if (latestHA.isStrongBearish && adxData.mdi > adxData.pdi && latestOriginal.low < prevOriginal.low) {
-        await this.executeEntry(symbol, 'SELL', latestOriginal.close);
+      if (!(adxData.adx >= 18 && adxData.adx <= 50)) return;
+
+      // ---------------- BUY ----------------
+      if (
+        latestHA.isStrongBullish &&
+        adxData.pdi > adxData.mdi &&
+        latest.high > prev.high
+      ) {
+        await this.enterTrade(symbol, 'BUY', latest.close);
       }
 
-    } catch (error) {
-      console.error("[Engine] Tick failed:", error);
+      // ---------------- SELL ----------------
+      else if (
+        latestHA.isStrongBearish &&
+        adxData.mdi > adxData.pdi &&
+        latest.low < prev.low
+      ) {
+        await this.enterTrade(symbol, 'SELL', latest.close);
+      }
+
+    } catch (err) {
+      console.error('[Engine Error]', err);
     }
   }
 
-  private async executeEntry(symbol: string, side: 'BUY' | 'SELL', price: number) {
-    const riskPoints = this.getInstrumentSL(symbol);
-    const slPrice = side === 'BUY' ? price - riskPoints : price + riskPoints;
+  // ---------------- ENTRY ----------------
+  private async enterTrade(symbol: string, side: 'BUY' | 'SELL', price: number) {
+    const risk = this.getInstrumentSL(symbol);
 
-    console.log(`[Engine] >>> ENTRY SIGNAL: ${side} @ ${price} (SL: ${slPrice}) <<<`);
-    
+    const sl = side === 'BUY'
+      ? price - risk
+      : price + risk;
+
+    console.log(`🚀 ENTRY ${side} @ ${price} | SL: ${sl}`);
+
     this.activeTrades.set(symbol, {
       symbol,
       entryPrice: price,
-      slPrice,
-      riskPoints,
+      slPrice: sl,
+      riskPoints: risk,
       isRRReached: false,
       trailStepsDone: 0,
       side,
       timestamp: Date.now()
     });
-    
+
     this.dailyTradeCount++;
     await this.logTrade(symbol, `ENTRY_${side}`, price);
   }
 
-  private async manageActiveTrade(symbol: string, trade: any, latest: Candle, latestHA: HeikinAshiCandle) {
-    const pnlPoints = trade.side === 'BUY' ? latest.close - trade.entryPrice : trade.entryPrice - latest.close;
+  // ---------------- TRADE MANAGEMENT ----------------
+  private async manageTrade(
+    symbol: string,
+    trade: any,
+    latest: Candle,
+    ha: HeikinAshiCandle
+  ) {
+    const pnl = trade.side === 'BUY'
+      ? latest.close - trade.entryPrice
+      : trade.entryPrice - latest.close;
 
-    // A. Check Hard Stop Loss
-    const isSLHit = trade.side === 'BUY' ? latest.close <= trade.slPrice : latest.close >= trade.slPrice;
-    if (isSLHit) {
-      await this.closeTrade(symbol, 'EXIT_SL', latest.close);
+    // -------- SL HIT --------
+    const slHit = trade.side === 'BUY'
+      ? latest.close <= trade.slPrice
+      : latest.close >= trade.slPrice;
+
+    if (slHit) {
+      await this.exitTrade(symbol, 'SL', latest.close);
       return;
     }
 
-    // B. Activate RR 1:1 Logic
-    if (!trade.isRRReached && pnlPoints >= trade.riskPoints) {
-      console.log(`[Engine] RR 1:1 Hit for ${symbol}. Trailing & Sentiment exits ACTIVATED.`);
+    // -------- RR 1:1 --------
+    if (!trade.isRRReached && pnl >= trade.riskPoints) {
       trade.isRRReached = true;
-      // When RR 1:1 hit, move SL to Entry (for protection)
       trade.slPrice = trade.entryPrice;
+
+      console.log(`✅ RR 1:1 achieved → SL moved to entry`);
     }
 
-    // C. Trailing SL Logic (ONLY after RR 1:1 is hit)
+    // -------- TRAILING --------
     if (trade.isRRReached) {
-      if (!trade.trailStepsDone) trade.trailStepsDone = 0;
-      
-      const move = pnlPoints;
-      const step = 30; // 30 point step as per handwritten rules
-      const steps = Math.floor(move / step);
+      const step = 30;
+      const steps = Math.floor(pnl / step);
 
       if (steps > trade.trailStepsDone) {
         trade.trailStepsDone = steps;
@@ -168,23 +187,30 @@ export class ExecutionLoop {
           trade.slPrice = trade.entryPrice - (steps - 1) * step;
         }
 
-        console.log(`[Engine] Trailing Updated SL: ${trade.slPrice}`);
+        console.log(`📈 Trailing SL → ${trade.slPrice}`);
       }
 
-      // D. Exit Logic (ONLY after RR 1:1 is hit)
-      const isOppositeCandle = trade.side === 'BUY' ? latestHA.isStrongBearish : latestHA.isStrongBullish;
-      if (isOppositeCandle || latestHA.isWeak) {
-        await this.closeTrade(symbol, 'EXIT_SENTIMENT', latest.close);
+      // -------- EXIT LOGIC --------
+      const opposite =
+        trade.side === 'BUY'
+          ? ha.isStrongBearish
+          : ha.isStrongBullish;
+
+      if (opposite || ha.isWeak) {
+        await this.exitTrade(symbol, 'SIGNAL', latest.close);
       }
     }
   }
 
-  private async closeTrade(symbol: string, reason: string, price: number) {
-    console.log(`[Engine] <<< EXIT: ${reason} @ ${price} <<<`);
+  // ---------------- EXIT ----------------
+  private async exitTrade(symbol: string, reason: string, price: number) {
+    console.log(`❌ EXIT (${reason}) @ ${price}`);
+
     this.activeTrades.delete(symbol);
-    await this.logTrade(symbol, reason, price);
+    await this.logTrade(symbol, `EXIT_${reason}`, price);
   }
 
+  // ---------------- LOG ----------------
   private async logTrade(symbol: string, action: string, price: number) {
     await prisma.strategyLog.create({
       data: {
@@ -196,10 +222,10 @@ export class ExecutionLoop {
         qty: 1,
         status: "SUCCESS"
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }
 
-  injectCandle(c: Candle) {
-    this.currentCandles.push(c);
+  injectCandle(candle: Candle) {
+    this.currentCandles.push(candle);
   }
 }
