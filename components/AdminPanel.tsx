@@ -34,11 +34,12 @@ const OPERATORS: { value: OperatorType; label: string }[] = [
 ];
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, token }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'architect' | 'errors' | 'inquiries' | 'admissions'>('architect');
+  const [activeSubTab, setActiveSubTab] = useState<'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue'>('architect');
   const [systemErrors, setSystemErrors] = useState<any[]>([]);
   const [isLoadingErrors, setIsLoadingErrors] = useState(false);
   const [inquiries, setInquiries] = useState<any[]>([]);
   const [admissions, setAdmissions] = useState<any[]>([]);
+  const [aliceLeads, setAliceLeads] = useState<any[]>([]);
 
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -172,12 +173,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
     } catch {}
   };
 
+  const fetchAliceBlue = async () => {
+    if (!token) return;
+    try {
+        const res = await fetch('/api/admin/aliceblue', { headers: { 'Authorization': `Bearer ${token}` } });
+        setAliceLeads(await res.json());
+    } catch {}
+  };
+
   React.useEffect(() => {
     if (activeSubTab === 'errors') {
       fetchErrors();
     }
     if (activeSubTab === 'inquiries') fetchInquiries();
     if (activeSubTab === 'admissions') fetchAdmissions();
+    if (activeSubTab === 'aliceblue') fetchAliceBlue();
   }, [activeSubTab, token]);
 
   return (
@@ -186,53 +196,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-6">
             <button 
-              onClick={() => setActiveSubTab('architect')}
-              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'architect' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
-            >
-               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'architect' ? 'bg-samp-primary/10 text-samp-primary' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
-                  <Sliders size={32} />
-               </div>
-               Strategy Architect
-            </button>
-            <div className="w-px h-10 bg-slate-200 dark:bg-white/10"></div>
-            <button 
-              onClick={() => setActiveSubTab('errors')}
-              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'errors' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
-            >
-               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'errors' ? 'bg-samp-danger/10 text-samp-danger' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
-                  <AlertCircle size={32} />
-               </div>
-               Error Reports
-            </button>
-            <div className="w-px h-10 bg-slate-200 dark:bg-white/10"></div>
-            <button 
-              onClick={() => setActiveSubTab('inquiries')}
-              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'inquiries' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
-            >
-               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'inquiries' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
-                  <Activity size={32} />
-               </div>
-               Inquiries
-            </button>
-            <div className="w-px h-10 bg-slate-200 dark:bg-white/10"></div>
-            <button 
               onClick={() => setActiveSubTab('admissions')}
-              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'admissions' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
+              className={`text-4xl font-black flex items-center gap-4 transition-all ${activeSubTab === 'admissions' || activeSubTab === 'inquiries' || activeSubTab === 'aliceblue' ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-gray-700 hover:text-slate-500'}`}
             >
-               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'admissions' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
-                  <Target size={32} />
+               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${activeSubTab === 'admissions' || activeSubTab === 'inquiries' || activeSubTab === 'aliceblue' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                  <Database size={32} />
                </div>
-               Admissions
+               Lead Management
             </button>
           </div>
           <p className="text-slate-500 dark:text-gray-500 text-lg font-medium max-w-2xl leading-relaxed">
             {activeSubTab === 'architect' 
               ? "Design limitless automated execution flows. Combine institutional indicators with advanced price action logic."
-              : activeSubTab === 'errors'
-              ? "Monitor real-time system health and connectivity failures across the unified execution engine."
-              : activeSubTab === 'inquiries'
-              ? "Review general contact form submissions and callback requests."
-              : "Review course enrollment requests and student registrations."}
+              : activeSubTab === 'errors' 
+              ? "Monitor system stability and troubleshoot runtime execution failures."
+              : "Manage student enrollments, broker partnerships, and incoming inquiries."}
           </p>
         </div>
         {!isAdding && activeSubTab === 'architect' && (
@@ -540,45 +518,152 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
           </div>
         ) : activeSubTab === 'inquiries' ? (
           <div className="col-span-12 space-y-6">
-            <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-10 overflow-hidden relative">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Contact Inquiries</h3>
-                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">{inquiries.length} queries</span>
+            <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-10 shadow-xl relative overflow-hidden">
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h3 className="text-3xl font-black text-slate-900 dark:text-white">General Inquiries</h3>
+                  <p className="text-slate-500 dark:text-gray-500 font-medium mt-1">Direct messages from the landing page contact form</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-2xl text-xs font-bold uppercase tracking-widest">{inquiries.length} Messages</span>
+                </div>
               </div>
-              <div className="space-y-4">
-                {inquiries.length > 0 ? inquiries.map((iq, i) => (
-                  <div key={i} className="flex flex-col gap-2 p-6 bg-slate-50 dark:bg-black/20 rounded-[32px] border border-slate-100 dark:border-white/5 items-start transition-all hover:border-indigo-500/30">
-                    <div className="flex justify-between w-full items-center">
-                       <h4 className="font-bold text-slate-900 dark:text-white text-lg">{iq.name} <span className="text-slate-400 dark:text-gray-500 text-sm font-mono ml-2">({iq.phone})</span></h4>
-                       <span className="text-xs font-mono text-slate-400">{new Date(iq.createdAt).toLocaleString()}</span>
-                    </div>
-                    <p className="text-slate-600 dark:text-gray-400 text-sm mt-2">{iq.message}</p>
-                  </div>
-                )) : <div className="text-center py-10 text-slate-400">No inquiries found.</div>}
+              
+              <div className="overflow-x-auto rounded-3xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-black/10">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-white/10">
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sender Info</th>
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Message Content</th>
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Received At</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {inquiries.length > 0 ? inquiries.map((iq, i) => (
+                      <tr key={i} className="hover:bg-blue-50 dark:hover:bg-white/5 transition-colors group">
+                        <td className="px-8 py-6">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-bold text-slate-900 dark:text-white">{iq.name}</span>
+                            <span className="text-xs font-mono text-slate-400">{iq.phone}</span>
+                            {iq.email && <span className="text-xs font-mono text-blue-500">{iq.email}</span>}
+                          </div>
+                        </td>
+                        <td className="px-8 py-6">
+                          <p className="text-sm text-slate-600 dark:text-gray-400 line-clamp-2 group-hover:line-clamp-none transition-all duration-300 max-w-lg">{iq.message}</p>
+                        </td>
+                        <td className="px-8 py-6 text-right">
+                          <span className="text-xs font-mono text-slate-400">{new Date(iq.createdAt).toLocaleString()}</span>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={3} className="py-20 text-center text-slate-400 italic">No inquiries found in the pipeline.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         ) : activeSubTab === 'admissions' ? (
           <div className="col-span-12 space-y-6">
-            <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-10 overflow-hidden relative">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Course Enrollments</h3>
-                <span className="text-xs font-mono text-slate-500 bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full uppercase tracking-widest">{admissions.length} leads</span>
+            <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-10 shadow-xl relative overflow-hidden">
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h3 className="text-3xl font-black text-slate-900 dark:text-white">Academy Admissions</h3>
+                  <p className="text-slate-500 dark:text-gray-500 font-medium mt-1">Student enrollment requests for training courses</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-2xl text-xs font-bold uppercase tracking-widest">{admissions.length} Enrollments</span>
+                </div>
               </div>
-              <div className="space-y-4">
-                {admissions.length > 0 ? admissions.map((adm, i) => (
-                  <div key={i} className="flex flex-col gap-2 p-6 bg-slate-50 dark:bg-black/20 rounded-[32px] border border-slate-100 dark:border-white/5 items-start transition-all hover:border-emerald-500/30">
-                    <div className="flex justify-between w-full items-center">
-                       <h4 className="font-bold text-slate-900 dark:text-white text-lg">{adm.name}</h4>
-                       <span className="bg-emerald-100 text-emerald-800 text-xs px-3 py-1 rounded-full font-bold">{adm.course}</span>
-                    </div>
-                    <div className="text-sm font-mono text-slate-500 dark:text-gray-400 mt-2 flex gap-6">
-                       <p className="flex items-center gap-2">✉ {adm.email}</p>
-                       <p className="flex items-center gap-2">☎ {adm.phone}</p>
-                    </div>
-                    <p className="text-xs mt-2 text-slate-400">{new Date(adm.createdAt).toLocaleString()}</p>
-                  </div>
-                )) : <div className="text-center py-10 text-slate-400">No enrollments found.</div>}
+
+              <div className="overflow-x-auto rounded-3xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-black/10">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-white/10">
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student Details</th>
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Selected Course</th>
+                      <th className="px-8 py-5 text-[100px] font-black text-slate-400 uppercase tracking-widest text-right">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {admissions.length > 0 ? admissions.map((adm, i) => (
+                      <tr key={i} className="hover:bg-emerald-50 dark:hover:bg-white/5 transition-colors group">
+                        <td className="px-8 py-6">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-bold text-slate-900 dark:text-white">{adm.name}</span>
+                            <div className="flex gap-4">
+                                <span className="text-xs font-mono text-slate-400 flex items-center gap-1">☎ {adm.phone}</span>
+                                <span className="text-xs font-mono text-blue-500 flex items-center gap-1">✉ {adm.email}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className="px-4 py-2 bg-blue-900 text-white rounded-full text-xs font-bold shadow-md">{adm.course}</span>
+                        </td>
+                        <td className="px-8 py-6 text-right">
+                          <span className="text-xs font-mono text-slate-400">{new Date(adm.createdAt).toLocaleString()}</span>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={3} className="py-20 text-center text-slate-400 italic">No registrations found yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : activeSubTab === 'aliceblue' ? (
+          <div className="col-span-12 space-y-6">
+            <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[40px] p-10 shadow-xl relative overflow-hidden">
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h3 className="text-3xl font-black text-slate-900 dark:text-white">Alice Blue Partners</h3>
+                  <p className="text-slate-500 dark:text-gray-500 font-medium mt-1">Demat account opening requests via partner portal</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-4 py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-2xl text-xs font-bold uppercase tracking-widest">{aliceLeads.length} Partners</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-3xl border border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-black/10">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-white/10">
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Partner Info</th>
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">PAN Verification</th>
+                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {aliceLeads.length > 0 ? aliceLeads.map((lead, i) => (
+                      <tr key={i} className="hover:bg-indigo-50 dark:hover:bg-white/5 transition-colors group">
+                        <td className="px-8 py-6">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-bold text-slate-900 dark:text-white">{lead.name}</span>
+                            <div className="flex gap-4">
+                                <span className="text-xs font-mono text-slate-400 flex items-center gap-1">☎ {lead.phone}</span>
+                                <span className="text-xs font-mono text-blue-500 flex items-center gap-1">✉ {lead.email}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className="px-4 py-2 bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-gray-300 rounded-lg text-xs font-mono font-bold border border-slate-200 dark:border-white/5">{lead.pan}</span>
+                        </td>
+                        <td className="px-8 py-6 text-right">
+                          <span className="text-xs font-mono text-slate-400">{new Date(lead.createdAt).toLocaleString()}</span>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={3} className="py-20 text-center text-slate-400 italic">No Alice Blue partner leads processed.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

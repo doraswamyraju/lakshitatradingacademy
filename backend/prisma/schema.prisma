@@ -77,3 +77,13 @@ model AdmissionLead {
   status    String   @default("NEW")
   createdAt DateTime @default(now())
 }
+
+model AliceBlueLead {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  phone     String
+  pan       String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}

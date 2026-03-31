@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import RegistrationModal from './RegistrationModal';
+import AliceBlueModal from './AliceBlueModal';
 import FloatingButtons from './FloatingButtons';
 import {
   Play, Users, TrendingUp, ShieldCheck,
@@ -17,6 +18,7 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isEnrollOpen, setIsEnrollOpen] = React.useState(false);
+  const [isAliceBlueOpen, setIsAliceBlueOpen] = React.useState(false);
   const [activeFaq, setActiveFaq] = React.useState<number | null>(null);
   
   const [contactForm, setContactForm] = React.useState({ name: '', email: '', phone: '', message: '' });
@@ -326,18 +328,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
           <div className="order-1 lg:order-2 grid grid-cols-2 gap-4">
             <div className="space-y-4">
-              <img src="https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80&w=400" className="rounded-3xl shadow-lg" alt="Trading" />
+              <img src="/trader_setup_pro.png" className="rounded-3xl shadow-lg" alt="Trading" />
               <div className="bg-blue-900 p-8 rounded-3xl text-white">
-                <h4 className="text-4xl font-black mb-2">10+</h4>
+                <h4 className="text-4xl font-black mb-2">5+</h4>
                 <p className="text-blue-200 text-sm">Years Experience</p>
               </div>
             </div>
             <div className="space-y-4 pt-8">
               <div className="bg-white p-8 rounded-3xl border border-slate-200">
-                <h4 className="text-4xl font-black mb-2 text-blue-900">5k+</h4>
+                <h4 className="text-4xl font-black mb-2 text-blue-900">100+</h4>
                 <p className="text-slate-500 text-sm">Live Sessions</p>
               </div>
-              <img src="https://images.unsplash.com/photo-1611974714658-75d4f1ad308e?auto=format&fit=crop&q=80&w=400" className="rounded-3xl shadow-lg" alt="Analysis" />
+              <img src="/market_analysis_view.png" className="rounded-3xl shadow-lg" alt="Analysis" />
             </div>
           </div>
         </div>
@@ -516,6 +518,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               {
+                name: 'Alice Blue',
+                benefits: ['Free Demat Account', 'Zero Delivery Charges', 'Personal Support'],
+                color: 'bg-blue-50',
+                textColor: 'text-blue-900',
+                link: 'ALICEBLUE'
+              },
+              {
                 name: 'Upstox',
                 benefits: ['Free AMC for 1 Year', 'User-Friendly Interface', 'SEBI Registered'],
                 color: 'bg-purple-50',
@@ -544,7 +553,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     </li>
                   ))}
                 </ul>
-                <button className="w-full py-3 bg-white rounded-xl font-bold text-slate-900 shadow-sm hover:shadow-md transition-all active:scale-95">
+                <button 
+                    onClick={() => {
+                        if (broker.name === 'Alice Blue') setIsAliceBlueOpen(true);
+                        else alert('Coming Soon...');
+                    }}
+                    className="w-full py-3 bg-white rounded-xl font-bold text-slate-900 shadow-sm hover:shadow-md transition-all active:scale-95"
+                >
                   Open Account
                 </button>
               </motion.div>
@@ -795,6 +810,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         </div>
       </footer>
       <RegistrationModal isOpen={isEnrollOpen} onClose={() => setIsEnrollOpen(false)} />
+      <AliceBlueModal isOpen={isAliceBlueOpen} onClose={() => setIsAliceBlueOpen(false)} />
     </div>
   );
 };

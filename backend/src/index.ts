@@ -685,6 +685,21 @@ app.post(['/api/enroll', '/enroll'], async (req: Request, res: Response) => {
   }
 });
 
+app.post(['/api/aliceblue', '/aliceblue'], async (req: Request, res: Response) => {
+  try {
+    const { name, email, phone, pan } = req.body;
+    if (!name || !email || !phone || !pan) {
+        return res.status(400).json({ error: 'All fields are required.' });
+    }
+    const lead = await (prisma as any).aliceBlueLead.create({
+        data: { name, email, phone, pan }
+    });
+    res.json({ success: true, lead });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to submit Alice Blue lead.' });
+  }
+});
+
 app.get(['/api/admin/inquiries', '/admin/inquiries'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const inquiries = await prisma.contactInquiry.findMany({ orderBy: { createdAt: 'desc' }});
@@ -696,10 +711,19 @@ app.get(['/api/admin/inquiries', '/admin/inquiries'], authenticateToken, async (
 
 app.get(['/api/admin/admissions', '/admin/admissions'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const leads = await prisma.admissionLead.findMany({ orderBy: { createdAt: 'desc' }});
+    const leads = await (prisma as any).admissionLead.findMany({ orderBy: { createdAt: 'desc' }});
     res.json(leads);
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch admissions' });
+  }
+});
+
+app.get(['/api/admin/aliceblue', '/admin/aliceblue'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const leads = await (prisma as any).aliceBlueLead.findMany({ orderBy: { createdAt: 'desc' }});
+    res.json(leads);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch Alice Blue leads' });
   }
 });
 

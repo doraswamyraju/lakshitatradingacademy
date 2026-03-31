@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, ShieldCheck, Activity, LineChart, Code2, Settings, User, LogOut, Bell, Menu, X, Sun, Moon, FlaskConical, BookOpen, GraduationCap } from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Activity, LineChart, Code2, Settings, User, LogOut, Bell, Menu, X, Sun, Moon, FlaskConical, BookOpen, GraduationCap, Database } from 'lucide-react';
 import MarketDashboard from './components/MarketDashboard';
 // import AILab from './components/AILab';
 import AdminPanel from './components/AdminPanel';
@@ -199,7 +198,12 @@ const App: React.FC = () => {
              <NavItem icon={<FlaskConical size={20} />} label="Backtesting" active={activeTab === 'backtest'} onClick={() => setActiveTab('backtest')} collapsed={!isSidebarOpen} accent="accent" />
              {/* <NavItem icon={<Code2 size={20} />} label="Quant Lab" active={activeTab === 'strategy'} onClick={() => setActiveTab('strategy')} collapsed={!isSidebarOpen} /> */}
              {currentUser?.role === 'ADMIN' && (
-               <NavItem icon={<ShieldCheck size={20} />} label="Master Panel" active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} accent="warning" collapsed={!isSidebarOpen} />
+               <>
+                <NavItem icon={<ShieldCheck size={20} />} label="Strategy Panel" active={activeTab === 'admin'} onClick={() => setActiveTab('admin')} accent="warning" collapsed={!isSidebarOpen} />
+                <NavItem icon={<Database size={20} />} label="Student Leads" active={activeTab === 'admin'} onClick={() => {
+                   setActiveTab('admin');
+                }} collapsed={!isSidebarOpen} accent="primary" />
+               </>
              )}
              <NavItem icon={<Settings size={20} />} label="API Gateway" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} accent="primary" collapsed={!isSidebarOpen} />
           </nav>
