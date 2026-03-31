@@ -178,7 +178,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
     }
     if (activeSubTab === 'inquiries') fetchInquiries();
     if (activeSubTab === 'admissions') fetchAdmissions();
-  }, [activeSubTab]);
+  }, [activeSubTab, token]);
 
   return (
     <div className="h-full overflow-y-auto p-8 space-y-8 max-w-[1600px] mx-auto transition-colors duration-300">

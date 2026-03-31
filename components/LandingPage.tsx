@@ -164,15 +164,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex flex-col sm:flex-row items-center gap-4"
             >
-              <a
-                href="https://wa.me/919515126201"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => setIsEnrollOpen(true)}
                 className="w-full sm:w-auto px-8 py-4 bg-blue-900 hover:bg-blue-800 text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 transition-all active:scale-95 flex items-center justify-center gap-2 group"
               >
-                Enroll Now — Call/WhatsApp
+                Enroll Now Today
                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-              </a>
+              </button>
               <div className="flex items-center gap-4 px-4">
                 <div className="flex -space-x-3">
                   {[1, 2, 3, 4].map(i => (
@@ -722,9 +720,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               We accept only serious and committed traders. Personal attention is our priority because your success is our success.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-              <a href="https://wa.me/919515126201" target="_blank" rel="noopener noreferrer" className="px-10 py-5 bg-white text-blue-900 rounded-2xl font-black text-lg hover:bg-slate-100 transition-all active:scale-95 shadow-xl flex items-center gap-3 w-full sm:w-auto justify-center">
+              <button onClick={() => setIsEnrollOpen(true)} className="px-10 py-5 bg-white text-blue-900 rounded-2xl font-black text-lg hover:bg-slate-100 transition-all active:scale-95 shadow-xl flex items-center gap-3 w-full sm:w-auto justify-center">
+                Enroll Now
+              </button>
+              <a href="https://wa.me/919515126201" target="_blank" rel="noopener noreferrer" className="px-10 py-5 bg-blue-900/40 text-white border border-blue-400/30 rounded-2xl font-black text-lg hover:bg-blue-900/60 transition-all active:scale-95 shadow-xl flex items-center gap-3 w-full sm:w-auto justify-center">
                 <Phone size={24} />
-                Contact: 9515126201
+                WhatsApp: 9515126201
               </a>
             </div>
             <div className="flex items-center justify-center gap-2 text-white/80 bg-blue-900/50 inline-flex px-6 py-3 rounded-full border border-blue-800">
@@ -793,6 +794,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
         </div>
       </footer>
+      <RegistrationModal isOpen={isEnrollOpen} onClose={() => setIsEnrollOpen(false)} />
     </div>
   );
 };
