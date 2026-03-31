@@ -102,6 +102,7 @@ export interface TradingStrategy {
   qty: number;
   productType: 'MIS' | 'CNC';
   isActive: boolean;
+  isMaster?: boolean;
   createdBy?: string;
 }
 
@@ -200,4 +201,5 @@ export interface BrokerConfig {
   isConnected?: boolean;
   apiKey?: string;
   apiSecret?: string;
+  clientCode?: string;
 }

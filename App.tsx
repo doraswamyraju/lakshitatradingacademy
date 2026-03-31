@@ -78,6 +78,7 @@ const App: React.FC = () => {
 
   const [brokerConfig, setBrokerConfig] = useState<BrokerConfig>({
     brokerName: 'AngelOne',
+    isEnabled: true,
     apiKey: '',
     apiSecret: '',
     clientCode: '',
@@ -169,8 +170,8 @@ const App: React.FC = () => {
       <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-white dark:bg-samp-surface border-r border-slate-200 dark:border-white/5 flex flex-col justify-between flex-shrink-0 z-20 transition-all duration-500 ease-in-out`}>
         <div>
           <div className="h-20 flex items-center px-6 gap-3 border-b border-slate-200 dark:border-white/5 overflow-hidden">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-samp-primary to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-samp-primary/20">
-              <Activity className="text-white" size={24} />
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-lg overflow-hidden">
+              <img src="/LTA Logo.png" alt="LTA Logo" className="w-[120%] h-[120%] object-contain" />
             </div>
             {isSidebarOpen && (
               <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white whitespace-nowrap">Lakshita Trading Academy</span>

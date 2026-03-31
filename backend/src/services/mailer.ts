@@ -19,13 +19,13 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export const sendContactEmail = async (data: { name: string; phone: string; message: string }) => {
+export const sendContactEmail = async (data: { name: string; email?: string; phone: string; message: string }) => {
   if (!isConfigured) {
     console.log('[MAILER-STUB] New Contact Inquiry logged (SMTP not configured):', data);
     return;
   }
   
-  const text = `New Contact Inquiry\n\nName: ${data.name}\nPhone: ${data.phone}\nMessage: ${data.message}`;
+  const text = `New Contact Inquiry\n\nName: ${data.name}\nEmail: ${data.email || 'N/A'}\nPhone: ${data.phone}\nMessage: ${data.message}`;
 
   try {
     await transporter.sendMail({

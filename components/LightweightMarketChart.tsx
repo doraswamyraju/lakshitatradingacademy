@@ -170,7 +170,12 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   }, [chartType, height]);
 
   useEffect(() => {
-    if (seriesRef.current) { seriesRef.current.setData(formattedData as any); }
+    if (seriesRef.current) { 
+      seriesRef.current.setData(formattedData as any); 
+      if (formattedData.length > 0 && chartRef.current) {
+        chartRef.current.timeScale().fitContent();
+      }
+    }
     if (volumeSeriesRef.current) {
         const vData = formattedData.map(d => ({
             time: d.time,

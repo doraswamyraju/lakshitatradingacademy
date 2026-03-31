@@ -19,7 +19,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [isEnrollOpen, setIsEnrollOpen] = React.useState(false);
   const [activeFaq, setActiveFaq] = React.useState<number | null>(null);
   
-  const [contactForm, setContactForm] = React.useState({ name: '', phone: '', message: '' });
+  const [contactForm, setContactForm] = React.useState({ name: '', email: '', phone: '', message: '' });
   const [isSubmittingContact, setIsSubmittingContact] = React.useState(false);
   const [contactSuccess, setContactSuccess] = React.useState(false);
 
@@ -34,7 +34,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       });
       if (res.ok) {
         setContactSuccess(true);
-        setContactForm({ name: '', phone: '', message: '' });
+        setContactForm({ name: '', email: '', phone: '', message: '' });
         setTimeout(() => setContactSuccess(false), 5000);
       }
     } catch {
@@ -68,12 +68,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-900 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-900/20">
-              <GraduationCap className="text-white" size={24} />
+          <a href="/" className="flex items-center gap-3 group">
+            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform overflow-hidden">
+               <img src="/LTA Logo.png" alt="LTA Logo" className="w-[120%] h-[120%] object-contain" />
             </div>
             <span className="font-bold text-xl tracking-tight text-blue-900">Lakshita Trading Academy</span>
-          </div>
+          </a>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8">
@@ -689,6 +689,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   <input type="text" required value={contactForm.name} onChange={e => setContactForm(p => ({ ...p, name: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="John Doe" />
                 </div>
                 <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
+                  <input type="email" required value={contactForm.email} onChange={e => setContactForm(p => ({ ...p, email: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="john@example.com" />
+                </div>
+                <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
                   <input type="tel" required value={contactForm.phone} onChange={e => setContactForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="+91 9999999999" />
                 </div>
@@ -736,12 +740,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-16">
             <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
-                  <GraduationCap className="text-blue-950" size={18} />
+              <a href="/" className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-lg bg-white overflow-hidden flex items-center justify-center">
+                   <img src="/LTA Logo.png" alt="LTA Logo" className="w-[120%] h-[120%] object-contain" />
                 </div>
                 <span className="font-bold text-xl tracking-tight text-white">Lakshita Trading Academy</span>
-              </div>
+              </a>
               <p className="text-blue-200/60 max-w-sm leading-relaxed">
                 Empowering retail traders with institutional-grade education in Telugu. Founded by Sampangi.
               </p>

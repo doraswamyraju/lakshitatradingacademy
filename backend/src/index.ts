@@ -653,15 +653,15 @@ app.get(['/api/admin/errors', '/admin/errors'], authenticateToken, async (req: R
 // Front-End Form Endpoints
 app.post(['/api/contact', '/contact'], async (req: Request, res: Response) => {
   try {
-    const { name, phone, message } = req.body;
+    const { name, email, phone, message } = req.body;
     if (!name || !phone || !message) {
       return res.status(400).json({ error: 'Name, phone, and message are required.' });
     }
     const inquiry = await prisma.contactInquiry.create({
-      data: { name, phone, message }
+      data: { name, email, phone, message }
     });
     // Fire and forget email
-    sendContactEmail({ name, phone, message }).catch(console.error);
+    sendContactEmail({ name, email, phone, message }).catch(console.error);
     res.json({ success: true, inquiry });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to submit contact form.' });
