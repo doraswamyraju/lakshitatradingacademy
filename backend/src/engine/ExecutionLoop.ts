@@ -9,115 +9,173 @@ export class ExecutionLoop {
   private loopInterval: NodeJS.Timeout | null = null;
   private brokerService: AngelOneService | null = null;
 
-  // In production, this data comes live via WebSocket.
-  // We mock the state here to represent the aggregation.
+  // State Tracking
   private currentCandles: Candle[] = [];
+  private activeTrades: Map<string, {
+    symbol: string;
+    entryPrice: number;
+    slPrice: number;
+    riskPoints: number;
+    isRRReached: boolean;
+    side: 'BUY' | 'SELL';
+    timestamp: number;
+  }> = new Map();
+  
+  private dailyTradeCount: number = 0;
+  private lastResetDate: string = new Date().toISOString().split('T')[0];
 
-  constructor() {
-    // Boilerplate for singleton logic or config
-  }
+  constructor() {}
 
   async start(brokerConfig: BrokerCredentials) {
     if (this.isRunning) return;
-
     this.brokerService = new AngelOneService(brokerConfig);
-    // await this.brokerService.generateSession("PIN", "TOTP");
-
-    console.log('[Engine] Starting Strategy Execution Loop...');
+    console.log('[Engine] Starting HA Trend Continuation (v1.0) Execution Loop...');
     this.isRunning = true;
-    
-    // Evaluate every 5 minutes (mocked to 5s for dev logs)
     this.loopInterval = setInterval(() => this.tick(), 5000); 
   }
 
   stop() {
-    console.log('[Engine] Stopping Strategy Execution Loop...');
     this.isRunning = false;
     if (this.loopInterval) clearInterval(this.loopInterval);
   }
 
-  /**
-   * Evaluates the core rules of "HA Trend Continuation"
-   */
+  private isTimeAllowed(): boolean {
+    const now = new Date();
+    const currentTime = now.getHours() * 100 + now.getMinutes();
+    
+    // Allowed: 09:30-11:00, 12:45-14:50
+    const allowed = [
+      { start: 930, end: 1100 },
+      { start: 1245, end: 1450 }
+    ];
+    
+    return allowed.some(window => currentTime >= window.start && currentTime <= window.end);
+  }
+
+  private getInstrumentSL(symbol: string): number {
+    if (symbol.includes('BANKNIFTY')) return 60;
+    if (symbol.includes('NIFTY')) return 30;
+    if (symbol.includes('CRUDE')) return 20;
+    return 30; // Default
+  }
+
   private async tick() {
-    if (this.currentCandles.length < 20) {
-      console.log("[Engine] Waiting for sufficient candle data (Need 20+)...");
-      return; 
+    // Reset daily count if date changed
+    const today = new Date().toISOString().split('T')[0];
+    if (today !== this.lastResetDate) {
+      this.dailyTradeCount = 0;
+      this.lastResetDate = today;
     }
 
+    if (!this.isTimeAllowed()) return;
+    if (this.currentCandles.length < 20) return;
+
     try {
-      console.log("[Engine] Evaluating HA Trend Continuation conditions...");
-
-      // 1. Calculate base indicators
       const haCandles = QuantEngine.generateHeikinAshi(this.currentCandles);
-      const adxResult = QuantEngine.calculateADX(this.currentCandles, 14);
-      const bbResult = QuantEngine.calculateBollingerBands(this.currentCandles, 20, 2);
-
+      const adxResult = QuantEngine.calculateADX(this.currentCandles, 10);
+      
       const latestHA = haCandles[haCandles.length - 1];
+      const prevHA = haCandles[haCandles.length - 2];
       const latestOriginal = this.currentCandles[this.currentCandles.length - 1];
+      const prevOriginal = this.currentCandles[this.currentCandles.length - 2];
       
-      const latestADX = adxResult.length > 0 ? adxResult[adxResult.length - 1] : null;
-      const latestBB = bbResult.length > 0 ? bbResult[bbResult.length - 1] : null;
+      const adxData = (adxResult as any)[adxResult.length - 1];
+      if (!adxData) return;
 
-      // Ensure we have valid indicator data
-      if (!latestADX || !latestBB) return;
+      const symbol = "NIFTY-OPT"; // In production, this iterates over user subscriptions
 
-      // 2. CHECK RULE: ADX > 18
-      const hasStrongTrend = latestADX.adx >= 18 && latestADX.adx <= 50;
+      // 1. MANAGE ACTIVE TRADES (RR Logic & Trailing)
+      const activeTrade = this.activeTrades.get(symbol);
+      if (activeTrade) {
+        await this.manageActiveTrade(symbol, activeTrade, latestOriginal, latestHA);
+        return; // Only one trade at a time as per risk node
+      }
+
+      // 2. ENTRY logic (Gatekeepers: ADX + Risk Limits)
+      if (this.dailyTradeCount >= 2) return;
       
-      // 3. CHECK RULE: Price near Bollinger Middle Band (1% tolerance)
-      const nearMidBand = QuantEngine.isPriceNearMidBand(latestOriginal.close, latestBB.middle, 1);
+      const hasStrongTrend = adxData.adx >= 18 && adxData.adx <= 50;
+      if (!hasStrongTrend) return;
 
-      // 4. CHECK RULE: Strong Bullish Heikin Ashi Setup Candle
-      const isStrongSetup = latestHA.isStrongBullish;
-
-      if (hasStrongTrend && nearMidBand && isStrongSetup) {
-        console.log(">>>>>>>> ENTRY SIGNAL CONFIRMED: BUY CALL <<<<<<<<");
-        console.log(`[Details] ADX: ${latestADX.adx.toFixed(2)}, MidBand: ${latestBB.middle.toFixed(2)}, LTP: ${latestOriginal.close}`);
-        
-        await this.executeTradeFleet('BUY');
+      // BULLISH Entry Node
+      if (latestHA.isStrongBullish && adxData.pdi > adxData.mdi && latestOriginal.high > prevOriginal.high) {
+        await this.executeEntry(symbol, 'BUY', latestOriginal.close);
+      } 
+      // BEARISH Entry Node
+      else if (latestHA.isStrongBearish && adxData.mdi > adxData.pdi && latestOriginal.low < prevOriginal.low) {
+        await this.executeEntry(symbol, 'SELL', latestOriginal.close);
       }
 
     } catch (error) {
-      console.error("[Engine] Execution tick failed:", error);
+      console.error("[Engine] Tick failed:", error);
     }
   }
 
-  /**
-   * Triggers broker APIs for all subscribed users
-   */
-  private async executeTradeFleet(action: 'BUY' | 'SELL') {
-    // 1. Query Prisma DB for all users with valid Broker Configs who subscribed to Strategy M3
-    console.log(`[Engine] Scanning DB for active users to deploy ${action} signal...`);
-    
-    // Simulated fleet execution
-    const simulatedUsers = [{ id: 'u1', name: 'Admin_Master', qty: 100 }];
-    
-    for (const user of simulatedUsers) {
-      try {
-        console.log(`[Engine] Placing ${action} order for User: ${user.name} | Qty: ${user.qty}`);
-        // await this.brokerService?.placeOrder({ ... })
-        
-        // Log to database
-        await prisma.strategyLog.create({
-           data: {
-             userId: "mock-id-because-users-not-synced-yet", // Placeholder
-             strategyId: "m3",
-             action: `ENTRY_${action}`,
-             symbol: "NIFTY-OPT",
-             price: 154.20,
-             qty: user.qty,
-             status: "SUCCESS"
-           }
-        }).catch((e: any) => console.log("[DB] Prisma log skipped during mock run"));
+  private async executeEntry(symbol: string, side: 'BUY' | 'SELL', price: number) {
+    const riskPoints = this.getInstrumentSL(symbol);
+    const slPrice = side === 'BUY' ? price - riskPoints : price + riskPoints;
 
-      } catch (err) {
-        console.error(`[Engine] Order failed for User: ${user.name}`);
+    console.log(`[Engine] >>> ENTRY SIGNAL: ${side} @ ${price} (SL: ${slPrice}) <<<`);
+    
+    this.activeTrades.set(symbol, {
+      symbol,
+      entryPrice: price,
+      slPrice,
+      riskPoints,
+      isRRReached: false,
+      side,
+      timestamp: Date.now()
+    });
+    
+    this.dailyTradeCount++;
+    await this.logTrade(symbol, `ENTRY_${side}`, price);
+  }
+
+  private async manageActiveTrade(symbol: string, trade: any, latest: Candle, latestHA: HeikinAshiCandle) {
+    const pnlPoints = trade.side === 'BUY' ? latest.close - trade.entryPrice : trade.entryPrice - latest.close;
+
+    // A. Check Hard Stop Loss
+    const isSLHit = trade.side === 'BUY' ? latest.close <= trade.slPrice : latest.close >= trade.slPrice;
+    if (isSLHit) {
+      await this.closeTrade(symbol, 'EXIT_SL', latest.close);
+      return;
+    }
+
+    // B. Activate RR 1:1 Logic
+    if (!trade.isRRReached && pnlPoints >= trade.riskPoints) {
+      console.log(`[Engine] RR 1:1 Hit for ${symbol}. Trailing & Sentiment exits ACTIVATED.`);
+      trade.isRRReached = true;
+    }
+
+    // C. Exit Logic (ONLY after RR 1:1 is hit)
+    if (trade.isRRReached) {
+      const isOppositeCandle = trade.side === 'BUY' ? latestHA.close < latestHA.open : latestHA.close > latestHA.open;
+      if (isOppositeCandle || latestHA.isWeak) {
+        await this.closeTrade(symbol, 'EXIT_SENTIMENT', latest.close);
       }
     }
   }
 
-  // Helper method for the simulation script to inject data
+  private async closeTrade(symbol: string, reason: string, price: number) {
+    console.log(`[Engine] <<< EXIT: ${reason} @ ${price} <<<`);
+    this.activeTrades.delete(symbol);
+    await this.logTrade(symbol, reason, price);
+  }
+
+  private async logTrade(symbol: string, action: string, price: number) {
+    await prisma.strategyLog.create({
+      data: {
+        userId: "system-admin",
+        strategyId: "m3",
+        action,
+        symbol,
+        price,
+        qty: 1,
+        status: "SUCCESS"
+      }
+    }).catch(() => {});
+  }
+
   injectCandle(c: Candle) {
     this.currentCandles.push(c);
   }

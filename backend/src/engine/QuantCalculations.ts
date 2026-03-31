@@ -12,6 +12,7 @@ export interface Candle {
 export interface HeikinAshiCandle extends Candle {
   isStrongBullish: boolean;
   isStrongBearish: boolean;
+  isWeak: boolean;
   bodySizePct: number;
 }
 
@@ -19,10 +20,6 @@ export class QuantEngine {
   
   /**
    * Converts standard candles to Heikin Ashi candles
-   * HA Close = (O+H+L+C)/4
-   * HA Open = (Prev HA Open + Prev HA Close)/2
-   * HA High = Max(H, HA Open, HA Close)
-   * HA Low = Min(L, HA Open, HA Close)
    */
   static generateHeikinAshi(candles: Candle[]): HeikinAshiCandle[] {
     const haCandles: HeikinAshiCandle[] = [];
@@ -40,16 +37,26 @@ export class QuantEngine {
       const haLow = Math.min(c.low, haOpen, haClose);
       
       const totalRange = haHigh - haLow;
-      const bodySize = Math.abs(haClose - haOpen);
-      const bodySizePct = totalRange === 0 ? 0 : bodySize / totalRange;
+      if (totalRange === 0) {
+         haCandles.push({ ...c, open: haOpen, high: haHigh, low: haLow, close: haClose, isStrongBullish: false, isStrongBearish: false, isWeak: true, bodySizePct: 0 });
+         continue;
+      }
 
-      // Classifying strict candle types according to strategy rules
+      const bodySize = Math.abs(haClose - haOpen);
+      const bodySizePct = bodySize / totalRange;
+
       const isBullish = haClose > haOpen;
       const lowerWick = isBullish ? (haOpen - haLow) : (haClose - haLow);
       const upperWick = isBullish ? (haHigh - haClose) : (haHigh - haOpen);
       
-      const isStrongBullish = isBullish && bodySizePct >= 0.6 && (lowerWick / totalRange) <= 0.2;
-      const isStrongBearish = !isBullish && bodySizePct >= 0.6 && (upperWick / totalRange) <= 0.2;
+      // STRONG_BULLISH: close ≈ high AND small lower wick
+      const isStrongBullish = isBullish && (upperWick / totalRange) < 0.05 && (lowerWick / totalRange) < 0.1 && bodySizePct > 0.6;
+      
+      // STRONG_BEARISH: close ≈ low AND small upper wick
+      const isStrongBearish = !isBullish && (lowerWick / totalRange) < 0.05 && (upperWick / totalRange) < 0.1 && bodySizePct > 0.6;
+      
+      // WEAK_CANDLE: small body + wicks both sides
+      const isWeak = bodySizePct < 0.3 && (lowerWick / totalRange) > 0.2 && (upperWick / totalRange) > 0.2;
 
       haCandles.push({
         time: c.time,
@@ -60,6 +67,7 @@ export class QuantEngine {
         volume: c.volume,
         isStrongBullish,
         isStrongBearish,
+        isWeak,
         bodySizePct
       });
     }
@@ -67,7 +75,7 @@ export class QuantEngine {
   }
 
   /**
-   * Calculates ADX for an array of candles
+   * Calculates ADX and DMI (+DI, -DI)
    */
   static calculateADX(candles: Candle[], period: number = 14) {
     const input = {
@@ -77,7 +85,8 @@ export class QuantEngine {
       period
     };
     
-    return ADX.calculate(input);
+    const adx = ADX.calculate(input);
+    return adx; // Returns { adx, pdi, mdi }
   }
 
   /**

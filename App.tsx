@@ -24,51 +24,30 @@ const App: React.FC = () => {
   
   const [masterStrategies, setMasterStrategies] = useState<TradingStrategy[]>([
     {
-      id: 'm1',
-      name: 'Alpha RSI mean rev',
-      description: 'Institutional strategy targeting oversold/overbought extremes.',
-      entryConditions: [{ id: 'c1', source: 'RSI', operator: '<', targetType: 'VALUE', targetValue: 30, sourceParams: { period: 14 } }],
-      exitConditions: [{ id: 'c2', source: 'RSI', operator: '>', targetType: 'VALUE', targetValue: 70, sourceParams: { period: 14 } }],
-      timeframe: '15m',
-      qty: 1, 
-      productType: 'MIS',
-      riskConfig: { stopLossPct: 1.5, takeProfitPct: 3.0, trailingStopLoss: false },
-      isActive: true,
-      createdBy: 'admin',
-      isMaster: true
-    },
-    {
-      id: 'm2',
-      name: 'Trend Follower LITE',
-      description: 'Momentum based strategy for major indices.',
-      entryConditions: [{ id: 'c3', source: 'PRICE', operator: 'CROSSOVER', targetType: 'VALUE', targetValue: 0, sourceParams: {} }],
-      exitConditions: [{ id: 'c4', source: 'PRICE', operator: '<', targetType: 'VALUE', targetValue: -10, sourceParams: {} }],
-      timeframe: '5m',
-      qty: 1,
-      productType: 'MIS',
-      riskConfig: { stopLossPct: 2.0, takeProfitPct: 5.0, trailingStopLoss: true },
-      isActive: true,
-      createdBy: 'admin',
-      isMaster: true
-    },
-    {
       id: 'm3',
       name: 'HA Trend Continuation',
+      version: '1.0',
+      mode: 'INTRADAY',
+      instruments: ['NIFTY', 'BANKNIFTY', 'CRUDEOIL'],
       description: 'Trade continuation moves near mid-band using strong HA candles with ADX-confirmed trend.',
       entryConditions: [
-        { id: 'c5', source: 'ADX', operator: 'BETWEEN', targetType: 'VALUE', targetValue: 50, sourceParams: { period: 14, min: 18 } },
+        { id: 'c5', source: 'ADX', operator: 'BETWEEN', targetType: 'VALUE', targetValue: 50, sourceParams: { period: 10, min: 18 } },
         { id: 'c6', source: 'DI_PLUS', operator: '>', targetType: 'INDICATOR', targetIndicator: 'DI_MINUS', sourceParams: {} },
-        { id: 'c7', source: 'PRICE', operator: 'NEAR', targetType: 'INDICATOR', targetIndicator: 'BOLLINGER_MIDDLE', sourceParams: { period: 20, stdDev: 2, tolerancePct: 1 } },
-        { id: 'c8', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', targetValue: 1, sourceParams: { pattern: 'STRONG_BULLISH_BREAKOUT' } }
+        { id: 'c8', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', targetValue: 1, sourceParams: { pattern: 'STRONG_BULLISH' } }
       ],
       exitConditions: [
-        { id: 'c9', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', targetValue: 1, sourceParams: { pattern: 'STRONG_BEARISH' } },
-        { id: 'c10', source: 'PRICE', operator: '<=', targetType: 'VALUE', targetValue: 0, sourceParams: { type: 'STRUCTURAL_SL' } }
+        { id: 'c9', source: 'HEIKIN_ASHI_CANDLE', operator: 'PATTERN_MATCH', targetType: 'VALUE', targetValue: 1, sourceParams: { pattern: 'STRONG_BEARISH' } }
       ],
       timeframe: '5m',
       qty: 1,
       productType: 'MIS',
-      riskConfig: { stopLossPct: 30, takeProfitPct: 0, trailingStopLoss: false }, 
+      riskConfig: { 
+        stopLossPct: 0, // Using points-based SL in engine
+        takeProfitPct: 0, 
+        trailingStopLoss: true,
+        trailStep: 30,
+        minRR: 1
+      },
       isActive: true,
       createdBy: 'admin',
       isMaster: true

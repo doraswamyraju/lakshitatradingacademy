@@ -91,6 +91,9 @@ export interface TradingStrategy {
   id: string;
   name: string;
   description: string;
+  version?: string;
+  mode?: 'INTRADAY' | 'SWING';
+  instruments?: string[];
   timeframe: '1m' | '5m' | '15m' | '1h' | 'D';
   entryConditions: StrategyCondition[];
   exitConditions: StrategyCondition[];
@@ -98,6 +101,8 @@ export interface TradingStrategy {
     stopLossPct: number;
     takeProfitPct: number;
     trailingStopLoss: boolean;
+    trailStep?: number;
+    minRR?: number;
   };
   qty: number;
   productType: 'MIS' | 'CNC';
