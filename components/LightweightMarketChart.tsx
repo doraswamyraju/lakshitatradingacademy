@@ -13,6 +13,9 @@ interface LightweightMarketChartProps {
   data: Candle[];
   height: number;
   chartType?: ChartType;
+  showSMA?: boolean;
+  showEMA?: boolean;
+  timeframe?: string;
 }
 
 function toUTCSeconds(raw: unknown): UTCTimestamp | null {
@@ -48,7 +51,8 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       : 0;
 
     for (const raw of data) {
-      const t = toUTCSeconds(raw.time ?? raw.timestamp ?? raw.date);
+      const rAny = raw as any;
+      const t = toUTCSeconds(rAny.time ?? rAny.timestamp ?? rAny.date);
       if (t === null) continue;
 
       const o = Number(raw.open);
