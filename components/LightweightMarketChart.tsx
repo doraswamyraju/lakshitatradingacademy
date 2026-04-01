@@ -1,17 +1,12 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { 
-  createChart, 
-  ColorType, 
-  IChartApi, 
-  ISeriesApi, 
-  Time, 
-  CandlestickData, 
-  HistogramData, 
-  LineData, 
-  UTCTimestamp,
+import {
+  createChart,
+  ColorType,
   CandlestickSeries,
+  HistogramSeries,
   LineSeries,
-  HistogramSeries
+  IChartApi,
+  UTCTimestamp,
 } from 'lightweight-charts';
 import { Candle, ChartType } from '../types';
 
@@ -24,243 +19,197 @@ interface LightweightMarketChartProps {
   timeframe?: string;
 }
 
+function toSeconds(raw: unknown): UTCTimestamp | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return Math.floor(raw > 1e12 ? raw / 1000 : raw) as UTCTimestamp;
+  }
+  if (typeof raw === 'string' && raw.length > 0) {
+    const ms = Date.parse(raw);
+    if (Number.isFinite(ms)) return Math.floor(ms / 1000) as UTCTimestamp;
+  }
+  return null;
+}
+
 const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
-  data, 
-  height, 
+  data,
+  height,
   chartType = 'CANDLE',
-  showSMA = false,
-  showEMA = false,
-  timeframe = '1m'
 }) => {
-  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Candlestick" | "Line"> | null>(null);
-  const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  // Use any for series refs to avoid fighting v5 generic types
+  const priceSeriesRef = useRef<any>(null);
+  const volumeSeriesRef = useRef<any>(null);
 
-  const normalizeTimeSecs = (raw: string | number | any): Time | null => {
-    if (typeof raw === 'number' && Number.isFinite(raw)) {
-      // If it's in MS (e.g. 1700000000000), convert to seconds
-      return Math.floor(raw > 1e12 ? raw / 1000 : raw) as Time;
-    }
-    if (typeof raw === 'string') {
-      const parsed = Date.parse(raw);
-      if (Number.isFinite(parsed)) return Math.floor(parsed / 1000) as Time;
-    }
-    return null;
-  };
-
+  // ─── Build clean, sorted, de-duped candle array ──────────────────────────
   const formattedData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    
-    const normalized = data
-      .map((d: any) => ({
-        ...d,
-        __tsSecs: normalizeTimeSecs(d.time || d.timestamp || d.date)
-      }))
-      .filter((d) => 
-        d.__tsSecs !== null && 
-        Number.isFinite(d.open) && 
-        Number.isFinite(d.high) && 
-        Number.isFinite(d.low) && 
-        Number.isFinite(d.close) &&
-        d.open > 0 && d.close > 0 
-      ) as Array<Candle & { __tsSecs: Time, volume: number }>;
-    
-    // Deduplicate exact timestamps to prevent Lightweight Charts invariant error
-    const uniqueMap = new Map<number, Candle & { __tsSecs: Time, volume: number }>();
-    for (const d of normalized) {
-      uniqueMap.set(d.__tsSecs as number, d);
-    }
-    const uniqueSorted = Array.from(uniqueMap.values()).sort((a, b) => (a.__tsSecs as number) - (b.__tsSecs as number));
-    
-    if (uniqueSorted.length === 0) {
-        console.warn("[Chart Debug] All candles were filtered out as invalid or had bad timestamps.");
-        return [];
-    }
-    
-    const finalData: any[] = [];
 
-    if (chartType === 'HEIKIN_ASHI') {
-      let prevOpen = (uniqueSorted[0].open + uniqueSorted[0].close) / 2;
-      let prevClose = (uniqueSorted[0].open + uniqueSorted[0].high + uniqueSorted[0].low + uniqueSorted[0].close) / 4;
+    const map = new Map<number, {
+      time: UTCTimestamp;
+      open: number; high: number; low: number; close: number;
+      volume: number;
+    }>();
 
-      finalData.push({
-        time: uniqueSorted[0].__tsSecs,
-        open: prevOpen,
-        high: Math.max(uniqueSorted[0].high, prevOpen, prevClose),
-        low: Math.min(uniqueSorted[0].low, prevOpen, prevClose),
-        close: prevClose,
-        value: prevClose, 
-        volume: Number(uniqueSorted[0].volume) || 0
-      });
+    for (const raw of data as any[]) {
+      const t = toSeconds(raw.time ?? raw.timestamp ?? raw.date);
+      if (t === null) continue;
 
-      for (let i = 1; i < uniqueSorted.length; i++) {
-        const current = uniqueSorted[i];
-        const haClose = (current.open + current.high + current.low + current.close) / 4;
-        const haOpen = (prevOpen + prevClose) / 2;
-        const haHigh = Math.max(current.high, haOpen, haClose);
-        const haLow = Math.min(current.low, haOpen, haClose);
+      const open  = Number(raw.open);
+      const high  = Number(raw.high);
+      const low   = Number(raw.low);
+      const close = Number(raw.close);
 
-        finalData.push({
-          time: current.__tsSecs,
-          open: haOpen,
-          high: haHigh,
-          low: haLow,
-          close: haClose,
-          value: haClose,
-          volume: Number(current.volume) || 0
-        });
+      if (!Number.isFinite(open) || open <= 0)  continue;
+      if (!Number.isFinite(high) || high <= 0)  continue;
+      if (!Number.isFinite(low)  || low  <= 0)  continue;
+      if (!Number.isFinite(close)|| close <= 0) continue;
 
-        prevOpen = haOpen;
-        prevClose = haClose;
-      }
-    } else {
-      for (const d of uniqueSorted) {
-        finalData.push({
-          time: d.__tsSecs,
-          open: d.open,
-          high: d.high,
-          low: d.low,
-          close: d.close,
-          value: d.close,
-          volume: Number(d.volume) || 0
-        });
-      }
+      map.set(t, { time: t, open, high, low, close, volume: Number(raw.volume) || 0 });
     }
 
-    console.log(`[Chart Debug] Processed ${finalData.length} valid candles uniquely sorted by time.`, { sample: finalData[finalData.length - 1] });
-    return finalData;
+    const sorted = Array.from(map.values()).sort((a, b) => a.time - b.time);
+    console.log('[Chart] valid candles:', sorted.length, '| last:', sorted[sorted.length - 1]);
+    return sorted;
   }, [data, chartType]);
 
+  // ─── Build the chart & series once per chartType change ──────────────────
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (!containerRef.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
+    const chart = createChart(containerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: '#0B0C15' },
         textColor: '#9CA3AF',
       },
-      width: chartContainerRef.current.clientWidth,
-      height: height,
+      width: containerRef.current.clientWidth,
+      height,
       grid: {
-        vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-        horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+        vertLines: { color: 'rgba(255,255,255,0.05)' },
+        horzLines: { color: 'rgba(255,255,255,0.05)' },
       },
-      timeScale: { 
-        timeVisible: true, 
-        secondsVisible: false 
-      },
+      timeScale: { timeVisible: true, secondsVisible: false },
     });
-
     chartRef.current = chart;
 
+    // ── Price series (v5 API) ──────────────────────────────────────────────
     if (chartType === 'CANDLE' || chartType === 'HEIKIN_ASHI') {
-      const series = chart.addCandlestickSeries({
-        upColor: '#10B981', 
-        downColor: '#EF4444', 
+      priceSeriesRef.current = chart.addSeries(CandlestickSeries, {
+        upColor: '#10B981',
+        downColor: '#EF4444',
         borderVisible: false,
-        wickUpColor: '#10B981', 
+        wickUpColor: '#10B981',
         wickDownColor: '#EF4444',
       });
-      seriesRef.current = series as ISeriesApi<"Candlestick">;
     } else {
-      const series = chart.addLineSeries({
-        color: '#3B82F6', 
+      priceSeriesRef.current = chart.addSeries(LineSeries, {
+        color: '#3B82F6',
         lineWidth: 2,
       });
-      seriesRef.current = series as ISeriesApi<"Line">;
     }
 
-    const volumeSeries = chart.addHistogramSeries({
-      color: '#26a69a', 
-      priceFormat: { type: 'volume' }, 
-      priceScaleId: 'left', 
+    // ── Volume series — anchored to hidden LEFT scale ──────────────────────
+    volumeSeriesRef.current = chart.addSeries(HistogramSeries, {
+      color: '#26a69a',
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'left',
     });
-    
     chart.priceScale('left').applyOptions({
-      scaleMargins: {
-        top: 0.8,
-        bottom: 0,
-      },
-      visible: false,
+      scaleMargins: { top: 0.8, bottom: 0 },
+      visible: false,           // hide left axis → zero influence on right price scale
     });
-    
-    volumeSeriesRef.current = volumeSeries;
 
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-         chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+    const onResize = () => {
+      if (containerRef.current) {
+        chart.applyOptions({ width: containerRef.current.clientWidth });
       }
     };
-    
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', onResize);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', onResize);
       chart.remove();
+      chartRef.current = null;
+      priceSeriesRef.current = null;
+      volumeSeriesRef.current = null;
     };
   }, [chartType, height]);
 
+  // ─── Feed data into series whenever formattedData changes ────────────────
   useEffect(() => {
-    if (formattedData.length === 0) return;
+    if (formattedData.length === 0 || !priceSeriesRef.current) return;
+
+    const isCandle = chartType === 'CANDLE' || chartType === 'HEIKIN_ASHI';
 
     try {
-      if (seriesRef.current) { 
-        const isCandle = chartType === 'CANDLE' || chartType === 'HEIKIN_ASHI';
-        
-        const seriesData = formattedData.map((d: any) => {
-          const t = Number(d.time);
+      if (isCandle) {
+        // ── Heikin Ashi transform ──────────────────────────────────────────
+        let priceData: any[];
 
-          if (!Number.isFinite(t)) {
-            console.warn("Invalid time detected:", d);
-            return null;
+        if (chartType === 'HEIKIN_ASHI') {
+          priceData = [];
+          let pOpen = (formattedData[0].open + formattedData[0].close) / 2;
+          let pClose = (formattedData[0].open + formattedData[0].high + formattedData[0].low + formattedData[0].close) / 4;
+
+          priceData.push({
+            time: formattedData[0].time,
+            open:  pOpen,
+            high:  Math.max(formattedData[0].high, pOpen, pClose),
+            low:   Math.min(formattedData[0].low,  pOpen, pClose),
+            close: pClose,
+          });
+
+          for (let i = 1; i < formattedData.length; i++) {
+            const d = formattedData[i];
+            const haClose = (d.open + d.high + d.low + d.close) / 4;
+            const haOpen  = (pOpen + pClose) / 2;
+            priceData.push({
+              time:  d.time,
+              open:  haOpen,
+              high:  Math.max(d.high, haOpen, haClose),
+              low:   Math.min(d.low,  haOpen, haClose),
+              close: haClose,
+            });
+            pOpen  = haOpen;
+            pClose = haClose;
           }
+        } else {
+          priceData = formattedData.map(d => ({
+            time: d.time, open: d.open, high: d.high, low: d.low, close: d.close,
+          }));
+        }
 
-          return isCandle
-            ? {
-                time: t as UTCTimestamp,   // force strict number
-                open: Number(d.open),
-                high: Number(d.high),
-                low: Number(d.low),
-                close: Number(d.close),
-              }
-            : {
-                time: t as UTCTimestamp,
-                value: Number(d.value),
-              };
-        }).filter(Boolean);
-        
-        console.log("FINAL SERIES DATA:", seriesData.slice(-5));
-        
-        seriesRef.current.setData(seriesData as any); 
-        chartRef.current?.timeScale().fitContent();
+        console.log('FINAL SERIES DATA:', priceData.slice(-5));
+        priceSeriesRef.current.setData(priceData);
+      } else {
+        const lineData = formattedData.map(d => ({ time: d.time, value: d.close }));
+        console.log('FINAL SERIES DATA:', lineData.slice(-5));
+        priceSeriesRef.current.setData(lineData);
       }
 
+      // ── Volume ────────────────────────────────────────────────────────────
       if (volumeSeriesRef.current) {
-          const vData = formattedData.map((d: any) => {
-              const t = Number(d.time);
-              if (!Number.isFinite(t)) return null;
-              
-              return {
-                  time: t as UTCTimestamp,
-                  value: Number(d.volume || 0),
-                  color: Number(d.close) >= Number(d.open) ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
-              };
-          }).filter(Boolean);
-          
-          volumeSeriesRef.current.setData(vData as any);
+        const volData = formattedData.map(d => ({
+          time:  d.time,
+          value: d.volume,
+          color: d.close >= d.open ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)',
+        }));
+        volumeSeriesRef.current.setData(volData);
       }
+
+      chartRef.current?.timeScale().fitContent();
     } catch (err: any) {
-      console.error("[Chart Debug] Error drawing series data:", err.message);
+      console.error('[Chart] setData error:', err.message);
     }
   }, [formattedData, chartType]);
 
   return (
-    <div 
-       ref={chartContainerRef} 
-       style={{ width: '100%', height }} 
-       className="rounded-lg border border-white/5 overflow-hidden shadow-2xl transition-all" 
+    <div
+      ref={containerRef}
+      style={{ width: '100%', height }}
+      className="rounded-lg border border-white/5 overflow-hidden shadow-2xl"
     />
   );
 };
+
 export default LightweightMarketChart;
