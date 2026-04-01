@@ -282,8 +282,15 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     };
     window.addEventListener('resize', onResize);
 
+    // Prevent the parent overflow-y-scroll container from stealing wheel events
+    // so that pinch-zoom and scroll-to-zoom work inside the chart.
+    const el = containerRef.current;
+    const stopWheel = (e: WheelEvent) => e.stopPropagation();
+    el?.addEventListener('wheel', stopWheel, { passive: false });
+
     return () => {
       window.removeEventListener('resize', onResize);
+      el?.removeEventListener('wheel', stopWheel);
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -297,7 +304,10 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     if (!seriesRef.current || seriesData.length === 0) return;
     try {
       seriesRef.current.setData(seriesData);
-      chartRef.current?.timeScale().fitContent();
+      // Leave 12 empty bars on the right so the latest candle isn't
+      // pinned to the extreme edge and the live price label is visible.
+      chartRef.current?.timeScale().applyOptions({ rightOffset: 12 });
+      chartRef.current?.timeScale().scrollToRealTime();
     } catch (e: any) {
       console.error('[Chart] setData error:', e.message);
     }
@@ -324,7 +334,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', height }}
+      style={{ width: '100%', height, touchAction: 'none', userSelect: 'none' }}
       className="rounded-lg border border-white/5 overflow-hidden shadow-2xl"
     />
   );
