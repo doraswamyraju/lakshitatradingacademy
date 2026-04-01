@@ -1,5 +1,18 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi, Time, CandlestickData, HistogramData, LineData } from 'lightweight-charts';
+import { 
+  createChart, 
+  ColorType, 
+  IChartApi, 
+  ISeriesApi, 
+  Time, 
+  CandlestickData, 
+  HistogramData, 
+  LineData, 
+  UTCTimestamp,
+  CandlestickSeries,
+  LineSeries,
+  HistogramSeries
+} from 'lightweight-charts';
 import { Candle, ChartType } from '../types';
 
 interface LightweightMarketChartProps {
@@ -194,23 +207,48 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     try {
       if (seriesRef.current) { 
         const isCandle = chartType === 'CANDLE' || chartType === 'HEIKIN_ASHI';
-        const seriesData = formattedData.map(({ time, open, high, low, close, value }) => 
-          isCandle 
-            ? { time, open, high, low, close } 
-            : { time, value }
-        );
+        
+        const seriesData = formattedData.map((d: any) => {
+          const t = Number(d.time);
+
+          if (!Number.isFinite(t)) {
+            console.warn("Invalid time detected:", d);
+            return null;
+          }
+
+          return isCandle
+            ? {
+                time: t as UTCTimestamp,   // force strict number
+                open: Number(d.open),
+                high: Number(d.high),
+                low: Number(d.low),
+                close: Number(d.close),
+              }
+            : {
+                time: t as UTCTimestamp,
+                value: Number(d.value),
+              };
+        }).filter(Boolean);
+        
+        console.log("FINAL SERIES DATA:", seriesData.slice(-5));
         
         seriesRef.current.setData(seriesData as any); 
         chartRef.current?.timeScale().fitContent();
       }
 
       if (volumeSeriesRef.current) {
-          const vData: HistogramData[] = formattedData.map(d => ({
-              time: d.time,
-              value: d.volume,
-              color: d.close >= d.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
-          }));
-          volumeSeriesRef.current.setData(vData);
+          const vData = formattedData.map((d: any) => {
+              const t = Number(d.time);
+              if (!Number.isFinite(t)) return null;
+              
+              return {
+                  time: t as UTCTimestamp,
+                  value: Number(d.volume || 0),
+                  color: Number(d.close) >= Number(d.open) ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+              };
+          }).filter(Boolean);
+          
+          volumeSeriesRef.current.setData(vData as any);
       }
     } catch (err: any) {
       console.error("[Chart Debug] Error drawing series data:", err.message);
