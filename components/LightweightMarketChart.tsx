@@ -33,7 +33,7 @@ function toUTCSecs(raw: unknown): UTCTimestamp | null {
 
   if (ms === null) return null;
   // Convert UTC ms → UTC seconds, then shift to IST so chart labels show IST
-  return Math.floor(ms / 1000 + IST_OFFSET_SECS) as UTCTimestamp;
+  return Math.floor(ms / 1000) as UTCTimestamp;
 }
 
 const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
@@ -42,8 +42,8 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   chartType = 'CANDLE',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef     = useRef<IChartApi | null>(null);
-  const seriesRef    = useRef<any>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<any>(null);
 
   // ── 1. Normalise & de-dupe incoming candles ────────────────────────────
   const cleanCandles = useMemo(() => {
@@ -105,7 +105,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         background: { type: ColorType.Solid, color: '#0B0C15' },
         textColor: '#9CA3AF',
       },
-      width:  containerRef.current.clientWidth,
+      width: containerRef.current.clientWidth,
       height,
       grid: {
         vertLines: { color: 'rgba(255,255,255,0.05)' },
@@ -113,21 +113,21 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       },
       // ── Enable scroll & zoom ─────────────────────────────────────────────
       handleScroll: {
-        mouseWheel:       true,
+        mouseWheel: true,
         pressedMouseMove: true,
-        horzTouchDrag:    true,
-        vertTouchDrag:    true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
       },
       handleScale: {
         mouseWheel: true,
-        pinch:      true,
+        pinch: true,
         axisPressedMouseMove: { time: true, price: true },
         axisDoubleClickReset: { time: true, price: true },
       },
       // ────────────────────────────────────────────────────────────────────
       rightPriceScale: {
-        visible:    true,
-        autoScale:  true,
+        visible: true,
+        autoScale: true,
         scaleMargins: { top: 0.2, bottom: 0.2 },
       },
       timeScale: {
@@ -143,10 +143,10 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
 
     if (chartType === 'CANDLE' || chartType === 'HEIKIN_ASHI') {
       seriesRef.current = chart.addSeries(CandlestickSeries, {
-        upColor:      '#10B981',
-        downColor:    '#EF4444',
+        upColor: '#10B981',
+        downColor: '#EF4444',
         borderVisible: false,
-        wickUpColor:   '#10B981',
+        wickUpColor: '#10B981',
         wickDownColor: '#EF4444',
       });
     } else {
@@ -163,7 +163,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     return () => {
       window.removeEventListener('resize', onResize);
       chart.remove();
-      chartRef.current  = null;
+      chartRef.current = null;
       seriesRef.current = null;
     };
   }, [chartType, height]);
@@ -183,18 +183,14 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
 
       // Lock visible price range around last close ±500
       const last = seriesData[seriesData.length - 1];
+
       if (last && chartRef.current) {
-        const range = 500;
-        chartRef.current.priceScale('right').applyOptions({
-          autoScale: false,
+        const range = 300;
+
+        chartRef.current.priceScale('right').setVisibleRange({
+          from: last.close - range,
+          to: last.close + range,
         });
-        (seriesRef.current as any).applyOptions({
-          autoscaleInfoProvider: () => ({
-            priceRange: { minValue: last.close - range, maxValue: last.close + range },
-            margins: { above: 0.2, below: 0.2 },
-          }),
-        });
-        chartRef.current.priceScale('right').applyOptions({ autoScale: true });
       }
 
       chartRef.current?.timeScale().scrollToRealTime();
