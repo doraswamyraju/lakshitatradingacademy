@@ -13,6 +13,7 @@ interface OptionChainRow {
 interface TradingPanelProps {
   funds: UserFunds;
   optionChain: OptionChainRow[];
+  isPaperTrading?: boolean;
   onPlaceOptionOrder: (
     side: 'BUY' | 'SELL',
     quantity: number,
@@ -24,7 +25,7 @@ interface TradingPanelProps {
   ) => void | Promise<void>;
 }
 
-const TradingPanel: React.FC<TradingPanelProps> = ({ funds, optionChain, onPlaceOptionOrder }) => {
+const TradingPanel: React.FC<TradingPanelProps> = ({ funds, optionChain, onPlaceOptionOrder, isPaperTrading = false }) => {
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY');
   const [optionType, setOptionType] = useState<'CE' | 'PE'>('CE');
   const [quantity, setQuantity] = useState<number>(1);
@@ -52,7 +53,9 @@ const TradingPanel: React.FC<TradingPanelProps> = ({ funds, optionChain, onPlace
   const estimatedValue = (orderType === 'MARKET' ? optionLtp : limitPrice) * quantity;
   const marginRequired = product === 'MIS' ? estimatedValue / 5 : estimatedValue;
   const hasOptionPrice = Number.isFinite(optionLtp) && optionLtp > 0;
-  const canSubmit = hasOptionPrice && selectedStrike > 0 && (funds?.availableMargin ?? 0) >= marginRequired;
+  const hasSufficientMargin = (funds?.availableMargin ?? 0) >= marginRequired;
+  // In paper trading mode bypass real margin check — orders are simulated anyway
+  const canSubmit = hasOptionPrice && selectedStrike > 0 && (isPaperTrading || hasSufficientMargin);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,7 +221,7 @@ const TradingPanel: React.FC<TradingPanelProps> = ({ funds, optionChain, onPlace
               : 'bg-samp-danger hover:bg-red-500 shadow-samp-danger/20'
           } ${!canSubmit ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          PLACE {side} {optionType}
+          PLACE {side} {optionType}{isPaperTrading ? ' [PAPER]' : ''}
         </button>
       </form>
     </div>

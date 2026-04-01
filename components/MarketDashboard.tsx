@@ -536,8 +536,18 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
         </div>
 
         <div className="col-span-4 flex flex-col gap-6 min-h-0 pr-1">
+          {/* ── Audit Log ── always first so signals are visible immediately */}
+          <div className="bg-slate-100 dark:bg-black border border-slate-200 dark:border-white/5 rounded-[24px] p-5 flex flex-col h-[200px] shrink-0 font-mono shadow-inner transition-colors duration-300">
+            <h3 className="text-[10px] font-bold text-slate-600 dark:text-gray-400 mb-3 uppercase tracking-widest flex items-center gap-2">
+              <Activity size={12} className="text-samp-primary" /> Audit Log
+            </h3>
+            <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-hide">
+              {logs.map((log, i) => (<div key={i} className="text-[10px] leading-relaxed text-slate-600 dark:text-gray-500 border-l border-slate-300 dark:border-white/5 pl-2">{log}</div>))}
+            </div>
+          </div>
+          {/* ── Execute Option ── */}
           <div className="shrink-0">
-            <TradingPanel funds={funds} optionChain={optionChain} onPlaceOptionOrder={handlePlaceOptionOrder} />
+            <TradingPanel funds={funds} optionChain={optionChain} isPaperTrading={user?.isPaperTrading ?? false} onPlaceOptionOrder={handlePlaceOptionOrder} />
           </div>
           <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-5 shrink-0 transition-colors duration-300">
             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Activity size={14} className="text-samp-primary" /> Option Chain ({optionExpiry || '--'})</h3>
@@ -578,12 +588,6 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                 <div className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-1">Collateral</div>
                 <div className="font-bold text-slate-900 dark:text-white">₹{(funds?.collateral ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}</div>
               </div>
-            </div>
-          </div>
-          <div className="bg-slate-100 dark:bg-black border border-slate-200 dark:border-white/5 rounded-[24px] p-5 flex flex-col h-[230px] shrink-0 font-mono shadow-inner transition-colors duration-300">
-            <h3 className="text-[10px] font-bold text-slate-600 mb-3 uppercase tracking-widest">Audit Log</h3>
-            <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-hide">
-              {logs.map((log, i) => (<div key={i} className="text-[10px] leading-relaxed text-slate-600 dark:text-gray-500 border-l border-slate-300 dark:border-white/5 pl-2">{log}</div>))}
             </div>
           </div>
         </div>
