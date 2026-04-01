@@ -161,9 +161,15 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
 
   useEffect(() => {
     if (!authHeaders) return;
+    // Preload historical candles ONCE on mount — live candles come via socket after this
+    preloadRecentCandles().catch((error: any) => addLog(`[SYNC] ${error.message}`));
+  }, [authHeaders]);
+
+  useEffect(() => {
+    if (!authHeaders) return;
     const run = async () => {
       try {
-        await Promise.all([fetchWallet(), fetchTokenStatus(), fetchOrdersAndPositions(), preloadRecentCandles()]);
+        await Promise.all([fetchWallet(), fetchTokenStatus(), fetchOrdersAndPositions()]);
       } catch (error: any) {
         addLog(`[SYNC] ${error.message}`);
       }
