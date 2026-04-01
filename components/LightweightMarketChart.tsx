@@ -113,19 +113,23 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       },
       // ── Enable scroll & zoom ─────────────────────────────────────────────
       handleScroll: {
-        mouseWheel:   true,
+        mouseWheel:       true,
         pressedMouseMove: true,
-        horzTouchDrag: true,
-        vertTouchDrag: false,
+        horzTouchDrag:    true,
+        vertTouchDrag:    true,
       },
       handleScale: {
-        mouseWheel:   true,
-        pinch:        true,
+        mouseWheel: true,
+        pinch:      true,
         axisPressedMouseMove: { time: true, price: true },
         axisDoubleClickReset: { time: true, price: true },
       },
       // ────────────────────────────────────────────────────────────────────
-      rightPriceScale: { visible: true },
+      rightPriceScale: {
+        visible:    true,
+        autoScale:  true,
+        scaleMargins: { top: 0.2, bottom: 0.2 },
+      },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
@@ -176,7 +180,24 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       } else {
         seriesRef.current.setData(seriesData.map(d => ({ time: d.time, value: d.close })));
       }
-      chartRef.current?.timeScale().fitContent();
+
+      // Lock visible price range around last close ±500
+      const last = seriesData[seriesData.length - 1];
+      if (last && chartRef.current) {
+        const range = 500;
+        chartRef.current.priceScale('right').applyOptions({
+          autoScale: false,
+        });
+        (seriesRef.current as any).applyOptions({
+          autoscaleInfoProvider: () => ({
+            priceRange: { minValue: last.close - range, maxValue: last.close + range },
+            margins: { above: 0.2, below: 0.2 },
+          }),
+        });
+        chartRef.current.priceScale('right').applyOptions({ autoScale: true });
+      }
+
+      chartRef.current?.timeScale().scrollToRealTime();
     } catch (err: any) {
       console.error('[Chart] setData error:', err.message);
     }

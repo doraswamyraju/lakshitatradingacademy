@@ -125,8 +125,8 @@ export class ExecutionLoop {
     const sl = side === 'BUY' ? price - risk : price + risk;
 
     // Fetch user settings (Defaulting to system-admin for now)
-    const user = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-    const isPaper = user?.isPaperTrading ?? true;
+    const user = await prisma.user.findFirst({ where: { role: 'ADMIN' } }) as any;
+    const isPaper = (user?.isPaperTrading ?? true) as boolean;
 
     console.log(`🚀 [${isPaper ? 'PAPER' : 'LIVE'}] ENTRY ${side} @ ${price} | SL: ${sl}`);
 
@@ -209,8 +209,8 @@ export class ExecutionLoop {
 
   // ---------------- EXIT ----------------
   private async exitTrade(symbol: string, reason: string, price: number) {
-    const user = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-    const isPaper = user?.isPaperTrading ?? true;
+    const user = await prisma.user.findFirst({ where: { role: 'ADMIN' } }) as any;
+    const isPaper = (user?.isPaperTrading ?? true) as boolean;
 
     console.log(`❌ [${isPaper ? 'PAPER' : 'LIVE'}] EXIT (${reason}) @ ${price}`);
 
