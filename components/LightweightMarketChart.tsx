@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import * as LightweightCharts from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, ISeriesApi, Time, CandlestickData, HistogramData, LineData } from 'lightweight-charts';
 import { Candle, ChartType } from '../types';
 
 interface LightweightMarketChartProps {
@@ -20,51 +20,65 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   timeframe = '1m'
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<LightweightCharts.IChartApi | null>(null);
-  const seriesRef = useRef<LightweightCharts.ISeriesApi<any> | null>(null);
-  const smaSeriesRef = useRef<LightweightCharts.ISeriesApi<"Line"> | null>(null);
-  const emaSeriesRef = useRef<LightweightCharts.ISeriesApi<"Line"> | null>(null);
-  const volumeSeriesRef = useRef<LightweightCharts.ISeriesApi<"Histogram"> | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Candlestick" | "Line"> | null>(null);
+  const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
 
-  const normalizeTimeToMs = (raw: any): number | null => {
+  const normalizeTimeSecs = (raw: string | number | any): Time | null => {
     if (typeof raw === 'number' && Number.isFinite(raw)) {
-      return raw < 1e12 ? raw * 1000 : raw;
+      // If it's in MS (e.g. 1700000000000), convert to seconds
+      return Math.floor(raw > 1e12 ? raw / 1000 : raw) as Time;
     }
     if (typeof raw === 'string') {
       const parsed = Date.parse(raw);
-      if (Number.isFinite(parsed)) return parsed;
+      if (Number.isFinite(parsed)) return Math.floor(parsed / 1000) as Time;
     }
     return null;
   };
 
   const formattedData = useMemo(() => {
     if (!data || data.length === 0) return [];
+    
     const normalized = data
-      .map((d) => ({ ...d, __tsMs: normalizeTimeToMs((d as any).time) }))
-      .filter((d) => d.__tsMs !== null && d.open > 0 && d.high > 0 && d.low > 0 && d.close > 0) as Array<Candle & { __tsMs: number }>;
+      .map((d: any) => ({
+        ...d,
+        __tsSecs: normalizeTimeSecs(d.time || d.timestamp || d.date)
+      }))
+      .filter((d) => 
+        d.__tsSecs !== null && 
+        Number.isFinite(d.open) && 
+        Number.isFinite(d.high) && 
+        Number.isFinite(d.low) && 
+        Number.isFinite(d.close) &&
+        d.open > 0 && d.close > 0 
+      ) as Array<Candle & { __tsSecs: Time, volume: number }>;
     
-    const uniqueMap = new Map<number, Candle & { __tsMs: number }>();
+    // Deduplicate exact timestamps to prevent Lightweight Charts invariant error
+    const uniqueMap = new Map<number, Candle & { __tsSecs: Time, volume: number }>();
     for (const d of normalized) {
-      const timeSecs = Math.floor(d.__tsMs / 1000);
-      uniqueMap.set(timeSecs, d);
+      uniqueMap.set(d.__tsSecs as number, d);
     }
-    const uniqueSorted = Array.from(uniqueMap.values()).sort((a, b) => a.__tsMs - b.__tsMs);
-    if (uniqueSorted.length === 0) return [];
+    const uniqueSorted = Array.from(uniqueMap.values()).sort((a, b) => (a.__tsSecs as number) - (b.__tsSecs as number));
     
-    let finalData: Array<any> = [];
+    if (uniqueSorted.length === 0) {
+        console.warn("[Chart Debug] All candles were filtered out as invalid or had bad timestamps.");
+        return [];
+    }
+    
+    const finalData: any[] = [];
 
     if (chartType === 'HEIKIN_ASHI') {
       let prevOpen = (uniqueSorted[0].open + uniqueSorted[0].close) / 2;
       let prevClose = (uniqueSorted[0].open + uniqueSorted[0].high + uniqueSorted[0].low + uniqueSorted[0].close) / 4;
 
       finalData.push({
-        time: Math.floor(uniqueSorted[0].__tsMs / 1000) as LightweightCharts.Time,
+        time: uniqueSorted[0].__tsSecs,
         open: prevOpen,
         high: Math.max(uniqueSorted[0].high, prevOpen, prevClose),
         low: Math.min(uniqueSorted[0].low, prevOpen, prevClose),
         close: prevClose,
-        value: prevClose,
-        volume: uniqueSorted[0].volume
+        value: prevClose, 
+        volume: Number(uniqueSorted[0].volume) || 0
       });
 
       for (let i = 1; i < uniqueSorted.length; i++) {
@@ -75,52 +89,42 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         const haLow = Math.min(current.low, haOpen, haClose);
 
         finalData.push({
-          time: Math.floor(current.__tsMs / 1000) as LightweightCharts.Time,
+          time: current.__tsSecs,
           open: haOpen,
           high: haHigh,
           low: haLow,
           close: haClose,
           value: haClose,
-          volume: current.volume
+          volume: Number(current.volume) || 0
         });
 
         prevOpen = haOpen;
         prevClose = haClose;
       }
     } else {
-      finalData = uniqueSorted.map((d) => ({
-        time: (Math.floor(d.__tsMs / 1000)) as LightweightCharts.Time,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-        value: d.close,
-        volume: d.volume
-      }));
+      for (const d of uniqueSorted) {
+        finalData.push({
+          time: d.__tsSecs,
+          open: d.open,
+          high: d.high,
+          low: d.low,
+          close: d.close,
+          value: d.close,
+          volume: Number(d.volume) || 0
+        });
+      }
     }
 
+    console.log(`[Chart Debug] Processed ${finalData.length} valid candles uniquely sorted by time.`, { sample: finalData[finalData.length - 1] });
     return finalData;
-  }, [data, timeframe, chartType]);
-
-  const smaData = useMemo(() => {
-    if (!showSMA || formattedData.length === 0) return [];
-    const period = 20; 
-    const result: LightweightCharts.LineData[] = [];
-    for (let i = 0; i < formattedData.length; i++) {
-        if (i < period - 1) continue;
-        let sum = 0;
-        for (let j = 0; j < period; j++) { sum += (formattedData[i - j] as any).close; }
-        result.push({ time: formattedData[i].time, value: sum / period });
-    }
-    return result;
-  }, [formattedData, showSMA]);
+  }, [data, chartType]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const chart = LightweightCharts.createChart(chartContainerRef.current, {
+    const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: LightweightCharts.ColorType.Solid, color: '#0B0C15' },
+        background: { type: ColorType.Solid, color: '#0B0C15' },
         textColor: '#9CA3AF',
       },
       width: chartContainerRef.current.clientWidth,
@@ -129,34 +133,37 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
         horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
       },
-      timeScale: { timeVisible: true, secondsVisible: false },
+      timeScale: { 
+        timeVisible: true, 
+        secondsVisible: false 
+      },
     });
 
     chartRef.current = chart;
 
-    // Use a safer way to check for series creation methods
-    const c = chart as any;
     if (chartType === 'CANDLE' || chartType === 'HEIKIN_ASHI') {
-      const series = c.addCandlestickSeries ? c.addCandlestickSeries({
-        upColor: '#10B981', downColor: '#EF4444', borderVisible: false,
-        wickUpColor: '#10B981', wickDownColor: '#EF4444',
-      }) : c.addSeries(LightweightCharts.CandlestickSeries);
-      seriesRef.current = series;
+      const series = chart.addCandlestickSeries({
+        upColor: '#10B981', 
+        downColor: '#EF4444', 
+        borderVisible: false,
+        wickUpColor: '#10B981', 
+        wickDownColor: '#EF4444',
+      });
+      seriesRef.current = series as ISeriesApi<"Candlestick">;
     } else {
-      const series = c.addLineSeries ? c.addLineSeries({
-        color: '#3B82F6', lineWidth: 2,
-      }) : c.addSeries(LightweightCharts.LineSeries);
-      seriesRef.current = series;
+      const series = chart.addLineSeries({
+        color: '#3B82F6', 
+        lineWidth: 2,
+      });
+      seriesRef.current = series as ISeriesApi<"Line">;
     }
 
-    // Isolate Volume to the LEFT axis and HIDE the axis to prevent it stretching the main price scale on the right
-    const volumeSeries = c.addHistogramSeries ? c.addHistogramSeries({
+    const volumeSeries = chart.addHistogramSeries({
       color: '#26a69a', 
       priceFormat: { type: 'volume' }, 
       priceScaleId: 'left', 
-    }) : c.addSeries(LightweightCharts.HistogramSeries);
+    });
     
-    // Position volume at the bottom 20%
     chart.priceScale('left').applyOptions({
       scaleMargins: {
         top: 0.8,
@@ -172,6 +179,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
          chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
       }
     };
+    
     window.addEventListener('resize', handleResize);
 
     return () => {
@@ -181,21 +189,33 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   }, [chartType, height]);
 
   useEffect(() => {
-    if (seriesRef.current) { 
-      seriesRef.current.setData(formattedData as any); 
-      if (formattedData.length > 0 && chartRef.current) {
-        chartRef.current.timeScale().fitContent();
+    if (formattedData.length === 0) return;
+
+    try {
+      if (seriesRef.current) { 
+        const isCandle = chartType === 'CANDLE' || chartType === 'HEIKIN_ASHI';
+        const seriesData = formattedData.map(({ time, open, high, low, close, value }) => 
+          isCandle 
+            ? { time, open, high, low, close } 
+            : { time, value }
+        );
+        
+        seriesRef.current.setData(seriesData as any); 
+        chartRef.current?.timeScale().fitContent();
       }
+
+      if (volumeSeriesRef.current) {
+          const vData: HistogramData[] = formattedData.map(d => ({
+              time: d.time,
+              value: d.volume,
+              color: d.close >= d.open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+          }));
+          volumeSeriesRef.current.setData(vData);
+      }
+    } catch (err: any) {
+      console.error("[Chart Debug] Error drawing series data:", err.message);
     }
-    if (volumeSeriesRef.current) {
-        const vData = formattedData.map(d => ({
-            time: d.time,
-            value: (d as any).volume,
-            color: (d as any).close >= (d as any).open ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'
-        }));
-        volumeSeriesRef.current.setData(vData as any);
-    }
-  }, [formattedData]);
+  }, [formattedData, chartType]);
 
   return (
     <div 
