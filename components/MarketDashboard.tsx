@@ -46,6 +46,24 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [timeframe, setTimeframe] = useState<'1m' | '5m' | '15m' | '1h' | 'D'>('1m');
+
+  // Maps UI timeframe labels → Kite API interval strings
+  const kiteIntervalMap: Record<string, string> = {
+    '1m':  'minute',
+    '5m':  '5minute',
+    '15m': '15minute',
+    '1h':  '60minute',
+    'D':   'day',
+  };
+
+  // How many hours of history to load per timeframe
+  const lookbackHours: Record<string, number> = {
+    '1m':  8,
+    '5m':  48,
+    '15m': 120,
+    '1h':  480,
+    'D':   8760,
+  };
   const [chartType, setChartType] = useState<ChartType>('HEIKIN_ASHI');
   const [showSMA, setShowSMA] = useState(false);
   const [showEMA, setShowEMA] = useState(false);
@@ -129,11 +147,13 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     if (data.expiry) setOptionExpiry(data.expiry);
   };
 
-  const preloadRecentCandles = async () => {
+  const preloadRecentCandles = async (tf: string = timeframe) => {
     if (!authHeaders) return;
+    const interval = kiteIntervalMap[tf] || 'minute';
+    const hours = lookbackHours[tf] || 8;
     const to = new Date();
-    const from = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
-    const url = `/api/market-data/kite/historical?instrumentToken=260105&interval=minute&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`;
+    const from = new Date(Date.now() - hours * 60 * 60 * 1000);
+    const url = `/api/market-data/kite/historical?instrumentToken=260105&interval=${interval}&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`;
     const res = await fetch(url, { headers: authHeaders });
     const data = await res.json();
     if (!res.ok) throw new Error(data?.error || 'Failed to preload candles.');
@@ -152,18 +172,29 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     if (candles.length > 0) {
       setMarket(prev => ({
         ...prev,
-        candles: candles.slice(-500),
+        candles: candles.slice(-600),
         price: prev.price > 0 ? prev.price : candles[candles.length - 1].close
       }));
-      addLog(`[SYSTEM] Preloaded ${candles.length} recent candles.`);
+      addLog(`[SYSTEM] Loaded ${candles.length} candles (${tf}).`);
+    } else {
+      // Clear stale candles when switching timeframe with no data
+      setMarket(prev => ({ ...prev, candles: [] }));
+      addLog(`[SYSTEM] No candles returned for ${tf}. Check broker auth.`);
     }
   };
 
+  // Reload candles on first auth
   useEffect(() => {
     if (!authHeaders) return;
-    // Preload historical candles ONCE on mount — live candles come via socket after this
-    preloadRecentCandles().catch((error: any) => addLog(`[SYNC] ${error.message}`));
+    preloadRecentCandles(timeframe).catch((error: any) => addLog(`[SYNC] ${error.message}`));
   }, [authHeaders]);
+
+  // Reload candles whenever timeframe changes
+  useEffect(() => {
+    if (!authHeaders) return;
+    setMarket(prev => ({ ...prev, candles: [] })); // clear while loading
+    preloadRecentCandles(timeframe).catch((error: any) => addLog(`[SYNC] ${error.message}`));
+  }, [timeframe]);
 
   useEffect(() => {
     if (!authHeaders) return;
@@ -193,16 +224,19 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
 
     socket.on('market_tick', (data: MarketState) => {
       setMarket(prev => {
-        // Merge new candles from socket into existing preloaded candles
-        // Do NOT replace – socket sends only latest candles, preload has history
-        const newCandles = (data.candles || []).map((c: any) => ({
-          ...c,
-          time: typeof c.time === 'string' ? Date.parse(c.time) : Number(c.time)
-        }));
+        // Socket always emits 1-minute candles.
+        // Only merge them into the chart when the user is on the 1m timeframe.
+        // For other timeframes, keep historical data intact and just update price/trend.
+        const isOneMiniute = timeframe === '1m';
+        const newCandles = isOneMiniute
+          ? (data.candles || []).map((c: any) => ({
+              ...c,
+              time: typeof c.time === 'string' ? Date.parse(c.time) : Number(c.time)
+            }))
+          : [];
 
         let merged = prev.candles || [];
-        if (newCandles.length > 0) {
-          // Build a map from existing candles, overwrite/append new ones
+        if (isOneMiniute && newCandles.length > 0) {
           const candleMap = new Map(merged.map(c => [
             typeof c.time === 'string' ? Date.parse(c.time as string) : Number(c.time),
             c
@@ -210,12 +244,16 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
           newCandles.forEach((c: any) => candleMap.set(Number(c.time), c));
           merged = Array.from(candleMap.values())
             .sort((a, b) => Number(a.time) - Number(b.time))
-            .slice(-500);
+            .slice(-600);
         }
 
         return {
           ...prev,
-          ...data,
+          price: data.price || prev.price,
+          trend: data.trend || prev.trend,
+          feedSource: data.feedSource || prev.feedSource,
+          bids: data.bids || prev.bids,
+          asks: data.asks || prev.asks,
           candles: merged
         };
       });
