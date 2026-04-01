@@ -84,8 +84,12 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
 
   const automationRef = useRef(isAutomationOn);
   const strategyRef = useRef(activeStrategyId);
+  // timeframeRef prevents stale closures in the socket handler
+  // (the socket listener is registered once; a ref always has the latest value)
+  const timeframeRef = useRef(timeframe);
   useEffect(() => { automationRef.current = isAutomationOn; }, [isAutomationOn]);
   useEffect(() => { strategyRef.current = activeStrategyId; }, [activeStrategyId]);
+  useEffect(() => { timeframeRef.current = timeframe; }, [timeframe]);
 
   const addLog = (msg: string) => {
     const prefix = user?.isPaperTrading ? '[SIMULATED] ' : '';
@@ -227,7 +231,9 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
         // Socket always emits 1-minute candles.
         // Only merge them into the chart when the user is on the 1m timeframe.
         // For other timeframes, keep historical data intact and just update price/trend.
-        const isOneMiniute = timeframe === '1m';
+        // IMPORTANT: use timeframeRef.current (not `timeframe`) to avoid stale closure —
+        // the socket listener is registered once and would otherwise always see '1m'.
+        const isOneMiniute = timeframeRef.current === '1m';
         const newCandles = isOneMiniute
           ? (data.candles || []).map((c: any) => ({
               ...c,
