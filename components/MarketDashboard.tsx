@@ -186,13 +186,38 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     const socket = io({ path: '/api/socket.io' });
 
     socket.on('market_tick', (data: MarketState) => {
-      setMarket(data);
+      setMarket(prev => {
+        // Merge new candles from socket into existing preloaded candles
+        // Do NOT replace – socket sends only latest candles, preload has history
+        const newCandles = (data.candles || []).map((c: any) => ({
+          ...c,
+          time: typeof c.time === 'string' ? Date.parse(c.time) : Number(c.time)
+        }));
+
+        let merged = prev.candles || [];
+        if (newCandles.length > 0) {
+          // Build a map from existing candles, overwrite/append new ones
+          const candleMap = new Map(merged.map(c => [
+            typeof c.time === 'string' ? Date.parse(c.time as string) : Number(c.time),
+            c
+          ]));
+          newCandles.forEach((c: any) => candleMap.set(Number(c.time), c));
+          merged = Array.from(candleMap.values())
+            .sort((a, b) => Number(a.time) - Number(b.time))
+            .slice(-500);
+        }
+
+        return {
+          ...prev,
+          ...data,
+          candles: merged
+        };
+      });
 
       if (automationRef.current && strategyRef.current) {
         const strategy = strategies.find(s => s.id === strategyRef.current);
           if (strategy && strategy.isActive && data.price > 0) {
             // Index feed is for signal context. Execution is options-only.
-            // Auto execution should map strategy signal -> option contract explicitly.
           }
       }
     });

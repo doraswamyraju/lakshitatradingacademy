@@ -236,7 +236,7 @@ export class ExecutionLoop {
         qty: 1,
         status: "SUCCESS",
         isSimulated
-      }
+      } as any
     }).catch(() => { });
   }
 

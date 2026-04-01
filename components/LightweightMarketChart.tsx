@@ -18,16 +18,22 @@ interface LightweightMarketChartProps {
   timeframe?: string;
 }
 
-function toUTCSeconds(raw: unknown): UTCTimestamp | null {
+// IST = UTC + 5:30 = +19800 seconds
+const IST_OFFSET_SECS = 19800;
+
+function toUTCSecs(raw: unknown): UTCTimestamp | null {
+  let ms: number | null = null;
+
   if (typeof raw === 'number' && Number.isFinite(raw)) {
-    // timestamps in ms are > year 2001 in seconds (1e9) and > 2001 in ms (1e12)
-    return Math.floor(raw > 1_000_000_000_000 ? raw / 1000 : raw) as UTCTimestamp;
+    ms = raw > 1_000_000_000_000 ? raw : raw * 1000; // handle both ms and s
+  } else if (typeof raw === 'string' && raw.length > 0) {
+    const parsed = Date.parse(raw);
+    if (Number.isFinite(parsed)) ms = parsed;
   }
-  if (typeof raw === 'string' && raw.length > 0) {
-    const ms = Date.parse(raw);
-    if (Number.isFinite(ms)) return Math.floor(ms / 1000) as UTCTimestamp;
-  }
-  return null;
+
+  if (ms === null) return null;
+  // Convert UTC ms → UTC seconds, then shift to IST so chart labels show IST
+  return Math.floor(ms / 1000 + IST_OFFSET_SECS) as UTCTimestamp;
 }
 
 const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
@@ -39,7 +45,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   const chartRef     = useRef<IChartApi | null>(null);
   const seriesRef    = useRef<any>(null);
 
-  // ── 1. Normalise & validate incoming candles ────────────────────────────
+  // ── 1. Normalise & de-dupe incoming candles ────────────────────────────
   const cleanCandles = useMemo(() => {
     if (!data || data.length === 0) return [];
 
@@ -49,7 +55,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     }>();
 
     for (const raw of data as any[]) {
-      const t = toUTCSeconds(raw.time ?? raw.timestamp ?? raw.date);
+      const t = toUTCSecs(raw.time ?? raw.timestamp ?? raw.date);
       if (t === null) { console.warn('[Chart] bad time:', raw); continue; }
 
       const o = Number(raw.open);
@@ -57,7 +63,6 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       const l = Number(raw.low);
       const c = Number(raw.close);
 
-      // skip completely invalid rows – but ONLY require positive close & open
       if (!Number.isFinite(o) || o <= 0) continue;
       if (!Number.isFinite(h) || h <= 0) continue;
       if (!Number.isFinite(l) || l <= 0) continue;
@@ -71,39 +76,27 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     return sorted;
   }, [data]);
 
-  // ── 2. Transform into price series rows ─────────────────────────────────
+  // ── 2. Apply Heikin Ashi transform if needed ────────────────────────────
   const seriesData = useMemo(() => {
     if (cleanCandles.length === 0) return [];
+    if (chartType !== 'HEIKIN_ASHI') return cleanCandles;
 
-    if (chartType !== 'HEIKIN_ASHI') {
-      // plain candlestick — pass through as-is
-      return cleanCandles; // already { time, open, high, low, close }
-    }
-
-    // Heikin Ashi transform
     const result: { time: UTCTimestamp; open: number; high: number; low: number; close: number }[] = [];
-    let pOpen  = (cleanCandles[0].open + cleanCandles[0].close) / 2;
-    let pClose = (cleanCandles[0].open + cleanCandles[0].high + cleanCandles[0].low + cleanCandles[0].close) / 4;
-    result.push({ time: cleanCandles[0].time, open: pOpen, high: Math.max(cleanCandles[0].high, pOpen, pClose), low: Math.min(cleanCandles[0].low, pOpen, pClose), close: pClose });
+    let pO = (cleanCandles[0].open + cleanCandles[0].close) / 2;
+    let pC = (cleanCandles[0].open + cleanCandles[0].high + cleanCandles[0].low + cleanCandles[0].close) / 4;
+    result.push({ time: cleanCandles[0].time, open: pO, high: Math.max(cleanCandles[0].high, pO, pC), low: Math.min(cleanCandles[0].low, pO, pC), close: pC });
 
     for (let i = 1; i < cleanCandles.length; i++) {
       const d = cleanCandles[i];
-      const haClose = (d.open + d.high + d.low + d.close) / 4;
-      const haOpen  = (pOpen + pClose) / 2;
-      result.push({
-        time:  d.time,
-        open:  haOpen,
-        high:  Math.max(d.high, haOpen, haClose),
-        low:   Math.min(d.low,  haOpen, haClose),
-        close: haClose,
-      });
-      pOpen  = haOpen;
-      pClose = haClose;
+      const haC = (d.open + d.high + d.low + d.close) / 4;
+      const haO = (pO + pC) / 2;
+      result.push({ time: d.time, open: haO, high: Math.max(d.high, haO, haC), low: Math.min(d.low, haO, haC), close: haC });
+      pO = haO; pC = haC;
     }
     return result;
   }, [cleanCandles, chartType]);
 
-  // ── 3. Create chart & series (once per chartType/height) ─────────────────
+  // ── 3. Create chart & series ─────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -118,8 +111,27 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         vertLines: { color: 'rgba(255,255,255,0.05)' },
         horzLines: { color: 'rgba(255,255,255,0.05)' },
       },
+      // ── Enable scroll & zoom ─────────────────────────────────────────────
+      handleScroll: {
+        mouseWheel:   true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
+      handleScale: {
+        mouseWheel:   true,
+        pinch:        true,
+        axisPressedMouseMove: { time: true, price: true },
+        axisDoubleClickReset: { time: true, price: true },
+      },
+      // ────────────────────────────────────────────────────────────────────
       rightPriceScale: { visible: true },
-      timeScale: { timeVisible: true, secondsVisible: false },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+        // We already shifted timestamps to IST, so tell the lib timezone offset = 0
+        // (shifting in data rather than via locale avoids needing a premium API)
+      },
       crosshair: { mode: 1 },
     });
 
@@ -152,7 +164,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     };
   }, [chartType, height]);
 
-  // ── 4. Push data into series ─────────────────────────────────────────────
+  // ── 4. Feed data ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!seriesRef.current || seriesData.length === 0) return;
 
@@ -162,9 +174,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       if (chartType === 'CANDLE' || chartType === 'HEIKIN_ASHI') {
         seriesRef.current.setData(seriesData);
       } else {
-        seriesRef.current.setData(
-          seriesData.map(d => ({ time: d.time, value: d.close }))
-        );
+        seriesRef.current.setData(seriesData.map(d => ({ time: d.time, value: d.close })));
       }
       chartRef.current?.timeScale().fitContent();
     } catch (err: any) {
