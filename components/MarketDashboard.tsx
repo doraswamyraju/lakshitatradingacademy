@@ -6,6 +6,7 @@ import LightweightMarketChart from './LightweightMarketChart';
 import TradingPanel from './TradingPanel';
 import PortfolioPanel from './PortfolioPanel';
 import { useAuth } from '../context/AuthContext';
+import { ExecutionEngine, OpenPosition } from '../services/executionEngine';
 
 interface MarketDashboardProps {
   strategies: TradingStrategy[];
@@ -89,14 +90,30 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   // timeframeRef prevents stale closures in the socket handler
   // (the socket listener is registered once; a ref always has the latest value)
   const timeframeRef = useRef(timeframe);
+  // Persistent execution engine instance — survives re-renders
+  const engineRef = useRef(new ExecutionEngine());
   useEffect(() => { automationRef.current = isAutomationOn; }, [isAutomationOn]);
   useEffect(() => { strategyRef.current = activeStrategyId; }, [activeStrategyId]);
   useEffect(() => { timeframeRef.current = timeframe; }, [timeframe]);
+
+  // Track open position for the UI display
+  const [openPosition, setOpenPosition] = useState<OpenPosition | null>(null);
 
   const addLog = (msg: string) => {
     const prefix = user?.isPaperTrading ? '[SIMULATED] ' : '';
     setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${prefix}${msg}`, ...prev].slice(0, 25));
   };
+
+  // Reset the engine when automation is turned OFF so stale position state is cleared
+  useEffect(() => {
+    if (!isAutomationOn) {
+      engineRef.current.reset();
+      setOpenPosition(null);
+      addLog('[AUTO] Automation disabled. Engine reset.');
+    } else {
+      addLog('[AUTO] Automation ENABLED. Engine ready.');
+    }
+  }, [isAutomationOn]);
 
   const authHeaders = useMemo(() => (
     token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : undefined
@@ -312,11 +329,22 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
       });
 
 
+      // ── Auto-execution engine ─────────────────────────────────────────────
       if (automationRef.current && strategyRef.current) {
         const strategy = strategies.find(s => s.id === strategyRef.current);
-          if (strategy && strategy.isActive && data.price > 0) {
-            // Index feed is for signal context. Execution is options-only.
-          }
+        if (strategy && strategy.isActive && data.price > 0) {
+          // We use a local snapshot of candles from the state update above.
+          // The engine is async but we don't await to avoid blocking the UI.
+          engineRef.current.evaluate({
+            candles:    data.candles || [],
+            livePrice:  data.price,
+            strategy,
+            authHeaders,
+            addLog,
+            isPaper:    user?.isPaperTrading ?? true,
+            onPositionChange: (pos) => setOpenPosition(pos ? { ...pos } : null),
+          }).catch((err: any) => addLog(`[AUTO] Engine error: ${err.message}`));
+        }
       }
     });
 
