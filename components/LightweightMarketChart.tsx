@@ -107,43 +107,61 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       },
       width: containerRef.current.clientWidth,
       height,
+
       grid: {
         vertLines: { color: 'rgba(255,255,255,0.05)' },
         horzLines: { color: 'rgba(255,255,255,0.05)' },
       },
-      // ── Enable scroll & zoom ─────────────────────────────────────────────
+
+      // ✅ SCROLL SETTINGS
       handleScroll: {
         mouseWheel: true,
         pressedMouseMove: true,
         horzTouchDrag: true,
-        crosshair: {
-          mode: 1,
-        },
+        vertTouchDrag: true,
+      },
 
-        kineticScroll: {
-          mouse: true,
-          touch: true,
+      // ✅ ZOOM SETTINGS
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: {
+          time: true,
+          price: true,
         },
-        handleScale: {
-          mouseWheel: true,
-          pinch: true,
-          axisPressedMouseMove: { time: true, price: true },
-          axisDoubleClickReset: { time: true, price: true },
+        axisDoubleClickReset: {
+          time: true,
+          price: true,
         },
-        // ────────────────────────────────────────────────────────────────────
-        rightPriceScale: {
-          visible: true,
-          autoScale: true,
-          scaleMargins: { top: 0.2, bottom: 0.2 },
+      },
+
+      // ✅ SMOOTH SCROLL
+      kineticScroll: {
+        mouse: true,
+        touch: true,
+      },
+
+      // ✅ PRICE SCALE
+      rightPriceScale: {
+        visible: true,
+        autoScale: true,
+        scaleMargins: {
+          top: 0.2,
+          bottom: 0.2,
         },
-        timeScale: {
-          timeVisible: true,
-          secondsVisible: false,
-          // We already shifted timestamps to IST, so tell the lib timezone offset = 0
-          // (shifting in data rather than via locale avoids needing a premium API)
-        },
-        crosshair: { mode: 1 },
-      });
+      },
+
+      // ✅ TIME SCALE
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+      },
+
+      // ✅ CROSSHAIR
+      crosshair: {
+        mode: 1,
+      },
+    });
 
     chartRef.current = chart;
 
