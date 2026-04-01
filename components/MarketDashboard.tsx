@@ -230,41 +230,87 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
 
     socket.on('market_tick', (data: MarketState) => {
       setMarket(prev => {
-        // Socket always emits 1-minute candles.
-        // Only merge them into the chart when the user is on the 1m timeframe.
-        // For other timeframes, keep historical data intact and just update price/trend.
-        // IMPORTANT: use timeframeRef.current (not `timeframe`) to avoid stale closure —
-        // the socket listener is registered once and would otherwise always see '1m'.
-        const isOneMiniute = timeframeRef.current === '1m';
-        const newCandles = isOneMiniute
-          ? (data.candles || []).map((c: any) => ({
-              ...c,
-              time: typeof c.time === 'string' ? Date.parse(c.time) : Number(c.time)
-            }))
-          : [];
+        const tf = timeframeRef.current;
+        const isOneMinute = tf === '1m';
+        const livePrice = data.price || 0;
 
-        let merged = prev.candles || [];
-        if (isOneMiniute && newCandles.length > 0) {
-          const candleMap = new Map(merged.map(c => [
-            typeof c.time === 'string' ? Date.parse(c.time as string) : Number(c.time),
-            c
-          ]));
-          newCandles.forEach((c: any) => candleMap.set(Number(c.time), c));
-          merged = Array.from(candleMap.values())
-            .sort((a, b) => Number(a.time) - Number(b.time))
-            .slice(-600);
+        let merged = [...(prev.candles || [])];
+
+        if (isOneMinute) {
+          // ── 1m: merge socket 1-min candles into history ───────────────────
+          const newCandles = (data.candles || []).map((c: any) => ({
+            ...c,
+            time: typeof c.time === 'string' ? Date.parse(c.time) : Number(c.time)
+          }));
+          if (newCandles.length > 0) {
+            const candleMap = new Map(merged.map(c => [Number(c.time), c]));
+            newCandles.forEach((c: any) => candleMap.set(Number(c.time), c));
+            merged = Array.from(candleMap.values())
+              .sort((a, b) => Number(a.time) - Number(b.time))
+              .slice(-600);
+          }
+        } else if (livePrice > 0 && merged.length > 0) {
+          // ── 5m / 15m / 1h / D: update last candle with live price ─────────
+          // Historical candles don't change; only the CURRENT (last) candle
+          // gets its close/high/low updated on every tick.
+          // When the interval rolls over, a new candle slot is appended.
+          const intervalMs: Record<string, number> = {
+            '5m':  5  * 60 * 1000,
+            '15m': 15 * 60 * 1000,
+            '1h':  60 * 60 * 1000,
+            'D':   24 * 60 * 60 * 1000,
+          };
+          const ivMs = intervalMs[tf] ?? 5 * 60 * 1000;
+
+          // NSE candles are aligned to IST. Calculate current slot in IST then
+          // convert back to UTC epoch-ms so it matches our stored candle times.
+          const IST_MS = 5.5 * 60 * 60 * 1000;
+          const nowUtcMs  = Date.now();
+          const nowIstMs  = nowUtcMs + IST_MS;
+          const slotIstMs = Math.floor(nowIstMs / ivMs) * ivMs;
+          const slotUtcMs = slotIstMs - IST_MS; // current candle's open time in UTC epoch-ms
+
+          const lastCandle    = merged[merged.length - 1];
+          const lastCandleMs  = Number(lastCandle.time);
+
+          if (lastCandleMs === slotUtcMs || Math.abs(lastCandleMs - slotUtcMs) < ivMs) {
+            // Same candle period — update close/high/low
+            merged = [
+              ...merged.slice(0, -1),
+              {
+                ...lastCandle,
+                close: livePrice,
+                high:  Math.max(Number(lastCandle.high),  livePrice),
+                low:   Math.min(Number(lastCandle.low),   livePrice),
+              }
+            ];
+          } else if (slotUtcMs > lastCandleMs) {
+            // New candle period started — append fresh candle
+            merged = [
+              ...merged,
+              {
+                time:   slotUtcMs,
+                open:   livePrice,
+                high:   livePrice,
+                low:    livePrice,
+                close:  livePrice,
+                volume: 0,
+              }
+            ].slice(-600);
+          }
         }
 
         return {
           ...prev,
-          price: data.price || prev.price,
-          trend: data.trend || prev.trend,
+          price:      data.price      || prev.price,
+          trend:      data.trend      || prev.trend,
           feedSource: data.feedSource || prev.feedSource,
-          bids: data.bids || prev.bids,
-          asks: data.asks || prev.asks,
-          candles: merged
+          bids:       data.bids       || prev.bids,
+          asks:       data.asks       || prev.asks,
+          candles:    merged,
         };
       });
+
 
       if (automationRef.current && strategyRef.current) {
         const strategy = strategies.find(s => s.id === strategyRef.current);
