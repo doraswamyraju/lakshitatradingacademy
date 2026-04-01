@@ -65,15 +65,19 @@ const getUserKiteClient = async (userId: string) => {
 };
 
 const formatKiteDateTime = (raw: string): string => {
-  // Accept ISO and convert to Kite expected "YYYY-MM-DD HH:mm:ss"
+  // Kite API expects datetime strings in IST (UTC+5:30).
+  // The VPS runs in UTC, so getHours() would give UTC hours — wrong.
+  // We must shift the UTC timestamp to IST before formatting.
   const dt = new Date(raw);
   if (!Number.isNaN(dt.getTime())) {
-    const y = dt.getFullYear();
-    const m = String(dt.getMonth() + 1).padStart(2, '0');
-    const d = String(dt.getDate()).padStart(2, '0');
-    const hh = String(dt.getHours()).padStart(2, '0');
-    const mm = String(dt.getMinutes()).padStart(2, '0');
-    const ss = String(dt.getSeconds()).padStart(2, '0');
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes
+    const ist = new Date(dt.getTime() + IST_OFFSET_MS);
+    const y = ist.getUTCFullYear();
+    const m = String(ist.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(ist.getUTCDate()).padStart(2, '0');
+    const hh = String(ist.getUTCHours()).padStart(2, '0');
+    const mm = String(ist.getUTCMinutes()).padStart(2, '0');
+    const ss = String(ist.getUTCSeconds()).padStart(2, '0');
     return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
   }
   return raw;

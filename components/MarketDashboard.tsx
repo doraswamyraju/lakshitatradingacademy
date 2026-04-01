@@ -56,13 +56,15 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     'D':   'day',
   };
 
-  // How many hours of history to load per timeframe
+  // How many hours of history to load per timeframe.
+  // Keep this to roughly one trading session to avoid cross-session artifacts (e.g. "00:15" midnight labels).
+  // The socket handles live 1m updates; historical fetch just pre-populates the chart.
   const lookbackHours: Record<string, number> = {
-    '1m':  8,
-    '5m':  48,
-    '15m': 120,
-    '1h':  480,
-    'D':   8760,
+    '1m':  4,    // ~240 1m candles (4 hours)
+    '5m':  8,    // ~96 5m candles (covers today's full session)
+    '15m': 20,   // ~80 15m candles (today + a bit of yesterday)
+    '1h':  72,   // ~72 1h candles (3 trading days)
+    'D':   365,  // daily candles for ~1 year
   };
   const [chartType, setChartType] = useState<ChartType>('HEIKIN_ASHI');
   const [showSMA, setShowSMA] = useState(false);
