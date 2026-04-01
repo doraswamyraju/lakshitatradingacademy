@@ -149,11 +149,21 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       seriesRef.current = series;
     }
 
+    // Volume series on a SEPARATE scale to prevent squashing
     const volumeSeries = c.addHistogramSeries ? c.addHistogramSeries({
-      color: '#26a69a', priceFormat: { type: 'volume' }, priceScaleId: '', 
+      color: '#26a69a', 
+      priceFormat: { type: 'volume' }, 
+      priceScaleId: 'volume-overlay', // Custom ID to keep it independent from price
     }) : c.addSeries(LightweightCharts.HistogramSeries);
     
-    volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    // Position volume at the bottom 20%
+    chart.priceScale('volume-overlay').applyOptions({
+      scaleMargins: {
+        top: 0.8,
+        bottom: 0,
+      },
+    });
+    
     volumeSeriesRef.current = volumeSeries;
 
     const handleResize = () => {
