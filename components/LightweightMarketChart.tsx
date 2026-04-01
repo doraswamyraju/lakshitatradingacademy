@@ -63,6 +63,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         high: Math.max(uniqueSorted[0].high, prevOpen, prevClose),
         low: Math.min(uniqueSorted[0].low, prevOpen, prevClose),
         close: prevClose,
+        value: prevClose,
         volume: uniqueSorted[0].volume
       });
 
@@ -79,6 +80,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
           high: haHigh,
           low: haLow,
           close: haClose,
+          value: haClose,
           volume: current.volume
         });
 
@@ -92,6 +94,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         high: d.high,
         low: d.low,
         close: d.close,
+        value: d.close,
         volume: d.volume
       }));
     }
@@ -146,19 +149,20 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       seriesRef.current = series;
     }
 
-    // Volume series as a pure OVERLAY (empty priceScaleId hides the axis completely)
+    // Isolate Volume to the LEFT axis and HIDE the axis to prevent it stretching the main price scale on the right
     const volumeSeries = c.addHistogramSeries ? c.addHistogramSeries({
       color: '#26a69a', 
       priceFormat: { type: 'volume' }, 
-      priceScaleId: '', 
+      priceScaleId: 'left', 
     }) : c.addSeries(LightweightCharts.HistogramSeries);
     
     // Position volume at the bottom 20%
-    volumeSeries.priceScale().applyOptions({
+    chart.priceScale('left').applyOptions({
       scaleMargins: {
         top: 0.8,
         bottom: 0,
-      }
+      },
+      visible: false,
     });
     
     volumeSeriesRef.current = volumeSeries;
