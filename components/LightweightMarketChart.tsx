@@ -41,7 +41,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     if (!data || data.length === 0) return [];
     const normalized = data
       .map((d) => ({ ...d, __tsMs: normalizeTimeToMs((d as any).time) }))
-      .filter((d) => d.__tsMs !== null) as Array<Candle & { __tsMs: number }>;
+      .filter((d) => d.__tsMs !== null && d.open > 0 && d.high > 0 && d.low > 0 && d.close > 0) as Array<Candle & { __tsMs: number }>;
     
     const uniqueMap = new Map<number, Candle & { __tsMs: number }>();
     for (const d of normalized) {
@@ -63,7 +63,6 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         high: Math.max(uniqueSorted[0].high, prevOpen, prevClose),
         low: Math.min(uniqueSorted[0].low, prevOpen, prevClose),
         close: prevClose,
-        value: prevClose,
         volume: uniqueSorted[0].volume
       });
 
@@ -80,7 +79,6 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
           high: haHigh,
           low: haLow,
           close: haClose,
-          value: haClose,
           volume: current.volume
         });
 
@@ -94,7 +92,6 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         high: d.high,
         low: d.low,
         close: d.close,
-        value: d.close,
         volume: d.volume
       }));
     }
@@ -149,19 +146,19 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       seriesRef.current = series;
     }
 
-    // Volume series on a SEPARATE scale to prevent squashing
+    // Volume series as a pure OVERLAY (empty priceScaleId hides the axis completely)
     const volumeSeries = c.addHistogramSeries ? c.addHistogramSeries({
       color: '#26a69a', 
       priceFormat: { type: 'volume' }, 
-      priceScaleId: 'volume-overlay', // Custom ID to keep it independent from price
+      priceScaleId: '', 
     }) : c.addSeries(LightweightCharts.HistogramSeries);
     
     // Position volume at the bottom 20%
-    chart.priceScale('volume-overlay').applyOptions({
+    volumeSeries.priceScale().applyOptions({
       scaleMargins: {
         top: 0.8,
         bottom: 0,
-      },
+      }
     });
     
     volumeSeriesRef.current = volumeSeries;
