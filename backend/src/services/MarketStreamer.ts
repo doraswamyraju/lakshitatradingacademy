@@ -166,7 +166,24 @@ export class MarketStreamer extends EventEmitter {
     }, 5000);
   }
 
+  private isMarketOpen(): boolean {
+    const now = new Date();
+    // Use IST (UTC+5:30)
+    const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+    const day = ist.getUTCDay();
+    const h = ist.getUTCHours();
+    const m = ist.getUTCMinutes();
+    const cur = h * 60 + m;
+
+    // Weekends (0=Sun, 6=Sat)
+    if (day === 0 || day === 6) return false;
+
+    // 09:15 AM (555 mins) to 03:30 PM (930 mins)
+    return cur >= 555 && cur <= 930;
+  }
+
   private handleLiveTick(tick: { instrumentToken: number; lp: number; bids: any[]; asks: any[]; receivedAt: string }) {
+    if (!this.isMarketOpen()) return;
     if (this.subscribedToken && tick.instrumentToken !== this.subscribedToken) return;
 
     const livePrice = Number(tick.lp);

@@ -1,15 +1,33 @@
 
 import React, { useState } from 'react';
-import { Briefcase, List, Clock, AlertCircle } from 'lucide-react';
+import { Briefcase, List, Clock, Zap } from 'lucide-react';
 import { Position, Order } from '../types';
+
+interface OptionChainRow {
+  strike: number;
+  ceLtp: number | null;
+  peLtp: number | null;
+  ceSymbol?: string | null;
+  peSymbol?: string | null;
+}
 
 interface PortfolioPanelProps {
   positions: Position[];
   orders: Order[];
+  optionChain: OptionChainRow[];
+  onPlaceOptionOrder: (
+    side: 'BUY' | 'SELL', 
+    quantity: number, 
+    type: 'MARKET' | 'LIMIT', 
+    product: 'MIS' | 'CNC', 
+    optionType: 'CE' | 'PE', 
+    strike: number, 
+    price?: number
+  ) => void;
 }
 
-const PortfolioPanel: React.FC<PortfolioPanelProps> = ({ positions, orders }) => {
-  const [activeTab, setActiveTab] = useState<'POSITIONS' | 'ORDERS'>('POSITIONS');
+const PortfolioPanel: React.FC<PortfolioPanelProps> = ({ positions, orders, optionChain, onPlaceOptionOrder }) => {
+  const [activeTab, setActiveTab] = useState<'POSITIONS' | 'ORDERS' | 'OPTION_CHAIN'>('POSITIONS');
 
   return (
     <div className="bg-white dark:bg-samp-surface rounded-xl border border-slate-200 dark:border-white/5 flex flex-col h-full overflow-hidden transition-colors duration-300">
@@ -25,6 +43,12 @@ const PortfolioPanel: React.FC<PortfolioPanelProps> = ({ positions, orders }) =>
                 className={`px-4 py-3 text-sm font-medium flex items-center gap-2 transition-colors ${activeTab === 'ORDERS' ? 'text-slate-900 dark:text-white border-b-2 border-samp-primary bg-slate-50 dark:bg-white/5' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
             >
                 <List size={14} /> Orders <span className="bg-slate-200 dark:bg-white/10 text-[10px] px-1.5 rounded-full">{orders.length}</span>
+            </button>
+            <button 
+                onClick={() => setActiveTab('OPTION_CHAIN')}
+                className={`px-4 py-3 text-sm font-medium flex items-center gap-2 transition-colors ${activeTab === 'OPTION_CHAIN' ? 'text-slate-900 dark:text-white border-b-2 border-samp-primary bg-slate-50 dark:bg-white/5' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
+            >
+                <Zap size={14} /> Options Chain <span className="bg-slate-200 dark:bg-white/10 text-[10px] px-1.5 rounded-full">{optionChain.length}</span>
             </button>
         </div>
 
@@ -68,18 +92,9 @@ const PortfolioPanel: React.FC<PortfolioPanelProps> = ({ positions, orders }) =>
                         )}
                     </tbody>
                 </table>
-            ) : (
+            ) : activeTab === 'ORDERS' ? (
                 <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 dark:bg-black/20 text-slate-500 dark:text-gray-500 sticky top-0">
-                        <tr>
-                            <th className="p-3 font-medium">Time</th>
-                            <th className="p-3 font-medium">Type</th>
-                            <th className="p-3 font-medium">Instrument</th>
-                            <th className="p-3 font-medium text-right">Qty.</th>
-                            <th className="p-3 font-medium text-right">Price</th>
-                            <th className="p-3 font-medium text-center">Status</th>
-                        </tr>
-                    </thead>
+                    {/* ... (Existing orders table head) ... */}
                     <tbody className="divide-y divide-slate-200 dark:divide-white/5">
                          {orders.length === 0 ? (
                             <tr>
@@ -112,6 +127,50 @@ const PortfolioPanel: React.FC<PortfolioPanelProps> = ({ positions, orders }) =>
                                         }`}>
                                             {order.status}
                                         </span>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            ) : (
+                <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-black/20 text-slate-500 dark:text-gray-500 sticky top-0">
+                        <tr>
+                            <th className="p-3 font-medium">Strike</th>
+                            <th className="p-3 font-medium text-right">Call LTP</th>
+                            <th className="p-3 font-medium text-right">Put LTP</th>
+                            <th className="p-3 font-medium text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-white/5">
+                        {optionChain.length === 0 ? (
+                            <tr>
+                                <td colSpan={4} className="p-8 text-center text-slate-400 dark:text-gray-500">
+                                    Scanning market for active strikes...
+                                </td>
+                            </tr>
+                        ) : (
+                            optionChain.map((row) => (
+                                <tr key={row.strike} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                                    <td className="p-3 font-bold text-slate-900 dark:text-white">{row.strike}</td>
+                                    <td className="p-3 text-right text-samp-success font-mono">₹{row.ceLtp?.toFixed(2) || '0.00'}</td>
+                                    <td className="p-3 text-right text-samp-danger font-mono">₹{row.peLtp?.toFixed(2) || '0.00'}</td>
+                                    <td className="p-3">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button 
+                                                onClick={() => onPlaceOptionOrder('BUY', 15, 'MARKET', 'MIS', 'CE', row.strike)}
+                                                className="px-2 py-1 bg-samp-success/20 text-samp-success rounded text-[9px] font-bold hover:bg-samp-success hover:text-white transition-all transform active:scale-90"
+                                            >
+                                                BUY CE
+                                            </button>
+                                            <button 
+                                                onClick={() => onPlaceOptionOrder('BUY', 15, 'MARKET', 'MIS', 'PE', row.strike)}
+                                                className="px-2 py-1 bg-samp-danger/20 text-samp-danger rounded text-[9px] font-bold hover:bg-samp-danger hover:text-white transition-all transform active:scale-90"
+                                            >
+                                                BUY PE
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))

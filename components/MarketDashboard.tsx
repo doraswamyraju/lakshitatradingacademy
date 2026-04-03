@@ -301,13 +301,17 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   }, [user?.id]);
 
   const toggleAutomation = async () => {
-    if (!activeStrategyId || !authHeaders) return;
+    if (!activeStrategyId) {
+      addLog("[SYSTEM] Please select a strategy before starting automation.");
+      return;
+    }
+    if (!authHeaders) return;
     try {
       const nextState = !isAutomationOn;
       const res = await fetch('/api/algo/toggle', {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ enabled: nextState })
+        body: JSON.stringify({ enabled: nextState, strategyId: activeStrategyId })
       });
       if (res.ok) {
         setIsAutomationOn(nextState);
@@ -443,7 +447,12 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
             </div>
             <LightweightMarketChart data={market.candles} height={isFullscreen ? 550 : 350} showSMA={showSMA} showEMA={showEMA} showBollinger={showBollinger} showDMI={showDMI} timeframe={timeframe} chartType={chartType} />
           </div>
-          <PortfolioPanel positions={positions} orders={orders} />
+          <PortfolioPanel 
+            positions={positions} 
+            orders={orders} 
+            optionChain={optionChain} 
+            onPlaceOptionOrder={handlePlaceOptionOrder} 
+          />
         </div>
 
         <div className="col-span-4 flex flex-col gap-6">

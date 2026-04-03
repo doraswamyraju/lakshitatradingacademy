@@ -534,8 +534,8 @@ app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (req: Req
 app.post(['/api/algo/toggle', '/algo/toggle'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const { enabled } = req.body;
-    await engineCoordinator.toggleAutomation(userId, !!enabled);
+    const { enabled, strategyId } = req.body;
+    await engineCoordinator.toggleAutomation(userId, !!enabled, strategyId);
     res.json({ success: true, enabled: !!enabled });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to toggle automation' });

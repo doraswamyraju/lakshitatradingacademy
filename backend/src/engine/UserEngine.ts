@@ -26,6 +26,8 @@ export class UserEngine {
     this.isPaper = isPaper;
     this.logCallback = logCallback;
     if (kite) this.kite = kite;
+
+    this.addLog(`SYSTEM: Engine initialized for user ${this.username}. Waiting for market ticks...`);
   }
 
   private addLog(msg: string) {

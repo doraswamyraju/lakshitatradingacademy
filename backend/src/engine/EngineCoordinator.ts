@@ -38,7 +38,10 @@ export class EngineCoordinator {
 
     // Boot active automations from DB
     const activeUsers = await prisma.user.findMany({
-      where: { automationEnabled: true } as any
+      where: { 
+        automationEnabled: true,
+        activeStrategyId: { not: null }
+      } as any
     });
 
     console.log(`[EngineCoordinator] Restoring ${activeUsers.length} active sessions...`);
@@ -47,10 +50,13 @@ export class EngineCoordinator {
     }
   }
 
-  public async toggleAutomation(userId: string, enabled: boolean) {
+  public async toggleAutomation(userId: string, enabled: boolean, strategyId?: string) {
     await prisma.user.update({
       where: { id: userId },
-      data: { automationEnabled: enabled } as any
+      data: { 
+        automationEnabled: enabled,
+        activeStrategyId: enabled ? (strategyId || undefined) : null
+      } as any
     });
 
     if (enabled) {
