@@ -6,7 +6,9 @@ import {
   LineSeries,
   IChartApi,
   UTCTimestamp,
+  HistogramSeries,
 } from 'lightweight-charts';
+import { useState } from 'react';
 import { Candle, ChartType } from '../types';
 
 interface LightweightMarketChartProps {
@@ -80,6 +82,17 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   const bbLowerSeriesRef = useRef<any>(null);
   const diPlusSeriesRef = useRef<any>(null);
   const diMinusSeriesRef = useRef<any>(null);
+  const volumeSeriesRef = useRef<any>(null);
+
+  const [legend, setLegend] = useState({
+    time: '',
+    open: '-',
+    high: '-',
+    low: '-',
+    close: '-',
+    volume: '-',
+    color: '#9CA3AF'
+  });
 
   // ── 1. Sanitise + filter outliers + dedupe + sort ───────────────────────
   const seriesData = useMemo(() => {
@@ -107,6 +120,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       high: number;
       low: number;
       close: number;
+      volume: number;
     }>();
 
     for (const raw of data) {
@@ -118,6 +132,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       const h = Number(raw.high);
       const l = Number(raw.low);
       const c = Number(raw.close);
+      const v = Number(raw.volume ?? rAny.vol ?? 1);
 
       if (!Number.isFinite(o) || !Number.isFinite(h) || !Number.isFinite(l) || !Number.isFinite(c)) continue;
 
@@ -125,7 +140,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       const allInRange = o > lo && o < hi && c > lo && c < hi;
       if (!allInRange) continue;
 
-      map.set(t, { time: t, open: o, high: h, low: l, close: c });
+      map.set(t, { time: t, open: o, high: h, low: l, close: c, volume: v });
     }
 
     const sorted = Array.from(map.values()).sort((a, b) => a.time - b.time);
@@ -142,6 +157,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
         high: Math.max(sorted[0].high, prevO, prevC),
         low: Math.min(sorted[0].low, prevO, prevC),
         close: prevC,
+        volume: sorted[0].volume,
       });
       for (let i = 1; i < sorted.length; i++) {
         const d = sorted[i];
@@ -153,6 +169,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
           high: Math.max(d.high, haO, haC),
           low: Math.min(d.low, haO, haC),
           close: haC,
+          volume: d.volume,
         });
         prevO = haO;
         prevC = haC;
@@ -165,12 +182,13 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
 
   // Compute Indicators in parallel
   const indicatorData = useMemo(() => {
-    if (seriesData.length === 0) return { sma20: [], ema9: [], bb: { upper: [], middle: [], lower: [] }, dmi: { plus: [], minus: [] } };
+    if (seriesData.length === 0) return { sma20: [], ema9: [], bb: { upper: [], middle: [], lower: [] }, dmi: { plus: [], minus: [] }, volume: [] };
 
     const sma20: { time: UTCTimestamp; value: number }[] = [];
     const ema9: { time: UTCTimestamp; value: number }[] = [];
     const bb: { upper: { time: UTCTimestamp; value: number }[], middle: { time: UTCTimestamp; value: number }[], lower: { time: UTCTimestamp; value: number }[] } = { upper: [], middle: [], lower: [] };
     const dmi: { plus: { time: UTCTimestamp; value: number }[], minus: { time: UTCTimestamp; value: number }[] } = { plus: [], minus: [] };
+    const volume: { time: UTCTimestamp; value: number; color: string }[] = [];
 
     const period_sma = 20;
     const period_ema = 9;
@@ -186,7 +204,13 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     const dmMinusList: number[] = [];
 
     for (let i = 0; i < seriesData.length; i++) {
-      const { time, close, open, high, low } = seriesData[i];
+      const { time, close, open, high, low, volume: vol } = seriesData[i];
+
+      volume.push({
+        time,
+        value: vol,
+        color: close >= open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'
+      });
 
       // SMA-20
       if (i >= period_sma - 1) {
@@ -242,7 +266,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       }
     }
 
-    return { sma20, ema9, bb, dmi };
+    return { sma20, ema9, bb, dmi, volume };
   }, [seriesData]);
 
   // ── 2. Create chart (only on mount / chartType / height change) ──────────
@@ -370,6 +394,58 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       visible: false,
     });
 
+    // Volume series (Bottom pane)
+    volumeSeriesRef.current = chart.addSeries(HistogramSeries, {
+      color: '#26a69a',
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'volume',
+    });
+
+    chart.priceScale('volume').applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0 },
+    });
+
+    // Crosshair move handler for Legend
+    chart.subscribeCrosshairMove((param) => {
+      if (!param.time || param.point === undefined || !seriesRef.current) {
+        // Find latest data point if no crosshair
+        if (seriesData.length > 0) {
+          const latest = seriesData[seriesData.length - 1];
+          const d = new Date(latest.time * 1000);
+          const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+          setLegend({
+            time: `${ist.getUTCHours().toString().padStart(2, '0')}:${ist.getUTCMinutes().toString().padStart(2, '0')}`,
+            open: latest.open.toFixed(2),
+            high: latest.high.toFixed(2),
+            low: latest.low.toFixed(2),
+            close: latest.close.toFixed(2),
+            volume: latest.volume.toLocaleString(),
+            color: latest.close >= latest.open ? '#10B981' : '#EF4444'
+          });
+        }
+        return;
+      }
+
+      const data = param.seriesData.get(seriesRef.current) as any;
+      if (data) {
+        const d = new Date((param.time as number) * 1000);
+        const ist = new Date(d.getTime() + 5.5 * 60 * 60 * 1000);
+        
+        // Find volume for this point
+        const volPoint = seriesData.find(v => v.time === param.time);
+
+        setLegend({
+          time: `${ist.getUTCHours().toString().padStart(2, '0')}:${ist.getUTCMinutes().toString().padStart(2, '0')}`,
+          open: data.open.toFixed(2),
+          high: data.high.toFixed(2),
+          low: data.low.toFixed(2),
+          close: data.close.toFixed(2),
+          volume: volPoint ? volPoint.volume.toLocaleString() : '-',
+          color: data.close >= data.open ? '#10B981' : '#EF4444'
+        });
+      }
+    });
+
     const onResize = () => {
       if (containerRef.current) {
         chart.applyOptions({ width: containerRef.current.clientWidth });
@@ -396,6 +472,7 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       bbLowerSeriesRef.current = null;
       diPlusSeriesRef.current = null;
       diMinusSeriesRef.current = null;
+      volumeSeriesRef.current = null;
     };
   }, [chartType, height]);
 
@@ -443,17 +520,52 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       diMinusSeriesRef.current.applyOptions({ visible: showDMI });
       chartRef.current?.priceScale('left').applyOptions({ visible: showDMI });
 
+      // Volume
+      if (indicatorData.volume.length > 0) {
+        volumeSeriesRef.current.setData(indicatorData.volume);
+      }
+
     } catch (e: any) {
       console.error('[Chart] indicator error:', e.message);
     }
   }, [indicatorData, showSMA, showEMA, showBollinger, showDMI]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{ width: '100%', height, touchAction: 'none', userSelect: 'none' }}
-      className="rounded-lg border border-white/5 overflow-hidden shadow-2xl"
-    />
+    <div className="relative w-full h-full">
+      {/* Chart Legend */}
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 pointer-events-none bg-[#0B0C15]/80 p-2 rounded border border-white/5 backdrop-blur-sm shadow-xl min-w-[140px] text-xs font-mono">
+        <div className="flex justify-between border-b border-white/10 pb-1 mb-1">
+          <span className="text-gray-500">TIME</span>
+          <span className="text-white">{legend.time}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">OPEN</span>
+          <span className="text-white">{legend.open}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">HIGH</span>
+          <span className="text-white">{legend.high}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">LOW</span>
+          <span className="text-white">{legend.low}</span>
+        </div>
+        <div className="flex justify-between font-bold">
+          <span className="text-gray-500">CLOSE</span>
+          <span style={{ color: legend.color }}>{legend.close}</span>
+        </div>
+        <div className="flex justify-between mt-1 pt-1 border-t border-white/10">
+          <span className="text-gray-500">VOL</span>
+          <span className="text-gray-300">{legend.volume}</span>
+        </div>
+      </div>
+
+      <div
+        ref={containerRef}
+        style={{ width: '100%', height, touchAction: 'none', userSelect: 'none' }}
+        className="rounded-lg border border-white/5 overflow-hidden shadow-2xl"
+      />
+    </div>
   );
 };
 

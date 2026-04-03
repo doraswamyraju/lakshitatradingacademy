@@ -8,12 +8,13 @@ import {
 import { 
   TradingStrategy, StrategyCondition, IndicatorType, OperatorType 
 } from '../types';
+import AdminAuditPanel from './AdminAuditPanel';
 
 interface AdminPanelProps {
   strategies: TradingStrategy[];
   setStrategies: React.Dispatch<React.SetStateAction<TradingStrategy[]>>;
   token: string | null;
-  initialTab?: 'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue';
+  initialTab?: 'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue' | 'audit';
 }
 
 const INDICATORS: IndicatorType[] = [
@@ -36,7 +37,7 @@ const OPERATORS: { value: OperatorType; label: string }[] = [
 ];
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, token, initialTab }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue'>(initialTab || 'architect');
+  const [activeSubTab, setActiveSubTab] = useState<'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue' | 'audit'>(initialTab || 'architect');
   
   React.useEffect(() => {
     if (initialTab) setActiveSubTab(initialTab);
@@ -229,10 +230,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
           </p>
         </div>
       </div>
-
-      {(activeSubTab === 'architect' || activeSubTab === 'errors') ? (
+      {(activeSubTab === 'architect' || activeSubTab === 'audit' || activeSubTab === 'errors') ? (
         <div className="flex gap-4 mb-8">
             <button onClick={() => setActiveSubTab('architect')} className={`px-6 py-2.5 rounded-2xl font-bold transition-all ${activeSubTab === 'architect' ? 'bg-blue-900 text-white shadow-lg' : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-slate-200'}`}>Strategy Architect</button>
+            <button onClick={() => setActiveSubTab('audit')} className={`px-6 py-2.5 rounded-2xl font-bold transition-all ${activeSubTab === 'audit' ? 'bg-blue-900 text-white shadow-lg' : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-slate-200'}`}>Strategic Audit</button>
             <button onClick={() => setActiveSubTab('errors')} className={`px-6 py-2.5 rounded-2xl font-bold transition-all ${activeSubTab === 'errors' ? 'bg-blue-900 text-white shadow-lg' : 'bg-slate-100 dark:bg-white/5 text-slate-500 hover:bg-slate-200'}`}>Error Reports</button>
         </div>
       ) : (
@@ -577,6 +578,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ strategies, setStrategies, toke
                 </button>
               </div>
             )}
+          </div>
+        ) : activeSubTab === 'audit' ? (
+          <div className="col-span-12 h-[700px]">
+            <AdminAuditPanel token={token || ''} />
           </div>
         ) : activeSubTab === 'errors' ? (
           <div className="col-span-12 space-y-6">

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { Server } from 'socket.io';
 import { KiteService } from './KiteService';
+import { EventEmitter } from 'events';
 
 const prisma = new PrismaClient();
 
@@ -15,7 +16,7 @@ export interface Candle {
 
 type FeedSource = 'BROKER_WS' | 'DISCONNECTED' | 'ERROR';
 
-export class MarketStreamer {
+export class MarketStreamer extends EventEmitter {
   private io: Server;
   private candles: Candle[] = [];
   private currentPrice: number | null = null;
@@ -31,6 +32,7 @@ export class MarketStreamer {
   private subscribedToken: number | null = null;
 
   constructor(io: Server) {
+    super();
     this.io = io;
     this.startStreaming();
   }
@@ -137,7 +139,6 @@ export class MarketStreamer {
         }
       });
 
-      // Periodic REST-LTP sync to keep display aligned with Kite quote screen.
       this.ltpSyncInterval = setInterval(async () => {
         if (!this.kiteClient || this.feedSource !== 'BROKER_WS') return;
         const ltp = await this.kiteClient.fetchLtp('NSE:NIFTY BANK');
@@ -187,11 +188,13 @@ export class MarketStreamer {
       asks: tick.asks,
       feedSource: this.feedSource
     });
+
+    // Notify internal background listeners
+    this.emit('tick', { price: livePrice, candles: [...this.candles] });
   }
 
   private upsertCandle(price: number) {
     const nowMs = Date.now();
-    // Minute bucket start in epoch milliseconds (stable across locales/time formats).
     const candleTime = Math.floor(nowMs / 60000) * 60000;
     const last = this.candles[this.candles.length - 1];
 

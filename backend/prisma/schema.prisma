@@ -27,6 +27,11 @@ model User {
   accessTokenUpdatedAt DateTime?
   isPaperTrading       Boolean  @default(true)
   
+  // Automation State
+  automationEnabled    Boolean  @default(false)
+  activeStrategyId     String?
+  engineState          String?  // JSON blob for position tracking
+  
   // Strategy Subscription Logs
   StrategyLog StrategyLog[]
 }

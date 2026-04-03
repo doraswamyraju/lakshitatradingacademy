@@ -9,6 +9,7 @@ import { Server } from 'socket.io';
 import { MarketStreamer } from './services/MarketStreamer';
 import { KiteService } from './services/KiteService';
 import { sendContactEmail, sendEnrollmentEmail } from './services/mailer';
+import { EngineCoordinator } from './engine/EngineCoordinator';
 dotenv.config();
 
 const app: Express = express();
@@ -528,6 +529,42 @@ app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (req: Req
   }
 });
 
+// --- ALGO ENGINE ROUTES ---
+
+app.post(['/api/algo/toggle', '/algo/toggle'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const { enabled } = req.body;
+    await engineCoordinator.toggleAutomation(userId, !!enabled);
+    res.json({ success: true, enabled: !!enabled });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to toggle automation' });
+  }
+});
+
+app.get(['/api/algo/logs', '/algo/logs'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userData = (req as any).user;
+    const { limit = '50', all = 'false' } = req.query;
+    
+    // If 'all=true', verify admin
+    if (all === 'true' && userData.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required for global logs.' });
+    }
+
+    const whereClause = all === 'true' ? {} : { userId: userData.id };
+    const logs = await prisma.strategyLog.findMany({
+      where: whereClause,
+      take: parseInt(String(limit)),
+      orderBy: { timestamp: 'desc' }
+    });
+
+    res.json({ logs });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to fetch logs' });
+  }
+});
+
 app.get(['/api/algo/positions', '/algo/positions'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
@@ -772,9 +809,16 @@ const io = new Server(server, { cors: { origin: '*' }, path: '/api/socket.io' })
 
 // Mount the realtime ticker daemon
 const marketStreamer = new MarketStreamer(io);
+const engineCoordinator = new EngineCoordinator(marketStreamer, io);
 
 io.on('connection', (socket) => {
   console.log(`[WebSocket] Terminal Connected: ${socket.id}`);
+  
+  // Join private room for user-specific updates
+  socket.on('join_user_room', (userId) => {
+    socket.join(userId);
+    console.log(`[WebSocket] User ${userId} joined their private channel.`);
+  });
   const latestFeed = marketStreamer.getLatestFeedStatus();
   socket.emit('feed_status', {
     source: latestFeed.source,
