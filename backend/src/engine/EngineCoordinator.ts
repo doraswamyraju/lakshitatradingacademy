@@ -17,6 +17,13 @@ export class EngineCoordinator {
     this.init();
   }
 
+  public broadcastLog(userId: string, username: string, msg: string) {
+    const time = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const formatted = `[${time}] [USER: ${username}] ${msg}`;
+    this.io.to(userId).emit('strategy_log', formatted);
+    this.io.emit('admin_log', { userId, username, message: formatted, timestamp: new Date().toISOString() });
+  }
+
   private async init() {
     console.log('[EngineCoordinator] Initializing...');
     
@@ -31,7 +38,7 @@ export class EngineCoordinator {
 
     // Boot active automations from DB
     const activeUsers = await prisma.user.findMany({
-      where: { automationEnabled: true }
+      where: { automationEnabled: true } as any
     });
 
     console.log(`[EngineCoordinator] Restoring ${activeUsers.length} active sessions...`);
@@ -43,7 +50,7 @@ export class EngineCoordinator {
   public async toggleAutomation(userId: string, enabled: boolean) {
     await prisma.user.update({
       where: { id: userId },
-      data: { automationEnabled: enabled }
+      data: { automationEnabled: enabled } as any
     });
 
     if (enabled) {
@@ -71,9 +78,16 @@ export class EngineCoordinator {
       });
     }
 
-    const engine = new UserEngine(user.id, user.username, user.isPaperTrading, kite);
+    const engine = new UserEngine(
+      user.id, 
+      user.username, 
+      user.isPaperTrading, 
+      (msg: string) => this.broadcastLog(user.id, user.username, msg),
+      kite
+    );
     this.engines.set(userId, engine);
     console.log(`[EngineCoordinator] Started engine for ${user.username}`);
+    this.broadcastLog(user.id, user.username, "SYSTEM: Engine Restored & Monitoring Live Feed");
   }
 
   private stopUserEngine(userId: string) {

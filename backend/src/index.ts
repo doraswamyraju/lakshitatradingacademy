@@ -542,6 +542,19 @@ app.post(['/api/algo/toggle', '/algo/toggle'], authenticateToken, async (req: Re
   }
 });
 
+app.get(['/api/algo/status', '/algo/status'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { automationEnabled: true, activeStrategyId: true } as any
+    }) as any;
+    res.json({ enabled: user?.automationEnabled || false, activeStrategyId: user?.activeStrategyId });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch status' });
+  }
+});
+
 app.get(['/api/algo/logs', '/algo/logs'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const userData = (req as any).user;
@@ -552,11 +565,12 @@ app.get(['/api/algo/logs', '/algo/logs'], authenticateToken, async (req: Request
       return res.status(403).json({ error: 'Admin access required for global logs.' });
     }
 
-    const whereClause = all === 'true' ? {} : { userId: userData.id };
+    const whereClause = (all === 'true') ? {} : { userId: userData.id };
     const logs = await prisma.strategyLog.findMany({
       where: whereClause,
       take: parseInt(String(limit)),
-      orderBy: { timestamp: 'desc' }
+      orderBy: { timestamp: 'desc' },
+      include: (all === 'true') ? { user: { select: { username: true } } } : undefined
     });
 
     res.json({ logs });

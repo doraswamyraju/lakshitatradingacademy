@@ -190,13 +190,26 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     } catch {}
   };
 
+  const fetchAutomationState = async () => {
+    if (!authHeaders) return;
+    try {
+      const res = await fetch('/api/algo/status', { headers: authHeaders });
+      const data = await res.json();
+      if (res.ok && data.enabled !== undefined) {
+        setIsAutomationOn(data.enabled);
+        if (data.activeStrategyId) setActiveStrategyId(data.activeStrategyId);
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     if (user) {
       const u = user as any;
       setIsAutomationOn(u.automationEnabled || false);
       if (u.activeStrategyId) setActiveStrategyId(u.activeStrategyId);
+      fetchAutomationState(); // Verify with direct API call
     }
-  }, [user]);
+  }, [user, authHeaders]);
 
   useEffect(() => {
     if (!authHeaders) return;
@@ -322,6 +335,46 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     setSearchQuery('');
   };
 
+  const handlePlaceOptionOrder = async (
+    side: 'BUY' | 'SELL',
+    quantity: number,
+    type: 'MARKET' | 'LIMIT',
+    product: 'MIS' | 'CNC',
+    optionType: 'CE' | 'PE',
+    strike: number,
+    price?: number
+  ) => {
+    if (!authHeaders) return;
+    try {
+      setIsPlacingOrder(true);
+      const res = await fetch('/api/algo/order-option', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ 
+          side, 
+          quantity, 
+          type, 
+          product, 
+          optionType, 
+          strike, 
+          price,
+          isPaper: user?.isPaperTrading ?? true 
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        addLog(`[ORDER] ${side} ${strike} ${optionType} x${quantity} SUCCESS`);
+        fetchOrdersAndPositions();
+      } else {
+        addLog(`[ORDER] FAILED: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      addLog(`[ORDER] FAILED: Connection error`);
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
+
   return (
     <div ref={containerRef} className={`min-h-full flex flex-col p-6 gap-6 pb-20 pr-2 ${isFullscreen ? 'bg-[#0B0C15] fixed inset-0 z-[1000] p-10 overflow-auto' : ''}`}>
       <div className="flex items-center justify-between bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 shadow-xl shrink-0 transition-colors duration-300">
@@ -369,14 +422,26 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
           <div className="bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/5 rounded-[24px] p-6 flex flex-col relative">
             <div className="flex items-center justify-between mb-4">
               <div className="flex gap-2">
-                {['1m', '5m', '15m', '1h', 'D'].map(tf => (<button key={tf} onClick={() => setTimeframe(tf as any)} className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold ${tf === timeframe ? 'bg-samp-primary text-white' : 'text-slate-500'}`}>{tf}</button>))}
+                {['1m', '5m', '15m', '1h', 'D'].map(tf => (<button key={tf} onClick={() => setTimeframe(tf as any)} className={`px-3 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${tf === timeframe ? 'bg-samp-primary text-white shadow-sm' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-white/5'}`}>{tf}</button>))}
                 <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-2 self-center" />
-                <button onClick={() => setShowBollinger(p => !p)} className={`px-2 py-1 rounded text-[10px] font-bold ${showBollinger ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500'}`}>BB</button>
-                <button onClick={() => setShowDMI(p => !p)} className={`px-2 py-1 rounded text-[10px] font-bold ${showDMI ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500'}`}>DMI</button>
-                <button onClick={toggleFullScreen} className="px-2 py-1 rounded text-[10px] font-bold text-slate-500 flex items-center gap-1">{isFullscreen ? <Minimize size={12} /> : <Maximize size={12} />} {isFullscreen ? 'NORMAL' : 'FULLSCREEN'}</button>
+                <div className="flex p-1 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5">
+                  <button onClick={() => setChartType('CANDLE')} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${chartType === 'CANDLE' ? 'bg-white dark:bg-samp-surface text-samp-primary shadow-sm' : 'text-slate-500'}`}><LayoutGrid size={12} /> Standard</button>
+                  <button onClick={() => setChartType('HEIKIN_ASHI')} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${chartType === 'HEIKIN_ASHI' ? 'bg-white dark:bg-samp-surface text-samp-primary shadow-sm' : 'text-slate-500'}`}><Layers size={12} /> Heikin Ashi</button>
+                </div>
+                <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-2 self-center" />
+                <button onClick={() => setShowSMA(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showSMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>SMA 20</button>
+                <button onClick={() => setShowEMA(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showEMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>EMA 9</button>
+                <button onClick={() => setShowBollinger(p => !p)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showBollinger ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>Bollinger</button>
+                <button onClick={() => setShowDMI(p => !p)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showDMI ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>DMI (14)</button>
+                <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-2 self-center" />
+                <button onClick={toggleFullScreen} className="px-3 py-1 rounded-lg text-[10px] font-bold transition-all text-slate-500 hover:text-samp-primary hover:bg-slate-100 dark:hover:bg-white/5 flex items-center gap-1.5">{isFullscreen ? <Minimize size={12} /> : <Maximize size={12} />} {isFullscreen ? 'Normal' : 'Full Screen'}</button>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono"><Globe size={12} className="text-samp-accent" />FEED: {market.feedSource}</div>
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono"><Clock size={12} className="text-samp-accent" />SESSION: {new Date().toLocaleTimeString()}</div>
               </div>
             </div>
-            <LightweightMarketChart data={market.candles} height={isFullscreen ? 550 : 350} showBollinger={showBollinger} showDMI={showDMI} timeframe={timeframe} chartType={chartType} />
+            <LightweightMarketChart data={market.candles} height={isFullscreen ? 550 : 350} showSMA={showSMA} showEMA={showEMA} showBollinger={showBollinger} showDMI={showDMI} timeframe={timeframe} chartType={chartType} />
           </div>
           <PortfolioPanel positions={positions} orders={orders} />
         </div>
@@ -388,7 +453,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
               {logs.map((log, i) => (<div key={i} className="text-[10px] leading-relaxed text-slate-600 dark:text-gray-500 border-l border-white/5 pl-2">{log}</div>))}
             </div>
           </div>
-          <TradingPanel funds={funds} optionChain={optionChain} isPaperTrading={user?.isPaperTrading ?? true} onPlaceOptionOrder={async () => {}} />
+          <TradingPanel funds={funds} optionChain={optionChain} isPaperTrading={user?.isPaperTrading ?? true} onPlaceOptionOrder={handlePlaceOptionOrder} />
         </div>
       </div>
 

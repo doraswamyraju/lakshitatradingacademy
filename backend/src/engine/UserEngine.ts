@@ -17,18 +17,24 @@ export class UserEngine {
   
   private position: any = null;
   private lastSignalBar = -1;
+  private lastHeartbeat = 0;
+  private logCallback: (msg: string) => void;
 
-  constructor(userId: string, username: string, isPaper: boolean, kite?: KiteService) {
+  constructor(userId: string, username: string, isPaper: boolean, logCallback: (msg: string) => void, kite?: KiteService) {
     this.userId = userId;
     this.username = username;
     this.isPaper = isPaper;
+    this.logCallback = logCallback;
     if (kite) this.kite = kite;
   }
 
   private addLog(msg: string) {
     const time = new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' });
-    const logMsg = `[${time}] [USER: ${this.username}] ${this.isPaper ? '[PAPER] ' : ''}${msg}`;
+    const logMsg = msg.startsWith('SYSTEM:') ? msg : `[${time}] [USER: ${this.username}] ${this.isPaper ? '[PAPER] ' : ''}${msg}`;
     console.log(logMsg);
+    
+    // Broadcast via callback
+    this.logCallback(msg);
     
     // Save to Database
     prisma.strategyLog.create({
@@ -60,6 +66,13 @@ export class UserEngine {
   async processTick(candles: Candle[], price: number) {
     if (candles.length < 25 || price <= 0) return;
     const currentBarIdx = candles.length - 1;
+
+    // Heartbeat every 5 mins
+    const now = Date.now();
+    if (now - this.lastHeartbeat > 300000) {
+      this.lastHeartbeat = now;
+      this.addLog("SYSTEM: Strategical logic linked & monitoring market...");
+    }
 
     // 1. Manage Position
     if (this.position) {

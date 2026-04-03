@@ -9,10 +9,20 @@ interface AuditLog {
   user?: { username: string };
 }
 
+import { io } from 'socket.io-client';
+
 const AdminAuditPanel: React.FC<{ token: string }> = ({ token }) => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const socket = io({ path: '/api/socket.io' });
+    socket.on('admin_log', (newLog: any) => {
+      setLogs(prev => [newLog, ...prev].slice(0, 100));
+    });
+    return () => { socket.disconnect(); };
+  }, []);
 
   const fetchAllLogs = async () => {
     try {
