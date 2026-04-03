@@ -51,7 +51,9 @@ export class UserEngine {
         isSimulated: this.isPaper,
         message: logMsg
       }
-    }).catch(() => {});
+    }).catch(err => {
+      console.error(`[UserEngine][DB_ERROR] Failed to save log for ${this.username}:`, err);
+    });
   }
 
   private isMarketHours(): boolean {

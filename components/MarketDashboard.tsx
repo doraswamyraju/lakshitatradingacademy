@@ -71,6 +71,21 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   const [showDMI, setShowDMI] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [localStrategies, setLocalStrategies] = useState<TradingStrategy[]>(strategies);
+
+  useEffect(() => {
+    if (strategies && strategies.length > 0) setLocalStrategies(strategies);
+    else fetchInternalStrategies();
+  }, [strategies]);
+
+  const fetchInternalStrategies = async () => {
+    if (!authHeaders) return;
+    try {
+      const res = await fetch('/api/market-data/strategies', { headers: authHeaders });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data.strategies)) setLocalStrategies(data.strategies);
+    } catch {}
+  };
 
   const [funds, setFunds] = useState<UserFunds>({
     walletBalance: 0,
@@ -204,10 +219,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
 
   useEffect(() => {
     if (user) {
-      const u = user as any;
-      setIsAutomationOn(u.automationEnabled || false);
-      if (u.activeStrategyId) setActiveStrategyId(u.activeStrategyId);
-      fetchAutomationState(); // Verify with direct API call
+      fetchAutomationState(); // Strictly rely on API status
     }
   }, [user, authHeaders]);
 
@@ -405,7 +417,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
             <div className="flex items-center gap-2">
               <select value={activeStrategyId || ''} onChange={e => setActiveStrategyId(e.target.value)} disabled={isAutomationOn} className="bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer">
                 <option value="" className="bg-white dark:bg-[#151725]">-- SELECT ALGO --</option>
-                {strategies.map(s => (<option key={s.id} value={s.id} className="bg-white dark:bg-[#151725]">{s.name} ({s.qty} Units)</option>))}
+                {localStrategies.map(s => (<option key={s.id} value={s.id} className="bg-white dark:bg-[#151725]">{s.name} ({s.qty} Units)</option>))}
               </select>
             </div>
           </div>

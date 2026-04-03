@@ -376,7 +376,22 @@ app.get(['/api/market-data/kite/token-status', '/market-data/kite/token-status']
   }
 });
 
-app.get(['/api/market-data/wallet', '/market-data/wallet'], authenticateToken, async (req: Request, res: Response) => {
+app.get(['/api/market-data/strategies', '/api/algo/strategies'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    // For now, let's return a default "Super Trend" if nothing else exists
+    res.json({ 
+      strategies: [
+        { id: 'ST_001', name: 'Super Trend (ADX)', qty: 15 },
+        { id: 'EMA_002', name: 'EMA Crossover', qty: 15 }
+      ] 
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch strategies' });
+  }
+});
+
+app.get(['/api/market-data/wallet', '/api/algo/wallet'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
     const kite = await getUserKiteClient(userId);
@@ -831,7 +846,8 @@ io.on('connection', (socket) => {
   // Join private room for user-specific updates
   socket.on('join_user_room', (userId) => {
     socket.join(userId);
-    console.log(`[WebSocket] User ${userId} joined their private channel.`);
+    console.log(`[Socket] User ${userId} joined room.`);
+    socket.emit('strategy_log', `SYSTEM: Live connection established. Monitoring active.`);
   });
   const latestFeed = marketStreamer.getLatestFeedStatus();
   socket.emit('feed_status', {
