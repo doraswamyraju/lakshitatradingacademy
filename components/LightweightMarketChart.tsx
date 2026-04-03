@@ -15,6 +15,8 @@ interface LightweightMarketChartProps {
   chartType?: ChartType;
   showSMA?: boolean;
   showEMA?: boolean;
+  showBollinger?: boolean;
+  showDMI?: boolean;
   timeframe?: string;
 }
 
@@ -64,6 +66,8 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   chartType = 'CANDLE',
   showSMA = false,
   showEMA = false,
+  showBollinger = false,
+  showDMI = false,
   timeframe,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,6 +75,11 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   const seriesRef = useRef<any>(null);
   const smaSeriesRef = useRef<any>(null);
   const emaSeriesRef = useRef<any>(null);
+  const bbUpperSeriesRef = useRef<any>(null);
+  const bbMiddleSeriesRef = useRef<any>(null);
+  const bbLowerSeriesRef = useRef<any>(null);
+  const diPlusSeriesRef = useRef<any>(null);
+  const diMinusSeriesRef = useRef<any>(null);
 
   // ── 1. Sanitise + filter outliers + dedupe + sort ───────────────────────
   const seriesData = useMemo(() => {
@@ -154,20 +163,30 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     return sorted;
   }, [data, chartType]);
 
-  // Compute SMA-20 and EMA-9 data in parallel
+  // Compute Indicators in parallel
   const indicatorData = useMemo(() => {
-    if (seriesData.length === 0) return { sma20: [], ema9: [] };
+    if (seriesData.length === 0) return { sma20: [], ema9: [], bb: { upper: [], middle: [], lower: [] }, dmi: { plus: [], minus: [] } };
 
     const sma20: { time: UTCTimestamp; value: number }[] = [];
     const ema9: { time: UTCTimestamp; value: number }[] = [];
+    const bb: { upper: { time: UTCTimestamp; value: number }[], middle: { time: UTCTimestamp; value: number }[], lower: { time: UTCTimestamp; value: number }[] } = { upper: [], middle: [], lower: [] };
+    const dmi: { plus: { time: UTCTimestamp; value: number }[], minus: { time: UTCTimestamp; value: number }[] } = { plus: [], minus: [] };
 
     const period_sma = 20;
     const period_ema = 9;
+    const period_bb  = 20;
+    const period_dmi = 14;
+
     const k = 2 / (period_ema + 1);
     let prevEma: number | null = null;
 
+    // DMI trackers
+    const trList: number[] = [];
+    const dmPlusList: number[] = [];
+    const dmMinusList: number[] = [];
+
     for (let i = 0; i < seriesData.length; i++) {
-      const { time, close } = seriesData[i];
+      const { time, close, open, high, low } = seriesData[i];
 
       // SMA-20
       if (i >= period_sma - 1) {
@@ -185,9 +204,45 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       if (i >= period_ema - 1) {
         ema9.push({ time, value: prevEma! });
       }
+
+      // Bollinger Bands (20, 2)
+      if (i >= period_bb - 1) {
+        let sum = 0;
+        for (let j = i - period_bb + 1; j <= i; j++) sum += seriesData[j].close;
+        const middle = sum / period_bb;
+        let variance = 0;
+        for (let j = i - period_bb + 1; j <= i; j++) variance += Math.pow(seriesData[j].close - middle, 2);
+        const sd = Math.sqrt(variance / period_bb);
+        bb.middle.push({ time, value: middle });
+        bb.upper.push({ time, value: middle + 2 * sd });
+        bb.lower.push({ time, value: middle - 2 * sd });
+      }
+
+      // DMI (DI+/DI-)
+      if (i > 0) {
+        const prev = seriesData[i-1];
+        const tr = Math.max(high - low, Math.abs(high - prev.close), Math.abs(low - prev.close));
+        const upMove = high - prev.high;
+        const downMove = prev.low - low;
+        
+        trList.push(tr);
+        dmPlusList.push(upMove > downMove && upMove > 0 ? upMove : 0);
+        dmMinusList.push(downMove > upMove && downMove > 0 ? downMove : 0);
+
+        if (i >= period_dmi) {
+          const sumTR      = trList.slice(-period_dmi).reduce((a, b) => a + b, 0);
+          const sumDMPlus  = dmPlusList.slice(-period_dmi).reduce((a, b) => a + b, 0);
+          const sumDMMinus = dmMinusList.slice(-period_dmi).reduce((a, b) => a + b, 0);
+
+          if (sumTR > 0) {
+            dmi.plus.push({ time, value: (sumDMPlus / sumTR) * 100 });
+            dmi.minus.push({ time, value: (sumDMMinus / sumTR) * 100 });
+          }
+        }
+      }
     }
 
-    return { sma20, ema9 };
+    return { sma20, ema9, bb, dmi };
   }, [seriesData]);
 
   // ── 2. Create chart (only on mount / chartType / height change) ──────────
@@ -275,6 +330,46 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       visible: false,
     });
 
+    // Bollinger series
+    bbUpperSeriesRef.current = chart.addSeries(LineSeries, {
+      color: '#4B5563',
+      lineWidth: 1,
+      lineStyle: 1, // Dotted
+      visible: false,
+    });
+    bbMiddleSeriesRef.current = chart.addSeries(LineSeries, {
+      color: '#4B5563',
+      lineWidth: 1,
+      lineStyle: 1, // Dotted
+      visible: false,
+    });
+    bbLowerSeriesRef.current = chart.addSeries(LineSeries, {
+      color: '#4B5563',
+      lineWidth: 1,
+      lineStyle: 1, // Dotted
+      visible: false,
+    });
+
+    // DMI series (Left scale 0-100)
+    chart.priceScale('left').applyOptions({
+      visible: showDMI,
+      autoScale: false,
+      scaleMargins: { top: 0.7, bottom: 0.05 }, // Dock to bottom
+    });
+
+    diPlusSeriesRef.current = chart.addSeries(LineSeries, {
+      color: '#10B981',
+      lineWidth: 2,
+      priceScaleId: 'left',
+      visible: false,
+    });
+    diMinusSeriesRef.current = chart.addSeries(LineSeries, {
+      color: '#F43F5E',
+      lineWidth: 2,
+      priceScaleId: 'left',
+      visible: false,
+    });
+
     const onResize = () => {
       if (containerRef.current) {
         chart.applyOptions({ width: containerRef.current.clientWidth });
@@ -296,6 +391,11 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       seriesRef.current = null;
       smaSeriesRef.current = null;
       emaSeriesRef.current = null;
+      bbUpperSeriesRef.current = null;
+      bbMiddleSeriesRef.current = null;
+      bbLowerSeriesRef.current = null;
+      diPlusSeriesRef.current = null;
+      diMinusSeriesRef.current = null;
     };
   }, [chartType, height]);
 
@@ -315,21 +415,38 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
 
   // ── 4. Feed indicator data + toggle visibility ───────────────────────────
   useEffect(() => {
-    if (!smaSeriesRef.current || !emaSeriesRef.current) return;
+    if (!smaSeriesRef.current || !emaSeriesRef.current || !bbUpperSeriesRef.current || !diPlusSeriesRef.current) return;
     try {
-      if (indicatorData.sma20.length > 0) {
-        smaSeriesRef.current.setData(indicatorData.sma20);
-      }
+      // Basic SMA/EMA
+      if (indicatorData.sma20.length > 0) smaSeriesRef.current.setData(indicatorData.sma20);
       smaSeriesRef.current.applyOptions({ visible: showSMA });
 
-      if (indicatorData.ema9.length > 0) {
-        emaSeriesRef.current.setData(indicatorData.ema9);
-      }
+      if (indicatorData.ema9.length > 0) emaSeriesRef.current.setData(indicatorData.ema9);
       emaSeriesRef.current.applyOptions({ visible: showEMA });
+
+      // Bollinger
+      if (indicatorData.bb.upper.length > 0) {
+        bbUpperSeriesRef.current.setData(indicatorData.bb.upper);
+        bbMiddleSeriesRef.current.setData(indicatorData.bb.middle);
+        bbLowerSeriesRef.current.setData(indicatorData.bb.lower);
+      }
+      bbUpperSeriesRef.current.applyOptions({ visible: showBollinger });
+      bbMiddleSeriesRef.current.applyOptions({ visible: showBollinger });
+      bbLowerSeriesRef.current.applyOptions({ visible: showBollinger });
+
+      // DMI
+      if (indicatorData.dmi.plus.length > 0) {
+        diPlusSeriesRef.current.setData(indicatorData.dmi.plus);
+        diMinusSeriesRef.current.setData(indicatorData.dmi.minus);
+      }
+      diPlusSeriesRef.current.applyOptions({ visible: showDMI });
+      diMinusSeriesRef.current.applyOptions({ visible: showDMI });
+      chartRef.current?.priceScale('left').applyOptions({ visible: showDMI });
+
     } catch (e: any) {
       console.error('[Chart] indicator error:', e.message);
     }
-  }, [indicatorData, showSMA, showEMA]);
+  }, [indicatorData, showSMA, showEMA, showBollinger, showDMI]);
 
   return (
     <div

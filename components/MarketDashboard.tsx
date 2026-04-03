@@ -70,6 +70,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   const [chartType, setChartType] = useState<ChartType>('HEIKIN_ASHI');
   const [showSMA, setShowSMA] = useState(false);
   const [showEMA, setShowEMA] = useState(false);
+  const [showBollinger, setShowBollinger] = useState(false);
+  const [showDMI, setShowDMI] = useState(false);
   const [logs, setLogs] = useState<string[]>(['[SYSTEM] Engine initialized.']);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
@@ -503,6 +505,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
                 <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-2 self-center"></div>
                 <button onClick={() => setShowSMA(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showSMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>SMA 20</button>
                 <button onClick={() => setShowEMA(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showEMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>EMA 9</button>
+                <button onClick={() => setShowBollinger(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showBollinger ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>Bollinger</button>
+                <button onClick={() => setShowDMI(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showDMI ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>DMI (14)</button>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono"><Globe size={12} className="text-samp-accent" />FEED: {market.feedSource}</div>
@@ -510,7 +514,16 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
               </div>
             </div>
             <div className="relative">
-              <LightweightMarketChart data={market.candles} height={330} chartType={chartType} showSMA={showSMA} showEMA={showEMA} timeframe={timeframe} />
+              <LightweightMarketChart 
+                data={market.candles} 
+                height={330} 
+                chartType={chartType} 
+                showSMA={showSMA} 
+                showEMA={showEMA} 
+                showBollinger={showBollinger}
+                showDMI={showDMI}
+                timeframe={timeframe} 
+              />
               {(!market.candles || market.candles.length === 0) && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm rounded-xl">
                   <div className="text-center p-6 bg-slate-800/90 rounded-2xl shadow-xl">
