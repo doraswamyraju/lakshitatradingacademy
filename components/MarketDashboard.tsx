@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { IndianRupee, Search, Activity, Play, Square, Globe, Clock, X, Trash2, LayoutGrid, Layers, Wallet, ShieldAlert, RefreshCcw, Settings, Maximize, Minimize } from 'lucide-react';
+import { IndianRupee, Search, Activity, Play, Square, Globe, Clock, LayoutGrid, Layers, Maximize, Minimize } from 'lucide-react';
 import { MarketState, UserFunds, Position, Order, TradingStrategy, BrokerConfig, UserRole, ChartType, FeedStatus } from '../types';
 import { io } from 'socket.io-client';
 import LightweightMarketChart from './LightweightMarketChart';
@@ -25,7 +25,7 @@ interface OptionChainRow {
   peSymbol?: string | null;
 }
 
-const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerConfig, token, userRole, onRemoveStrategy }) => {
+const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, token }) => {
   const { user } = useAuth();
   const [market, setMarket] = useState<MarketState>({
     symbol: 'NSE:BANKNIFTY',
@@ -70,7 +70,6 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   const [showBollinger, setShowBollinger] = useState(false);
   const [showDMI, setShowDMI] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [localStrategies, setLocalStrategies] = useState<TradingStrategy[]>(strategies);
 
   useEffect(() => {
@@ -107,13 +106,29 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   useEffect(() => { strategyRef.current = activeStrategyId; }, [activeStrategyId]);
   useEffect(() => { timeframeRef.current = timeframe; }, [timeframe]);
 
-  const addLog = (msg: string) => {
-    setLogs(prev => [msg, ...prev].slice(0, 50));
-  };
-
   const authHeaders = useMemo(() => (
     token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : undefined
   ), [token]);
+
+  const addLog = (msg: string) => {
+    setLogs(prev => [msg, ...prev].slice(0, 50));
+    // Persist to backend
+    if (authHeaders) {
+      fetch('/api/algo/logs', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          strategyId: activeStrategyId || 'm3_v2',
+          action: 'LOG',
+          symbol: 'BANKNIFTY',
+          price: market.price,
+          qty: 0,
+          status: 'INFO',
+          message: msg
+        })
+      }).catch(() => {});
+    }
+  };
 
   const isMarketClosedIST = useMemo(() => {
     const now = new Date();
@@ -217,6 +232,22 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
     } catch {}
   };
 
+  // Trigger option chain fetch whenever live price arrives
+  const fetchOptionChainIfReady = async () => {
+    if (!authHeaders || market.price <= 0) return;
+    // Only fetch once per session or if we don't have strikes yet
+    if (optionChain.length > 0) return;
+    try {
+      const url = `/api/market-data/kite/option-chain?spot=${market.price.toFixed(2)}${optionExpiry ? `&expiry=${encodeURIComponent(optionExpiry)}` : ''}`;
+      const res = await fetch(url, { headers: authHeaders });
+      const data = await res.json();
+      if (res.ok) {
+        setOptionChain(Array.isArray(data.rows) ? data.rows : []);
+        if (data.expiry) setOptionExpiry(data.expiry);
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     if (user) {
       fetchAutomationState(); // Strictly rely on API status
@@ -294,6 +325,10 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
           candles: merged,
         };
       });
+
+      // Refresh option chain when live price updates (once initial candles are loaded)
+      const price = data.price || 0;
+      if (price > 0) fetchOptionChainIfReady();
     });
 
     socket.on('strategy_log', (msg: string) => {
@@ -362,19 +397,18 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
   ) => {
     if (!authHeaders) return;
     try {
-      setIsPlacingOrder(true);
       const res = await fetch('/api/algo/order-option', {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ 
-          side, 
-          quantity, 
-          type, 
-          product, 
-          optionType, 
-          strike, 
+        body: JSON.stringify({
+          side,
+          quantity,
+          type,
+          product,
+          optionType,
+          strike,
           price,
-          isPaper: user?.isPaperTrading ?? true 
+          isPaper: user?.isPaperTrading ?? true
         })
       });
       const data = await res.json();
@@ -384,10 +418,8 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, brokerCon
       } else {
         addLog(`[ORDER] FAILED: ${data.error || 'Unknown error'}`);
       }
-    } catch (err) {
+    } catch {
       addLog(`[ORDER] FAILED: Connection error`);
-    } finally {
-      setIsPlacingOrder(false);
     }
   };
 

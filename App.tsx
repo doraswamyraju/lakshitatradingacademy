@@ -17,7 +17,11 @@ import { AuthModal } from './components/AuthModal';
 const App: React.FC = () => {
   const { user: currentUser, isAuthenticated, token, logout } = useAuth();
   const [showLanding, setShowLanding] = useState(true);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'backtest' | 'settings' | 'hub' | 'learn' | 'admin'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'backtest' | 'settings' | 'hub' | 'learn' | 'admin'>(() => {
+    const saved = localStorage.getItem('lta_active_tab');
+    if (saved && ['dashboard', 'strategy', 'admin', 'settings', 'backtest', 'hub', 'learn'].includes(saved)) return saved as any;
+    return 'dashboard';
+  });
   const [adminInitialTab, setAdminInitialTab] = useState<'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue'>('architect');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -103,24 +107,17 @@ const App: React.FC = () => {
   }, [token]);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '');
-      if (['dashboard', 'strategy', 'admin', 'settings', 'backtest', 'hub', 'learn'].includes(hash)) {
-        setActiveTab(hash as any);
-      }
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    handleHashChange(); // Initial check
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
-
-  useEffect(() => {
     const root = window.document.documentElement;
     if (theme === 'dark') root.classList.add('dark');
     else root.classList.remove('dark');
   }, [theme]);
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+
+  const handleSetActiveTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    localStorage.setItem('lta_active_tab', tab);
+  };
 
   const handleLogout = () => {
     logout();
@@ -137,7 +134,7 @@ const App: React.FC = () => {
       isActive: true
     };
     setUserStrategies(prev => [...prev, newUserStrategy]);
-    setActiveTab('dashboard'); 
+    handleSetActiveTab('dashboard');
   };
 
   const removeUserStrategy = (id: string) => {
@@ -186,21 +183,21 @@ const App: React.FC = () => {
           </div>
 
           <nav className="p-4 space-y-2">
-             <NavItem icon={<LineChart size={20} />} label="Terminal" active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} collapsed={!isSidebarOpen} />
-             <NavItem icon={<BookOpen size={20} />} label="Strategy Hub" active={activeTab === 'hub'} onClick={() => setActiveTab('hub')} collapsed={!isSidebarOpen} accent="warning" />
-             <NavItem icon={<GraduationCap size={20} />} label="Lakshita Academy" active={activeTab === 'learn'} onClick={() => setActiveTab('learn')} collapsed={!isSidebarOpen} accent="primary" />
-             <NavItem icon={<FlaskConical size={20} />} label="Backtesting" active={activeTab === 'backtest'} onClick={() => setActiveTab('backtest')} collapsed={!isSidebarOpen} accent="accent" />
-             {/* <NavItem icon={<Code2 size={20} />} label="Quant Lab" active={activeTab === 'strategy'} onClick={() => setActiveTab('strategy')} collapsed={!isSidebarOpen} /> */}
+             <NavItem icon={<LineChart size={20} />} label="Terminal" active={activeTab === 'dashboard'} onClick={() => handleSetActiveTab('dashboard')} collapsed={!isSidebarOpen} />
+             <NavItem icon={<BookOpen size={20} />} label="Strategy Hub" active={activeTab === 'hub'} onClick={() => handleSetActiveTab('hub')} collapsed={!isSidebarOpen} accent="warning" />
+             <NavItem icon={<GraduationCap size={20} />} label="Lakshita Academy" active={activeTab === 'learn'} onClick={() => handleSetActiveTab('learn')} collapsed={!isSidebarOpen} accent="primary" />
+             <NavItem icon={<FlaskConical size={20} />} label="Backtesting" active={activeTab === 'backtest'} onClick={() => handleSetActiveTab('backtest')} collapsed={!isSidebarOpen} accent="accent" />
+             {/* <NavItem icon={<Code2 size={20} />} label="Quant Lab" active={activeTab === 'strategy'} onClick={() => handleSetActiveTab('strategy')} collapsed={!isSidebarOpen} /> */}
              {currentUser?.role === 'ADMIN' && (
                <>
-                <NavItem icon={<ShieldCheck size={20} />} label="Strategy Panel" active={activeTab === 'admin' && (adminInitialTab === 'architect' || adminInitialTab === 'errors')} onClick={() => { setAdminInitialTab('architect'); setActiveTab('admin'); }} accent="warning" collapsed={!isSidebarOpen} />
+                <NavItem icon={<ShieldCheck size={20} />} label="Strategy Panel" active={activeTab === 'admin' && (adminInitialTab === 'architect' || adminInitialTab === 'errors')} onClick={() => { setAdminInitialTab('architect'); handleSetActiveTab('admin'); }} accent="warning" collapsed={!isSidebarOpen} />
                 <NavItem icon={<Database size={20} />} label="Student Leads" active={activeTab === 'admin' && (adminInitialTab === 'inquiries' || adminInitialTab === 'admissions' || adminInitialTab === 'aliceblue')} onClick={() => {
                    setAdminInitialTab('inquiries');
-                   setActiveTab('admin');
+                   handleSetActiveTab('admin');
                 }} collapsed={!isSidebarOpen} accent="primary" />
                </>
              )}
-             <NavItem icon={<Settings size={20} />} label="API Gateway" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} accent="primary" collapsed={!isSidebarOpen} />
+             <NavItem icon={<Settings size={20} />} label="API Gateway" active={activeTab === 'settings'} onClick={() => handleSetActiveTab('settings')} accent="primary" collapsed={!isSidebarOpen} />
           </nav>
         </div>
 
@@ -251,7 +248,7 @@ const App: React.FC = () => {
         </header>
 
         <div className="flex-1 overflow-y-scroll">
-           {activeTab === 'dashboard' && <MarketDashboard strategies={userStrategies} brokerConfig={brokerConfig} userRole={currentUser?.role || 'USER'} token={token} onRemoveStrategy={removeUserStrategy} />}
+           {activeTab === 'dashboard' && <MarketDashboard strategies={userStrategies} token={token} />}
            {/* {activeTab === 'strategy' && <AILab />} */}
            {activeTab === 'admin' && (
             <AdminPanel 

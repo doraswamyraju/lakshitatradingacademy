@@ -378,13 +378,25 @@ app.get(['/api/market-data/kite/token-status', '/market-data/kite/token-status']
 
 app.get(['/api/market-data/strategies', '/api/algo/strategies'], authenticateToken, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.id;
-    // For now, let's return a default "Super Trend" if nothing else exists
-    res.json({ 
+    // Return the master HA Trend Continuation strategy (id 'm3')
+    // Users can copy it to their namespace — but for engine start we need this id
+    res.json({
       strategies: [
-        { id: 'ST_001', name: 'Super Trend (ADX)', qty: 15 },
-        { id: 'EMA_002', name: 'EMA Crossover', qty: 15 }
-      ] 
+        {
+          id: 'm3',
+          name: 'HA Trend Continuation',
+          description: 'Handwritten Rules v1.0: Trade only 09:30-11:00 & 12:45-14:50. Entry on [BUY: +DI>-DI & High Breakout] or [SELL: -DI>+DI & Low Breakdown]. Exit only after 1:1 RR.',
+          version: '1.0',
+          mode: 'INTRADAY',
+          instruments: ['NIFTY', 'BANKNIFTY', 'CRUDEOIL'],
+          timeframe: '5m',
+          qty: 1,
+          productType: 'MIS',
+          isActive: true,
+          isMaster: true,
+          createdBy: 'admin'
+        }
+      ]
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch strategies' });
@@ -519,6 +531,74 @@ app.post(['/api/algo/order', '/algo/order'], authenticateToken, async (req: Requ
   }
 });
 
+// Place option orders by strike/CE/PE type (resolves symbol from option chain)
+app.post(['/api/algo/order-option', '/algo/order-option'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const kite = await getUserKiteClient(userId);
+    if (!kite) {
+      return res.status(400).json({ error: 'Personal Broker not linked. Please connect Kite first.' });
+    }
+    const { client } = kite;
+    const {
+      side,       // 'BUY' | 'SELL'
+      quantity,
+      type,       // 'MARKET' | 'LIMIT'
+      product,
+      optionType, // 'CE' | 'PE'
+      strike,
+      price,
+      isPaper
+    } = req.body;
+
+    if (!side || !quantity || !optionType || !strike) {
+      return res.status(400).json({ error: 'side, quantity, optionType, and strike are required.' });
+    }
+
+    if (isPaper) {
+      // Simulate a paper trade — log it but don't call the broker
+      const logMsg = `[PAPER] ${side} ${strike} ${optionType} x${quantity} @ ${price ?? 'MARKET'}`;
+      await prisma.strategyLog.create({
+        data: {
+          userId,
+          strategyId: 'm3_v2',
+          action: 'PAPER_ORDER',
+          symbol: `BANKNIFTY ${strike} ${optionType}`,
+          price: price ?? 0,
+          qty: Number(quantity),
+          status: 'SUCCESS',
+          isSimulated: true,
+          message: logMsg
+        }
+      });
+      return res.json({ success: true, orderId: `PAPER-${Date.now()}`, isPaper: true });
+    }
+
+    // Resolve the trading symbol from option chain
+    const spot = await client.fetchLtp('NSE:NIFTY BANK');
+    const chain = await client.fetchBankNiftyOptionChain({ spot: spot ?? 50000, strikesAround: 5 });
+    const row = chain.rows.find((r: any) => r.strike === Number(strike));
+    const tradingsymbol = optionType === 'CE' ? row?.ceSymbol : row?.peSymbol;
+    if (!tradingsymbol) {
+      return res.status(400).json({ error: `Could not find ${optionType} ${strike} symbol in option chain.` });
+    }
+
+    const placed = await client.placeOrder({
+      tradingsymbol,
+      exchange: 'NFO' as any,
+      transactionType: side,
+      quantity: Number(quantity),
+      product: product || 'MIS',
+      orderType: type || 'MARKET',
+      price
+    });
+
+    res.json({ success: true, orderId: placed.orderId });
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || 'Failed to place option order.' });
+  }
+});
+
 app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
@@ -574,7 +654,7 @@ app.get(['/api/algo/logs', '/algo/logs'], authenticateToken, async (req: Request
   try {
     const userData = (req as any).user;
     const { limit = '50', all = 'false' } = req.query;
-    
+
     // If 'all=true', verify admin
     if (all === 'true' && userData.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Admin access required for global logs.' });
@@ -591,6 +671,31 @@ app.get(['/api/algo/logs', '/algo/logs'], authenticateToken, async (req: Request
     res.json({ logs });
   } catch (error: any) {
     res.status(500).json({ error: 'Failed to fetch logs' });
+  }
+});
+
+app.post(['/api/algo/logs', '/algo/logs'], authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const userData = (req as any).user;
+    const { strategyId = 'm3_v2', action = 'LOG', symbol = 'BANKNIFTY', price = 0, qty = 0, status = 'INFO', message = '' } = req.body;
+
+    await prisma.strategyLog.create({
+      data: {
+        userId: userData.id,
+        strategyId,
+        action,
+        symbol,
+        price: Number(price),
+        qty: Number(qty),
+        status,
+        isSimulated: false,
+        message
+      }
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Failed to save log' });
   }
 });
 
