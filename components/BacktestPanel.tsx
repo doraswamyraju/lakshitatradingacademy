@@ -60,18 +60,26 @@ function computeIndicators(candles: Candle[]): IndicatorSnapshot[] {
   const trList: number[] = [];
   const dmPlusList: number[] = [];
   const dmMinusList: number[] = [];
-  const prevAdx: number[] = [];
+
+  let prevHaOpen = 0;
+  let prevHaClose = 0;
+  let prevAdxSmooth = 0;
+  let adxInitialized = false;
 
   return candles.map((c, i) => {
     const prev = i > 0 ? candles[i - 1] : c;
 
-    // Heikin Ashi
+    // Heikin Ashi (correct formula)
     const haClose = (c.open + c.high + c.low + c.close) / 4;
-    const haOpen = i > 0
-      ? (candles[i - 1].open + candles[i - 1].high + candles[i - 1].low + candles[i - 1].close) / 4
-      : (c.open + c.close) / 2;
+    const haOpen = i === 0
+      ? (c.open + c.close) / 2
+      : (prevHaOpen + prevHaClose) / 2;
     const haHigh = Math.max(c.high, haOpen, haClose);
     const haLow = Math.min(c.low, haOpen, haClose);
+
+    // Update HA accumulators for next iteration
+    prevHaOpen = haOpen;
+    prevHaClose = haClose;
 
     // True Range & Directional Movement
     const tr = Math.max(c.high - c.low, Math.abs(c.high - prev.close), Math.abs(c.low - prev.close));
@@ -83,7 +91,7 @@ function computeIndicators(candles: Candle[]): IndicatorSnapshot[] {
 
     let adx: number | null = null, diPlus: number | null = null, diMinus: number | null = null;
 
-    if (i >= period_adx - 1) {
+    if (i >= period_adx) {
       const sumTR = trList.slice(-period_adx).reduce((a, b) => a + b, 0);
       const sumDP = dmPlusList.slice(-period_adx).reduce((a, b) => a + b, 0);
       const sumDM = dmMinusList.slice(-period_adx).reduce((a, b) => a + b, 0);
@@ -91,14 +99,16 @@ function computeIndicators(candles: Candle[]): IndicatorSnapshot[] {
         diPlus = (sumDP / sumTR) * 100;
         diMinus = (sumDM / sumTR) * 100;
         const dx = diPlus + diMinus > 0 ? (Math.abs(diPlus - diMinus) / (diPlus + diMinus)) * 100 : 0;
-        if (i === period_adx - 1) {
+        if (!adxInitialized) {
           adx = dx;
+          prevAdxSmooth = dx;
+          adxInitialized = true;
         } else {
-          adx = (prevAdx[i - 1] * (period_adx - 1) + dx) / period_adx;
+          adx = (prevAdxSmooth * (period_adx - 1) + dx) / period_adx;
+          prevAdxSmooth = adx;
         }
       }
     }
-    prevAdx.push(adx ?? 0);
 
     return {
       haClose, haOpen, haHigh, haLow,
@@ -196,6 +206,7 @@ function checkSideConditions(
 
 const performBacktest = (candles: Candle[], strategy: TradingStrategy, days: number): BacktestResult => {
   if (candles.length < 50) {
+    console.warn('[Backtest] Not enough candles:', candles.length);
     return {
       totalTrades: 0, winningTrades: 0, losingTrades: 0, winRate: 0, netPnl: 0,
       maxDrawdown: 0, sharpeRatio: 0, profitFactor: 0, expectancy: 0, cagr: 0,
@@ -203,6 +214,10 @@ const performBacktest = (candles: Candle[], strategy: TradingStrategy, days: num
       regimeStats: { trendingTrades: 0, sidewaysTrades: 0, trendingPnl: 0, sidewaysPnl: 0 }
     };
   }
+
+  console.log('[Backtest] Running with', candles.length, 'candles, strategy:', strategy.name);
+  console.log('[Backtest] Entry BUY conds:', strategy.entryConditions.filter(c => c.side === 'BUY' || c.side === 'ANY').map(c => `${c.source} ${c.operator} ${c.targetType === 'VALUE' ? c.targetValue : c.targetIndicator}`));
+  console.log('[Backtest] Entry SELL conds:', strategy.entryConditions.filter(c => c.side === 'SELL' || c.side === 'ANY').map(c => `${c.source} ${c.operator} ${c.targetType === 'VALUE' ? c.targetValue : c.targetIndicator}`));
 
   const snaps = computeIndicators(candles);
   const entryBuyConds = strategy.entryConditions.filter(c => c.side === 'BUY' || c.side === 'ANY');
@@ -430,7 +445,17 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
         throw new Error('Not enough historical candles returned from broker.');
       }
 
-      const simulationResult = performBacktest(candles, selectedStrategy, days);
+      let simulationResult: BacktestResult;
+      try {
+        simulationResult = performBacktest(candles, selectedStrategy, days);
+      } catch (err: any) {
+        console.error('[BacktestEngine]', err);
+        throw new Error(`Backtest engine error: ${err.message}`);
+      }
+
+      if (simulationResult.totalTrades === 0) {
+        console.warn('[Backtest] No trades generated. Check strategy conditions and candle data.');
+      }
       setHistoricalData(candles);
       setResult(simulationResult);
       setReplayIndex(candles.length - 1);
