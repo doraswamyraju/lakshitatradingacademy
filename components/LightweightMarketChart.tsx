@@ -20,6 +20,23 @@ interface LightweightMarketChartProps {
   showBollinger?: boolean;
   showDMI?: boolean;
   timeframe?: string;
+  indicatorColors?: {
+    sma?: string;
+    ema?: string;
+    bb?: string;
+    dmiPlus?: string;
+    dmiMinus?: string;
+  };
+  tradeMarkers?: {
+    entryTime: number;
+    entryPrice: number;
+    exitTime: number;
+    exitPrice: number;
+    type: 'BUY' | 'SELL';
+    pnl: number;
+    reason: string;
+  }[];
+  replayIndex?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,7 +88,17 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   showBollinger = false,
   showDMI = false,
   timeframe,
+  indicatorColors = {},
+  tradeMarkers = [],
+  replayIndex = -1,
 }) => {
+  const cols = {
+    sma: indicatorColors.sma ?? '#FBBF24',
+    ema: indicatorColors.ema ?? '#A78BFA',
+    bb: indicatorColors.bb ?? '#6B7280',
+    dmiPlus: indicatorColors.dmiPlus ?? '#10B981',
+    dmiMinus: indicatorColors.dmiMinus ?? '#F43F5E',
+  };
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<any>(null);
@@ -83,6 +110,8 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
   const diPlusSeriesRef = useRef<any>(null);
   const diMinusSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
+  const entryLineRef = useRef<any>(null);
+  const exitLineRef = useRef<any>(null);
 
   const [legend, setLegend] = useState({
     time: '',
@@ -342,33 +371,33 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
 
     // SMA series (hidden until showSMA flag activates it)
     smaSeriesRef.current = chart.addSeries(LineSeries, {
-      color: '#FBBF24',
+      color: cols.sma,
       lineWidth: 1,
       visible: false,
     });
 
     // EMA series
     emaSeriesRef.current = chart.addSeries(LineSeries, {
-      color: '#A78BFA',
+      color: cols.ema,
       lineWidth: 1,
       visible: false,
     });
 
     // Bollinger series
     bbUpperSeriesRef.current = chart.addSeries(LineSeries, {
-      color: '#4B5563',
+      color: cols.bb,
       lineWidth: 1,
       lineStyle: 1, // Dotted
       visible: false,
     });
     bbMiddleSeriesRef.current = chart.addSeries(LineSeries, {
-      color: '#4B5563',
+      color: cols.bb,
       lineWidth: 1,
       lineStyle: 1, // Dotted
       visible: false,
     });
     bbLowerSeriesRef.current = chart.addSeries(LineSeries, {
-      color: '#4B5563',
+      color: cols.bb,
       lineWidth: 1,
       lineStyle: 1, // Dotted
       visible: false,
@@ -382,13 +411,13 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
     });
 
     diPlusSeriesRef.current = chart.addSeries(LineSeries, {
-      color: '#10B981',
+      color: cols.dmiPlus,
       lineWidth: 2,
       priceScaleId: 'left',
       visible: false,
     });
     diMinusSeriesRef.current = chart.addSeries(LineSeries, {
-      color: '#F43F5E',
+      color: cols.dmiMinus,
       lineWidth: 2,
       priceScaleId: 'left',
       visible: false,
@@ -473,6 +502,8 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       diPlusSeriesRef.current = null;
       diMinusSeriesRef.current = null;
       volumeSeriesRef.current = null;
+      if (entryLineRef.current) { try { entryLineRef.current.remove(); } catch {} }
+      if (exitLineRef.current) { try { exitLineRef.current.remove(); } catch {} }
     };
   }, [chartType, height]);
 
@@ -529,6 +560,57 @@ const LightweightMarketChart: React.FC<LightweightMarketChartProps> = ({
       console.error('[Chart] indicator error:', e.message);
     }
   }, [indicatorData, showSMA, showEMA, showBollinger, showDMI]);
+
+  // Draw entry/exit price lines for backtest markers
+  useEffect(() => {
+    if (!chartRef.current || !seriesRef.current) return;
+
+    // Remove old lines
+    if (entryLineRef.current) { try { entryLineRef.current.remove(); } catch {} entryLineRef.current = null; }
+    if (exitLineRef.current) { try { exitLineRef.current.remove(); } catch {} exitLineRef.current = null; }
+
+    if (tradeMarkers.length === 0 || replayIndex < 0) return;
+
+    const completedTrades = tradeMarkers.filter(t => {
+      const entryTime = toChartTime(t.entryTime);
+      const entryIdx = seriesData.findIndex(d => d.time === entryTime);
+      const exitTime = toChartTime(t.exitTime);
+      const exitIdx = seriesData.findIndex(d => d.time === exitTime);
+      return entryIdx >= 0 && entryIdx <= replayIndex && exitIdx >= 0 && exitIdx <= replayIndex;
+    });
+
+    if (completedTrades.length === 0) return;
+
+    // Draw entry and exit lines for the most recent completed trade
+    const lastTrade = completedTrades[completedTrades.length - 1];
+    const entryColor = lastTrade.type === 'BUY' ? '#10B981' : '#EF4444';
+    const exitColor = lastTrade.pnl >= 0 ? '#10B981' : '#EF4444';
+
+    const entryPriceLine = {
+      price: lastTrade.entryPrice,
+      color: entryColor,
+      lineWidth: 1,
+      lineStyle: 1,
+      axisLabelVisible: true,
+      title: `ENTRY ${lastTrade.type}`,
+    };
+    const exitPriceLine = {
+      price: lastTrade.exitPrice,
+      color: exitColor,
+      lineWidth: 1,
+      lineStyle: 1,
+      axisLabelVisible: true,
+      title: `EXIT ${lastTrade.pnl >= 0 ? 'PROFIT' : 'LOSS'}`,
+    };
+
+    entryLineRef.current = seriesRef.current.createPriceLine(entryPriceLine);
+    exitLineRef.current = seriesRef.current.createPriceLine(exitPriceLine);
+
+    return () => {
+      if (entryLineRef.current) { try { entryLineRef.current.remove(); } catch {} entryLineRef.current = null; }
+      if (exitLineRef.current) { try { exitLineRef.current.remove(); } catch {} exitLineRef.current = null; }
+    };
+  }, [tradeMarkers, replayIndex, seriesData]);
 
   return (
     <div className="relative w-full h-full">

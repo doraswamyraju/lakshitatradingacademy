@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { IndianRupee, Search, Activity, Play, Square, Globe, Clock, LayoutGrid, Layers, Maximize, Minimize } from 'lucide-react';
-import { MarketState, UserFunds, Position, Order, TradingStrategy, BrokerConfig, UserRole, ChartType, FeedStatus } from '../types';
+import { MarketState, UserFunds, Position, Order, TradingStrategy, ChartType, FeedStatus } from '../types';
 import { io } from 'socket.io-client';
 import LightweightMarketChart from './LightweightMarketChart';
 import TradingPanel from './TradingPanel';
@@ -9,10 +9,7 @@ import { useAuth } from '../context/AuthContext';
 
 interface MarketDashboardProps {
   strategies: TradingStrategy[];
-  brokerConfig: BrokerConfig;
-  userRole: UserRole;
   token?: string | null;
-  onRemoveStrategy?: (id: string) => void;
 }
 
 interface OptionChainRow {
@@ -69,13 +66,32 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, token }) 
   const [showEMA, setShowEMA] = useState(false);
   const [showBollinger, setShowBollinger] = useState(false);
   const [showDMI, setShowDMI] = useState(false);
+  const [indicatorColors, setIndicatorColors] = useState({
+    sma: '#FBBF24',
+    ema: '#A78BFA',
+    bb: '#6B7280',
+    dmiPlus: '#10B981',
+    dmiMinus: '#F43F5E',
+  });
+  const [showColorSettings, setShowColorSettings] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [localStrategies, setLocalStrategies] = useState<TradingStrategy[]>(strategies);
 
   useEffect(() => {
-    if (strategies && strategies.length > 0) setLocalStrategies(strategies);
-    else fetchInternalStrategies();
+    if (strategies && strategies.length > 0) {
+      setLocalStrategies(strategies);
+      if (!activeStrategyId) setActiveStrategyId(strategies[0].id);
+    } else {
+      fetchInternalStrategies();
+    }
   }, [strategies]);
+
+  // Auto-select first strategy when local strategies load from API
+  useEffect(() => {
+    if (localStrategies.length > 0 && !activeStrategyId) {
+      setActiveStrategyId(localStrategies[0].id);
+    }
+  }, [localStrategies]);
 
   const fetchInternalStrategies = async () => {
     if (!authHeaders) return;
@@ -130,18 +146,6 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, token }) 
     }
   };
 
-  const isMarketClosedIST = useMemo(() => {
-    const now = new Date();
-    const parts = new Intl.DateTimeFormat('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    }).formatToParts(now);
-    const hh = Number(parts.find(p => p.type === 'hour')?.value || 0);
-    const mm = Number(parts.find(p => p.type === 'minute')?.value || 0);
-    return (hh < 9) || (hh === 9 && mm < 15) || (hh > 15) || (hh === 15 && mm >= 30);
-  }, []);
 
   const fetchWallet = async () => {
     if (!authHeaders) return;
@@ -177,18 +181,6 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, token }) 
     } catch {}
   };
 
-  const fetchOptionChain = async () => {
-    if (!authHeaders || market.price <= 0) return;
-    try {
-      const url = `/api/market-data/kite/option-chain?spot=${market.price.toFixed(2)}&strikesAround=5${optionExpiry ? `&expiry=${encodeURIComponent(optionExpiry)}` : ''}`;
-      const res = await fetch(url, { headers: authHeaders });
-      const data = await res.json();
-      if (res.ok) {
-        setOptionChain(Array.isArray(data.rows) ? data.rows : []);
-        if (data.expiry) setOptionExpiry(data.expiry);
-      }
-    } catch {}
-  };
 
   const preloadRecentCandles = async (tf: string = timeframe) => {
     if (!authHeaders) return;
@@ -378,7 +370,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, token }) 
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
     setMarket(prev => ({ ...prev, symbol: searchQuery.toUpperCase() }));
@@ -477,11 +469,37 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, token }) 
                   <button onClick={() => setChartType('HEIKIN_ASHI')} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${chartType === 'HEIKIN_ASHI' ? 'bg-white dark:bg-samp-surface text-samp-primary shadow-sm' : 'text-slate-500'}`}><Layers size={12} /> Heikin Ashi</button>
                 </div>
                 <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-2 self-center" />
-                <button onClick={() => setShowSMA(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showSMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>SMA 20</button>
-                <button onClick={() => setShowEMA(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showEMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>EMA 9</button>
-                <button onClick={() => setShowBollinger(p => !p)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showBollinger ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>Bollinger</button>
-                <button onClick={() => setShowDMI(p => !p)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${showDMI ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>DMI (14)</button>
+                <button onClick={() => setShowSMA(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${showSMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>{showSMA && <span className="w-3 h-0.5 rounded-full" style={{ background: indicatorColors.sma }}></span>}SMA 20</button>
+                <button onClick={() => setShowEMA(prev => !prev)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${showEMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>{showEMA && <span className="w-3 h-0.5 rounded-full" style={{ background: indicatorColors.ema }}></span>}EMA 9</button>
+                <button onClick={() => setShowBollinger(p => !p)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${showBollinger ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>{showBollinger && <span className="w-3 h-0.5 rounded-full" style={{ background: indicatorColors.bb }}></span>}Bollinger</button>
+                <button onClick={() => setShowDMI(p => !p)} className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${showDMI ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5'}`}>{showDMI && <span className="w-3 h-0.5 rounded-full" style={{ background: indicatorColors.dmiPlus }}></span>}DMI (14)</button>
                 <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-2 self-center" />
+                <div className="relative">
+                  <button onClick={() => setShowColorSettings(p => !p)} className="px-3 py-1 rounded-lg text-[10px] font-bold transition-all text-slate-500 hover:text-samp-primary hover:bg-slate-100 dark:hover:bg-white/5 flex items-center gap-1.5 border border-transparent hover:border-current">Colors</button>
+                  {showColorSettings && (
+                    <div className="absolute top-full left-0 mt-2 bg-white dark:bg-samp-surface border border-slate-200 dark:border-white/10 rounded-xl p-4 shadow-xl z-50 flex flex-col gap-3 w-64">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Indicator Colors</p>
+                      {[
+                        { key: 'sma', label: 'SMA 20', color: indicatorColors.sma },
+                        { key: 'ema', label: 'EMA 9', color: indicatorColors.ema },
+                        { key: 'bb', label: 'Bollinger', color: indicatorColors.bb },
+                        { key: 'dmiPlus', label: 'DMI+', color: indicatorColors.dmiPlus },
+                        { key: 'dmiMinus', label: 'DMI-', color: indicatorColors.dmiMinus },
+                      ].map(item => (
+                        <div key={item.key} className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-600 dark:text-gray-300">{item.label}</span>
+                          <input
+                            type="color"
+                            value={item.color}
+                            onChange={e => setIndicatorColors(prev => ({ ...prev, [item.key]: e.target.value }))}
+                            className="w-8 h-8 rounded cursor-pointer border-0"
+                          />
+                        </div>
+                      ))}
+                      <button onClick={() => setShowColorSettings(false)} className="text-[10px] font-bold text-samp-primary hover:underline mt-1 self-end">Done</button>
+                    </div>
+                  )}
+                </div>
                 <button onClick={toggleFullScreen} className="px-3 py-1 rounded-lg text-[10px] font-bold transition-all text-slate-500 hover:text-samp-primary hover:bg-slate-100 dark:hover:bg-white/5 flex items-center gap-1.5">{isFullscreen ? <Minimize size={12} /> : <Maximize size={12} />} {isFullscreen ? 'Normal' : 'Full Screen'}</button>
               </div>
               <div className="flex items-center gap-4">
@@ -489,7 +507,7 @@ const MarketDashboard: React.FC<MarketDashboardProps> = ({ strategies, token }) 
                 <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono"><Clock size={12} className="text-samp-accent" />SESSION: {new Date().toLocaleTimeString()}</div>
               </div>
             </div>
-            <LightweightMarketChart data={market.candles} height={isFullscreen ? 550 : 350} showSMA={showSMA} showEMA={showEMA} showBollinger={showBollinger} showDMI={showDMI} timeframe={timeframe} chartType={chartType} />
+            <LightweightMarketChart data={market.candles} height={isFullscreen ? 550 : 350} showSMA={showSMA} showEMA={showEMA} showBollinger={showBollinger} showDMI={showDMI} timeframe={timeframe} chartType={chartType} indicatorColors={indicatorColors} />
           </div>
           <PortfolioPanel 
             positions={positions} 

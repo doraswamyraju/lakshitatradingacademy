@@ -59,6 +59,8 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
   const [error, setError] = useState<string | null>(null);
   const [replayIndex, setReplayIndex] = useState(0);
   const [chartType, setChartType] = useState<ChartType>('CANDLE');
+  const [showSMA, setShowSMA] = useState(false);
+  const [showEMA, setShowEMA] = useState(false);
 
   const selectedStrategy = useMemo(
     () => strategies.find(s => s.id === selectedStrategyId),
@@ -66,6 +68,34 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
   );
 
   const replayData = useMemo(() => historicalData.slice(0, Math.max(30, replayIndex + 1)), [historicalData, replayIndex]);
+
+  const exportCSV = () => {
+    if (!result || result.trades.length === 0) return;
+    const headers = ['#', 'Type', 'Entry Time', 'Entry Price', 'Exit Time', 'Exit Price', 'Qty', 'P&L (₹)', 'P&L %', 'Reason', 'Regime', 'Fees', 'Slippage'];
+    const rows = result.trades.map((t, i) => [
+      i + 1,
+      t.type,
+      new Date(t.entryTime).toLocaleString(),
+      t.entryPrice.toFixed(2),
+      new Date(t.exitTime).toLocaleString(),
+      t.exitPrice.toFixed(2),
+      t.qty,
+      t.pnl.toFixed(2),
+      t.pnlPct.toFixed(3),
+      t.reason,
+      t.regime,
+      t.fees.toFixed(2),
+      t.slippage.toFixed(2),
+    ]);
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backtest_${selectedStrategy?.name ?? 'strategy'}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const visibleRuleTrace = useMemo(
     () => result?.ruleTrace.slice(Math.max(0, replayIndex - 12), replayIndex + 1) || [],
     [result, replayIndex]
@@ -271,9 +301,24 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
                     <div className="text-xs font-mono text-slate-500">
                       Bar {replayIndex + 1} / {historicalData.length}
                     </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setShowSMA(p => !p)} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${showSMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500'}`}>SMA</button>
+                      <button onClick={() => setShowEMA(p => !p)} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${showEMA ? 'bg-samp-primary/20 text-samp-primary' : 'text-slate-500'}`}>EMA</button>
+                    </div>
                   </div>
                 </div>
-                <LightweightMarketChart data={replayData} height={320} chartType={chartType} showSMA={true} showEMA={true} timeframe={timeframe} />
+                <LightweightMarketChart
+                  data={replayData}
+                  height={320}
+                  chartType={chartType}
+                  showSMA={showSMA}
+                  showEMA={showEMA}
+                  showBollinger={false}
+                  showDMI={false}
+                  timeframe={timeframe}
+                  tradeMarkers={result?.trades ?? []}
+                  replayIndex={replayIndex}
+                />
                 <div className="mt-4">
                   <input
                     type="range"
@@ -302,26 +347,43 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
                           <th className="p-3 font-medium">Close</th>
                           <th className="p-3 font-medium">Regime</th>
                           <th className="p-3 font-medium">Decision</th>
+                          <th className="p-3 font-medium">Why</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                        {visibleRuleTrace.map((row, idx) => (
-                          <tr key={`${row.time}-${idx}`}>
-                            <td className="p-3 text-slate-600 dark:text-gray-400">{new Date(row.time).toLocaleString()}</td>
-                            <td className="p-3 font-mono text-slate-900 dark:text-white">{row.close.toFixed(2)}</td>
-                            <td className="p-3">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${row.regime === 'TRENDING' ? 'bg-samp-primary/15 text-samp-primary' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-gray-300'}`}>
-                                {row.regime}
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${row.decision === 'ENTER' ? 'bg-green-500/15 text-green-600 dark:text-green-400' : row.decision === 'EXIT' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-gray-300'}`}>
-                                {row.decision}
-                              </span>
-                              <div className="text-[10px] text-slate-500 mt-1">{row.signals.join(' | ')}</div>
-                            </td>
-                          </tr>
-                        ))}
+                        {visibleRuleTrace.map((row, idx) => {
+                          const trade = result?.trades.find(t => Number(t.entryTime) === Number(row.time));
+                          const exitTrade = result?.trades.find(t => Number(t.exitTime) === Number(row.time));
+                          return (
+                            <tr key={`${row.time}-${idx}`}>
+                              <td className="p-3 text-slate-600 dark:text-gray-400 text-[11px]">{new Date(row.time).toLocaleString()}</td>
+                              <td className="p-3 font-mono text-slate-900 dark:text-white text-[11px]">{row.close.toFixed(2)}</td>
+                              <td className="p-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${row.regime === 'TRENDING' ? 'bg-samp-primary/15 text-samp-primary' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-gray-300'}`}>
+                                  {row.regime}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${row.decision === 'ENTER' ? 'bg-green-500/15 text-green-600 dark:text-green-400' : row.decision === 'EXIT' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-gray-300'}`}>
+                                  {row.decision}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                {trade ? (
+                                  <span className="text-[10px] text-green-600 dark:text-green-400 font-bold">
+                                    BUY @ {trade.entryPrice.toFixed(0)} — HA bullish breakout
+                                  </span>
+                                ) : exitTrade ? (
+                                  <span className="text-[10px] text-red-600 dark:text-red-400 font-bold">
+                                    EXIT @ {exitTrade.exitPrice.toFixed(0)} — {exitTrade.reason.replace('_', ' ')}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-slate-500">{row.signals.join(' | ')}</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -333,7 +395,7 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
                       <Activity size={16} className="text-samp-primary" />
                       Trade Ledger
                     </h3>
-                    <button className="text-xs font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-2">
+                    <button onClick={exportCSV} className="text-xs font-bold text-slate-400 hover:text-samp-primary flex items-center gap-2">
                       <Download size={12} /> EXPORT CSV
                     </button>
                   </div>
@@ -341,23 +403,30 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-50 dark:bg-black/20 text-slate-500 dark:text-gray-500 sticky top-0">
                         <tr>
-                          <th className="p-3 font-medium">Entry</th>
+                          <th className="p-3 font-medium">Entry Time</th>
+                          <th className="p-3 font-medium text-right">Entry ₹</th>
+                          <th className="p-3 font-medium text-right">Exit ₹</th>
                           <th className="p-3 font-medium text-right">Qty</th>
-                          <th className="p-3 font-medium text-right">Exit</th>
                           <th className="p-3 font-medium text-right">P&L</th>
                           <th className="p-3 font-medium">Reason</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                         {result.trades.map((trade, i) => (
-                          <tr key={i}>
-                            <td className="p-3 font-mono text-slate-900 dark:text-white">{trade.entryPrice.toFixed(2)}</td>
+                          <tr key={i} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td className="p-3 text-[10px] font-mono text-slate-600 dark:text-gray-400">{new Date(trade.entryTime).toLocaleString()}</td>
+                            <td className="p-3 font-mono text-slate-900 dark:text-white text-right">{trade.entryPrice.toFixed(2)}</td>
+                            <td className="p-3 font-mono text-slate-900 dark:text-white text-right">{trade.exitPrice.toFixed(2)}</td>
                             <td className="p-3 text-right text-slate-700 dark:text-gray-300">{trade.qty}</td>
-                            <td className="p-3 text-right font-mono text-slate-900 dark:text-white">{trade.exitPrice.toFixed(2)}</td>
                             <td className={`p-3 text-right font-mono font-bold ${trade.pnl >= 0 ? 'text-samp-success' : 'text-samp-danger'}`}>
                               {trade.pnl >= 0 ? '+' : ''}{trade.pnl.toFixed(2)}
                             </td>
-                            <td className="p-3 text-slate-600 dark:text-gray-400">{trade.reason}</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${trade.reason === 'STOP_LOSS' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : trade.reason === 'TARGET' ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'}`}>
+                                {trade.reason.replace('_', ' ')}
+                              </span>
+                              <div className="text-[9px] text-slate-400 mt-0.5">{trade.regime}</div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
