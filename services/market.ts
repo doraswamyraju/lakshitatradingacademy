@@ -97,12 +97,22 @@ export const fetchHistoricalCandles = async (params: {
   }
 
   const candles = Array.isArray(data.candles) ? data.candles : [];
-  return candles.map((c: any, idx: number) => ({
-    time: Date.parse(c.time) || Date.now() + idx * 60000,
-    open: Number(c.open),
-    high: Number(c.high),
-    low: Number(c.low),
-    close: Number(c.close),
-    volume: Number(c.volume || 0)
-  }));
+  return candles.map((c: any, idx: number) => {
+    let t: number;
+    if (typeof c.time === 'number' && Number.isFinite(c.time)) {
+      // Kite returns epoch seconds — convert to ms if needed
+      t = c.time > 946684800 ? c.time * 1000 : c.time;
+    } else {
+      const parsed = Date.parse(c.time);
+      t = Number.isFinite(parsed) ? parsed : Date.now() + idx * 60000;
+    }
+    return {
+      time: t,
+      open: Number(c.open),
+      high: Number(c.high),
+      low: Number(c.low),
+      close: Number(c.close),
+      volume: Number(c.volume || 0)
+    };
+  });
 };
