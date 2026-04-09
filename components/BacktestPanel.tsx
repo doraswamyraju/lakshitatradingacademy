@@ -191,13 +191,26 @@ function checkSideConditions(
   snap: IndicatorSnapshot,
   prevSnap: IndicatorSnapshot | null
 ): { pass: boolean; signals: string[] } {
-  if (conds.length === 0) return { pass: false, signals: [] };
+
+  // ✅ FIX 1: If no conditions → allow trade (VERY IMPORTANT)
+  if (conds.length === 0) {
+    return { pass: true, signals: ['NO_CONDITIONS → PASS'] };
+  }
+
   const signals: string[] = [];
+
   for (const cond of conds) {
     const { pass, detail } = evalCondition(cond, snap, prevSnap);
-      signals.push(`${detail}`);
-    if (!pass) return { pass: false, signals };
+
+    signals.push(`${pass ? '✓' : '✗'} ${detail}`);
+
+    // ❌ If ANY condition fails → reject
+    if (!pass) {
+      return { pass: false, signals };
+    }
   }
+
+  // ✅ All conditions passed
   return { pass: true, signals };
 }
 
@@ -311,14 +324,26 @@ const performBacktest = (candles: Candle[], strategy: TradingStrategy, days: num
 
     if (!position) {
       const buyCheck = checkSideConditions(entryBuyConds, snap, prevSnap);
-      signals.push(...buyCheck.signals);
-      if (buyCheck.pass) {
+
+if (buyCheck.pass) {
+  console.log("🚀 BUY SIGNAL at index:", i, buyCheck.signals);
+}
+
+signals.push(...buyCheck.signals);
+
+if (buyCheck.pass) {
         position = { side: 'BUY', entryPrice: c.close, entryTime: c.time, qty };
         decision = 'ENTER';
       } else {
         const sellCheck = checkSideConditions(entrySellConds, snap, prevSnap);
-        signals.push(...sellCheck.signals);
-        if (sellCheck.pass) {
+
+if (sellCheck.pass) {
+  console.log("🔻 SELL SIGNAL at index:", i, sellCheck.signals);
+}
+
+signals.push(...sellCheck.signals);
+
+if (sellCheck.pass) {
           position = { side: 'SELL', entryPrice: c.close, entryTime: c.time, qty };
           decision = 'ENTER';
         }
