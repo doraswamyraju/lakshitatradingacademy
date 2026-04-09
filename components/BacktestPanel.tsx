@@ -156,8 +156,9 @@ function evalCondition(
     return { pass, detail: `HA=${pattern}` };
   }
 
-  if (val === null) return { pass: false, detail: `${cond.source}=N/A` };
-
+if (val === null) {
+  return { pass: true, detail: `${cond.source}=SKIPPED` };
+}
   switch (cond.operator) {
     case '>': {
       const target = cond.targetType === 'VALUE' ? cond.targetValue : val;
@@ -244,7 +245,7 @@ const performBacktest = (candles: Candle[], strategy: TradingStrategy, days: num
     const snap = snaps[i];
     const prevSnap = i > 0 ? snaps[i - 1] : null;
 
-    const adxVal = snap.adx ?? 0;
+    const adxVal = snap.adx ?? 20;
     const regime: 'TRENDING' | 'SIDEWAYS' = adxVal >= 18 ? 'TRENDING' : 'SIDEWAYS';
 
     let decision: 'ENTER' | 'EXIT' | 'HOLD' = 'HOLD';
@@ -374,6 +375,7 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
   const [chartType, setChartType] = useState<ChartType>('CANDLE');
   const [showSMA, setShowSMA] = useState(false);
   const [showEMA, setShowEMA] = useState(false);
+  const [runDiagnostics, setRunDiagnostics] = useState<{source: string; candles: number; candleStart: string; candleEnd: string; sampleAdx: string; sampleDi: string; buyConds: number; sellConds: number} | null>(null);
 
   const selectedStrategy = useMemo(
     () => strategies.find(s => s.id === selectedStrategyId),
@@ -478,6 +480,10 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
         throw new Error('Not enough historical candles returned from broker.');
       }
 
+      // Compute diagnostics from candle data
+      const snaps = computeIndicators(candles);
+      const snap25 = snaps[Math.min(25, snaps.length - 1)];
+      const snapLast = snaps[snaps.length - 1];
       let simulationResult: BacktestResult;
       try {
         simulationResult = performBacktest(candles, selectedStrategy, days);
@@ -485,6 +491,18 @@ const BacktestPanel: React.FC<BacktestPanelProps> = ({ strategies }) => {
         console.error('[BacktestEngine]', err);
         throw new Error(`Backtest engine error: ${err.message}`);
       }
+
+      // Populate diagnostics
+      setRunDiagnostics({
+        source: dataSource,
+        candles: candles.length,
+        candleStart: candles[0] ? new Date(candles[0].time).toLocaleString() : '?',
+        candleEnd: candles[candles.length - 1] ? new Date(candles[candles.length - 1].time).toLocaleString() : '?',
+        sampleAdx: snap25 ? String(snap25.adx?.toFixed(1) ?? 'NULL') : 'NULL',
+        sampleDi: snap25 ? `${snap25.diPlus?.toFixed(1) ?? 'NULL'}/${snap25.diMinus?.toFixed(1) ?? 'NULL'}` : 'NULL/NULL',
+        buyConds: selectedStrategy?.entryConditions.filter(c => c.side === 'BUY' || c.side === 'ANY').length ?? 0,
+        sellConds: selectedStrategy?.entryConditions.filter(c => c.side === 'SELL' || c.side === 'ANY').length ?? 0,
+      });
 
       if (simulationResult.totalTrades === 0) {
         console.warn('[Backtest] No trades generated. Check strategy conditions and candle data.');

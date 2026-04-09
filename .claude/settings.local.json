@@ -1,7 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "mcp__OpusCode__understand_image",
+      "WebFetch(domain:minimax-algeng-chat-tts-us.oss-us-east-1.aliyuncs.com)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(curl -L -o /tmp/bt_screenshot.png \"https://minimax-algeng-chat-tts-us.oss-us-east-1.aliyuncs.com/ccv2%2F2026-04-08%2FMiniMax-M2.7%2F2038988771709424343%2F21faa7b0c2519e704ece6f6caf74d4bfbf247db36ec33950b080dc90e72d8fe3..png?Expires=1775745212&OSSAccessKeyId=LTAI5tCpJNKCf5EkQHSuL9xg&Signature=OVyaT4PiPWXbzJaoKSZiBeMTTYs%3D\")",
+      "Bash(curl -s -L -o /d/lakshita-trading-academy/q_screen2.png \"https://minimax-algeng-chat-tts-us.oss-us-east-1.aliyuncs.com/ccv2%2F2026-04-08%2FMiniMax-M2.7%2F2038988771709424343%2Fe2102678bae91185b4e7e2eec6ccd4049156fc7ddcd9839fbcfbbf3f57374b19..png?Expires=1775747005&OSSAccessKeyId=LTAI5tCpJNKCf5EkQHSuL9xg&Signature=mSVMWHSZdBYIhbSiBCfiBdIZhAg%3D\")",
+      "Bash(git commit -m 'fix: handle epoch seconds from Kite API in candle timestamp parsing:*)",
+      "Bash(curl -s -L -o /d/lakshita-trading-academy/q_screen3.png \"https://minimax-algeng-chat-tts-us.oss-us-east-1.aliyuncs.com/ccv2%2F2026-04-09%2FMiniMax-M2.7%2F2038988771709424343%2F462693fc764f1cb064d6a72e6491a548b00335f7cd219015357071924db8d24e..png?Expires=1775754947&OSSAccessKeyId=LTAI5tCpJNKCf5EkQHSuL9xg&Signature=IGtaNlTEmLyl4yEoZtn3yfAw6Mk%3D\")",
+      "Bash(curl -s -L -o /d/lakshita-trading-academy/screen_latest.png \"https://minimax-algeng-chat-tts-us.oss-us-east-1.aliyuncs.com/ccv2%2F2026-04-09%2FMiniMax-M2.7%2F2038988771709424343%2F25117e232e277325a36fae1c19a62da3911cfc9232c9730d1e293d383bebe0a7..png?Expires=1775813030&OSSAccessKeyId=LTAI5tCpJNKCf5EkQHSuL9xg&Signature=ShirqZWBdeST%2FMqrAtFSfg1bGug%3D\")"
     ]
   }
 }

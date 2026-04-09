@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -17,7 +14,6 @@ model User {
   passwordHash String?
   createdAt DateTime @default(now())
 
-  // Broker Credentials
   brokerName           String?
   apiKey               String?
   apiSecret            String?
@@ -27,13 +23,12 @@ model User {
   accessTokenUpdatedAt DateTime?
   isPaperTrading       Boolean  @default(true)
   
-  // Automation State
   automationEnabled    Boolean  @default(false)
   activeStrategyId     String?
-  engineState          String?  // JSON blob for position tracking
+  engineState          String?
   
-  // Strategy Subscription Logs
   StrategyLog StrategyLog[]
+  orders      Order[]
 }
 
 model StrategyLog {
@@ -41,14 +36,33 @@ model StrategyLog {
   userId     String
   user       User     @relation(fields: [userId], references: [id])
   strategyId String
-  action     String   // "ENTRY_CALL", "ENTRY_PUT", "EXIT_TARGET", "EXIT_SL"
+  action     String
   symbol     String
   price      Float
   qty        Int
-  status     String   // "SUCCESS", "FAILED"
+  status     String
   isSimulated Boolean @default(false)
   message    String?
   timestamp  DateTime @default(now())
+}
+
+model Order {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+
+  symbol     String
+  side       String   // BUY / SELL
+  price      Float
+  qty        Int
+
+  type       String   @default("MARKET") // MARKET / LIMIT
+  product    String   @default("MIS")    // MIS / CNC
+
+  status     String   @default("FILLED") // FILLED / PENDING
+  isSimulated Boolean @default(true)
+
+  createdAt  DateTime @default(now())
 }
 
 model MarketDataConfig {
