@@ -13,9 +13,10 @@ import {
 
 interface LandingPageProps {
   onLogin: () => void;
+  navigate?: (path: string) => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onLogin, navigate }) => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const [isEnrollOpen, setIsEnrollOpen] = React.useState(false);
   const [isAliceBlueOpen, setIsAliceBlueOpen] = React.useState(false);
@@ -69,8 +70,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                <img src="/LTA Logo.png" alt="LTA Logo" className="w-[120%] h-[120%] object-contain" />
             </div>
             <div className="flex flex-col">
-              <span className="font-black text-lg tracking-tight leading-none text-white uppercase">Smart <span className="text-green-500">Algo</span></span>
-              <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Trading System</span>
+              <span className="font-black text-lg tracking-tight leading-none text-white uppercase">Lakshita <span className="text-green-500">Trading</span></span>
+              <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Academy</span>
             </div>
           </a>
 
@@ -84,6 +85,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
+            <button 
+              onClick={() => navigate ? navigate('/login') : window.location.pathname = '/login'} 
+              className="text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors px-4"
+            >
+              Login
+            </button>
             <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-2.5 bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20">
               Book Algo Demo
             </button>
@@ -133,9 +140,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               transition={{ duration: 0.6 }}
               className="text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-6"
             >
-              Smart <span className="text-green-500 italic">Algo</span> <br />
+              Lakshita <br />
               Trading <br />
-              System
+              <span className="text-green-500 italic">Academy</span>
             </motion.h1>
 
             <motion.p
@@ -209,8 +216,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <div className="relative z-10 bg-gradient-to-br from-green-500/20 to-blue-600/20 p-1 rounded-[48px] backdrop-blur-3xl border border-white/10 shadow-2xl overflow-hidden group">
                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
                <img 
-                src="trading_algo_laptop_mockup_1778916469715.png" 
-                alt="Algo Trading Dashboard" 
+                src="/lakshita-hero.png" 
+                alt="Lakshita Trading Academy Dashboard" 
                 className="w-full h-auto rounded-[46px] shadow-2xl transform group-hover:scale-[1.02] transition-transform duration-700" 
                />
                <div className="absolute top-6 right-6 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 flex flex-col items-end">
@@ -624,7 +631,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           <div className="grid gap-4">
             {[
               { q: "Is this algo system suitable for beginners?", a: "Yes! Our system is designed for both beginners and busy professionals. We provide a full setup and the initial basic course as a bonus to ensure you understand how it works." },
-              { q: "What is the accuracy of the Smart Algo?", a: "The system is based on high-probability institutional setups including Heikinashi and DMI. While no system is 100%, we focus on consistent profitability through robust risk management." },
+              { q: "What is the accuracy of the Lakshita Algo?", a: "The system is based on high-probability institutional setups including Heikinashi and DMI. While no system is 100%, we focus on consistent profitability through robust risk management." },
               { q: "Do I need to stay online during market hours?", a: "No. The system is fully automated and runs on a secure cloud server. You can monitor performance from your phone, but manual entry/exit is not required." },
               { q: "Which brokers are supported?", a: "We currently have seamless integration with Alice Blue. Other major brokers like Upstox, Angel One, and Fyers will be added soon." },
               { q: "Is there any hidden cost?", a: "All costs are clearly mentioned in our pricing table. The one-time setup covers your initial configuration, and the monthly subscription covers ongoing system usage." }
@@ -703,8 +710,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                    <img src="/LTA Logo.png" alt="LTA Logo" className="w-[120%] h-[120%] object-contain" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-black text-2xl tracking-tight text-white uppercase leading-none">Smart <span className="text-green-500">Algo</span></span>
-                  <span className="text-[11px] font-bold tracking-[0.3em] text-slate-500 uppercase">Trading System</span>
+                  <span className="font-black text-2xl tracking-tight text-white uppercase leading-none">Lakshita <span className="text-green-500">Trading</span></span>
+                  <span className="text-[11px] font-bold tracking-[0.3em] text-slate-500 uppercase">Academy</span>
                 </div>
               </a>
               <p className="text-slate-500 max-w-md leading-relaxed font-medium mb-8">
@@ -735,7 +742,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
 
           <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">© 2024 Smart Algo Trading System. All Rights Reserved.</p>
+            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">© 2024 Lakshita Trading Academy. All Rights Reserved.</p>
             <div className="flex items-center gap-8">
                <a href="#" className="text-[10px] font-black text-slate-600 uppercase tracking-widest hover:text-white transition-colors">Terms & Conditions</a>
                <a href="#" className="text-[10px] font-black text-slate-600 uppercase tracking-widest hover:text-white transition-colors">Privacy Policy</a>

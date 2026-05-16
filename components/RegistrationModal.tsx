@@ -63,8 +63,8 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
                                 <Zap size={120} />
                             </div>
                             <div className="relative z-10">
-                                <h3 className="text-3xl font-black uppercase tracking-tighter italic">Book Algo Demo</h3>
-                                <p className="text-[#0B0C15]/70 text-xs font-black uppercase tracking-widest mt-1">Join the Smart Algo Revolution</p>
+                                <h3 className="text-3xl font-black uppercase tracking-tighter italic">Lakshita Trading Academy</h3>
+                                <p className="text-[#0B0C15]/70 text-xs font-black uppercase tracking-widest mt-1">Lakshita Trading Solutions</p>
                             </div>
                             <button
                                 onClick={onClose}
@@ -142,7 +142,7 @@ const RegistrationModal: React.FC<RegistrationModalProps> = ({ isOpen, onClose }
                                         >
                                             <option value="">Choose an option</option>
                                             <option value="Algo Demo Session">Live Algo Demo Session (₹499)</option>
-                                            <option value="Smart Algo Setup">Smart Algo Complete Setup</option>
+                                            <option value="Lakshita Algo Setup">Lakshita Algo Complete Setup</option>
                                             <option value="Basic Trading Course">Basic Trading Course (Bonus)</option>
                                             <option value="General Inquiry">General Inquiry</option>
                                         </select>

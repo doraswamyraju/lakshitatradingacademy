@@ -25,6 +25,18 @@ const App: React.FC = () => {
   const [adminInitialTab, setAdminInitialTab] = useState<'architect' | 'errors' | 'inquiries' | 'admissions' | 'aliceblue'>('architect');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+  };
   
   const [masterStrategies, setMasterStrategies] = useState<TradingStrategy[]>([
     {
@@ -141,14 +153,18 @@ const App: React.FC = () => {
     setUserStrategies(prev => prev.filter(s => s.id !== id));
   };
 
+  if (currentPath === '/login' && !isAuthenticated) {
+    return <LoginPage onLogin={(role) => navigate('/')} onBack={() => navigate('/')} />;
+  }
+
   if (showLanding && !isAuthenticated) {
-    return <LandingPage onLogin={() => setShowLanding(false)} />;
+    return <LandingPage onLogin={() => setShowLanding(false)} navigate={navigate} />;
   }
 
   if (!isAuthenticated) {
     return (
       <div className="relative min-h-screen">
-        <LandingPage onLogin={() => {}} />
+        <LandingPage onLogin={() => {}} navigate={navigate} />
         <AuthModal onClose={() => setShowLanding(true)} />
       </div>
     );

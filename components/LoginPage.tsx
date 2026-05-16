@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Bot, ShieldCheck, User, ArrowRight, Zap } from 'lucide-react';
 import { UserRole } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { AlertCircle } from 'lucide-react';
 
 interface LoginPageProps {
   onLogin: (role: UserRole) => void;
@@ -11,18 +13,34 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const { login } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      if (username.toLowerCase().includes('admin')) {
-        onLogin('ADMIN');
-      } else {
-        onLogin('USER');
+    setError('');
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Authentication failed');
       }
+
+      login(data.token, data.user);
+      onLogin(data.user.role);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -52,11 +70,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
             <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-lg shadow-white/10 mb-6 group-hover:scale-110 transition-transform overflow-hidden">
               <img src="/LTA Logo.png" alt="LTA Logo" className="w-[120%] h-[120%] object-contain" />
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic leading-none">Smart <span className="text-green-500">Algo</span></h1>
+            <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic leading-none">Lakshita <span className="text-green-500">Academy</span></h1>
             <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.4em] mt-3">Secure Terminal v4.2</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-6">
+            {error && (
+              <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">
+                <AlertCircle size={14} />
+                <p>{error}</p>
+              </div>
+            )}
             <div>
               <label className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] ml-1 mb-2 block">Terminal ID</label>
               <div className="relative">
