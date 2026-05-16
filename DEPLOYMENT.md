@@ -14,14 +14,11 @@ If the deployment script fails to restart the service, check the process names:
 ```bash
 pm2 list
 ```
-If the name is different (e.g., `backend` instead of `quant-engine`), update the script or use:
-```bash
-pm2 restart <correct-name>
-```
+The standard process name for this project is `lakshita-api`.
 
 ## 3. Manual Steps (If needed)
 1. `git pull origin main`
 2. `npm install && npm run build` (Frontend)
 3. `cd backend && npm install && npx prisma db push --accept-data-loss && npm run build` (Backend)
-4. `pm2 restart quant-engine`
+4. `pm2 restart lakshita-api`
 

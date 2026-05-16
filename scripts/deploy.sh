@@ -21,8 +21,10 @@ npm run build
 
 # 4. Restart PM2 Process
 echo "🔄 Restarting PM2 process..."
-# We check for quant-engine first, then backend, then fallback
-if pm2 list | grep -q "quant-engine"; then
+# Check for lakshita-api first, then quant-engine, then backend
+if pm2 list | grep -q "lakshita-api"; then
+    pm2 restart lakshita-api
+elif pm2 list | grep -q "quant-engine"; then
     pm2 restart quant-engine
 elif pm2 list | grep -q "backend"; then
     pm2 restart backend
