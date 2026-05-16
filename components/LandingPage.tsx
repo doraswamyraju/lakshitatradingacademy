@@ -2,14 +2,13 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import RegistrationModal from './RegistrationModal';
 import AliceBlueModal from './AliceBlueModal';
-import FloatingButtons from './FloatingButtons';
 import {
   Play, Users, TrendingUp, ShieldCheck,
-  ChevronDown, ChevronUp, MapPin, Phone,
-  Mail, Instagram, Facebook, Twitter,
-  CheckCircle2, ArrowRight, BarChart, FlaskConical,
+  ChevronDown, MapPin, Phone,
+  Mail, CheckCircle2, ArrowRight,
   Target, GraduationCap, Star, BookOpen, Heart, MonitorPlay,
-  Zap, Menu, X, Sparkles, Globe, MessageCircle
+  Zap, Menu, X, Sparkles, Globe, MessageCircle,
+  Clock, LayoutGrid, Layers, Bot, BarChart3, LineChart
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -48,548 +47,600 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     }
   };
 
+  const menuItems = [
+    { name: 'Home', href: '#' },
+    { name: 'About', href: '#about' },
+    { name: 'Features', href: '#features' },
+    { name: 'How It Works', href: '#how-it-works' },
+    { name: 'Pricing', href: '#pricing' },
+    { name: 'Demo', href: '#demo' },
+    { name: 'FAQ', href: '#faq' },
+    { name: 'Contact', href: '#contact' },
+  ];
+
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans overflow-x-hidden selection:bg-blue-100">
+    <div className="min-h-screen bg-[#0B0C15] text-white font-sans overflow-x-hidden selection:bg-green-500/30">
 
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200">
+      <nav className="fixed top-0 w-full z-50 bg-[#0B0C15]/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <a href="/" className="flex items-center gap-3 group">
-            <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform overflow-hidden">
                <img src="/LTA Logo.png" alt="LTA Logo" className="w-[120%] h-[120%] object-contain" />
             </div>
-            <span className="font-bold text-xl tracking-tight text-blue-900">Lakshita Trading Academy</span>
+            <div className="flex flex-col">
+              <span className="font-black text-lg tracking-tight leading-none text-white uppercase">Smart <span className="text-green-500">Algo</span></span>
+              <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Trading System</span>
+            </div>
           </a>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#courses" className="text-sm font-medium text-slate-600 hover:text-blue-900 transition-colors">Courses</a>
-            <a href="#about" className="text-sm font-medium text-slate-600 hover:text-blue-900 transition-colors">About Sampangi</a>
-            <a href="#why-us" className="text-sm font-medium text-slate-600 hover:text-blue-900 transition-colors">Why Us</a>
-            <a href="#brokers" className="text-sm font-medium text-slate-600 hover:text-blue-900 transition-colors">Brokers</a>
+          <div className="hidden lg:flex items-center gap-6">
+            {menuItems.map((item) => (
+              <a key={item.name} href={item.href} className="text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-green-500 transition-colors">
+                {item.name}
+              </a>
+            ))}
           </div>
 
           <div className="hidden md:flex items-center gap-4">
-            <button onClick={onLogin} className="text-sm font-bold text-slate-900 hover:text-blue-900 transition-colors">
-              Student Portal
-            </button>
-            <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-2.5 bg-blue-900 text-white rounded-full text-sm font-bold hover:bg-blue-800 transition-all active:scale-95">
-              Enroll Now
+            <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-2.5 bg-green-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-green-500 transition-all active:scale-95 shadow-lg shadow-green-600/20">
+              Book Algo Demo
             </button>
           </div>
 
           {/* Mobile Menu Toggle */}
-          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-2 text-slate-600 hover:text-blue-900">
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="lg:hidden p-2 text-slate-400 hover:text-white">
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
         {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-white border-b border-slate-200 p-6 space-y-4 animate-in slide-in-from-top-4">
-            <a href="#courses" className="block text-lg font-medium text-slate-600 hover:text-blue-900" onClick={() => setIsMenuOpen(false)}>Courses</a>
-            <a href="#about" className="block text-lg font-medium text-slate-600 hover:text-blue-900" onClick={() => setIsMenuOpen(false)}>About Sampangi</a>
-            <a href="#why-us" className="block text-lg font-medium text-slate-600 hover:text-blue-900" onClick={() => setIsMenuOpen(false)}>Why Us</a>
-            <button onClick={onLogin} className="w-full py-3 bg-blue-900 text-white rounded-xl font-bold mt-4">
-              Get Started
-            </button>
-          </div>
-        )}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="lg:hidden bg-[#0B0C15] border-b border-white/5 overflow-hidden"
+            >
+              <div className="p-6 space-y-4">
+                {menuItems.map((item) => (
+                  <a key={item.name} href={item.href} className="block text-sm font-bold uppercase tracking-widest text-slate-400 hover:text-green-500" onClick={() => setIsMenuOpen(false)}>
+                    {item.name}
+                  </a>
+                ))}
+                <button onClick={() => { setIsEnrollOpen(true); setIsMenuOpen(false); }} className="w-full py-3 bg-green-600 text-white rounded-xl font-black uppercase tracking-widest mt-4">
+                  Book Algo Demo
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </nav>
 
-      {/* Unique Hero Section */}
+      {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 px-6 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-blue-600/5 blur-[160px] rounded-full pointer-events-none opacity-50"></div>
+        {/* Animated Background Gradients */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-green-600/10 blur-[160px] rounded-full pointer-events-none opacity-50"></div>
+        <div className="absolute -bottom-40 -left-40 w-[600px] h-[600px] bg-blue-600/10 blur-[140px] rounded-full pointer-events-none opacity-30"></div>
 
-        <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center">
+        <div className="max-w-7xl mx-auto relative z-10 grid lg:grid-cols-2 gap-16 items-center">
           <div className="text-left">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 mb-8"
-            >
-              <Sparkles className="text-blue-600" size={16} />
-              <span className="text-xs font-bold tracking-widest uppercase text-blue-900/60">Practical Stock Market Training</span>
-            </motion.div>
-
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[0.95] mb-8 text-blue-950"
+              transition={{ duration: 0.6 }}
+              className="text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-6"
             >
-              Become a <br />
-              <span className="text-blue-700">Confident</span> and <br />
-              <span className="text-blue-700">Consistent</span> Trader
+              Smart <span className="text-green-500 italic">Algo</span> <br />
+              Trading <br />
+              System
             </motion.h1>
 
-            <motion.div
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="text-xl md:text-2xl font-bold text-green-400 mb-6 tracking-tight"
+            >
+              Discipline + Automation = Consistent Profits
+            </motion.p>
+
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="space-y-3 mb-10"
+              className="text-slate-400 text-lg mb-10 max-w-lg leading-relaxed"
             >
-              {[
-                { icon: <Target size={16} className="text-blue-600 shrink-0 mt-0.5" />, text: 'Practical Stock Market Training for Serious Traders' },
-                { icon: <MonitorPlay size={16} className="text-blue-600 shrink-0 mt-0.5" />, text: 'Offline & Online Classes — Limited Seats Only' },
-                { icon: <Zap size={16} className="text-blue-600 shrink-0 mt-0.5" />, text: <span>Learn <span className="text-slate-400 font-light">·</span> Practice <span className="text-slate-400 font-light">·</span> Execute <span className="text-slate-400 font-light">·</span> Succeed</span> }
-              ].map((item, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
-                    {item.icon}
-                  </div>
-                  <span className="text-slate-700 font-medium">{item.text}</span>
-                </div>
-              ))}
-            </motion.div>
+              Our advanced algo system trades automatically, without emotions and with high accuracy to help you achieve consistent results.
+            </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-center gap-4"
+              className="flex flex-col sm:flex-row items-center gap-4 mb-12"
             >
+              <a 
+                href="https://wa.me/919515126201" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-8 py-4 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl shadow-green-600/20"
+              >
+                <MessageCircle size={24} fill="white" />
+                WhatsApp Us
+              </a>
               <button
                 onClick={() => setIsEnrollOpen(true)}
-                className="w-full sm:w-auto px-8 py-4 bg-blue-900 hover:bg-blue-800 text-white rounded-2xl font-bold shadow-xl shadow-blue-900/20 transition-all active:scale-95 flex items-center justify-center gap-2 group"
+                className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl shadow-blue-600/20"
               >
-                Enroll Now Today
-                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                Book Algo Demo
               </button>
-              <div className="flex items-center gap-4 px-4">
-                <div className="flex -space-x-3">
-                  {[1, 2, 3, 4].map(i => (
-                    <img key={i} src={`https://i.pravatar.cc/100?img=${i + 10}`} className="w-10 h-10 rounded-full border-2 border-white shadow-sm" alt="Student" />
-                  ))}
-                </div>
-                <div className="text-sm font-medium text-slate-500">
-                  <span className="text-blue-900 font-bold">15k+</span> Students
-                </div>
-              </div>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="mt-6 flex items-center gap-2 text-slate-500 text-sm"
+              className="grid grid-cols-2 sm:grid-cols-4 gap-6"
             >
-              <Phone size={15} className="text-green-600" />
-              <span>Call or WhatsApp: <a href="tel:+919515126201" className="font-bold text-blue-900 hover:underline">+91 9515126201</a></span>
+              {[
+                { icon: <ShieldCheck size={20} />, text: 'No Emotional Trading' },
+                { icon: <Target size={20} />, text: 'High Accuracy Strategy' },
+                { icon: <Zap size={20} />, text: 'Risk Management Built-in' },
+                { icon: <Globe size={20} />, text: 'Works in Nifty & Bank Nifty' }
+              ].map((item, i) => (
+                <div key={i} className="flex flex-col gap-2">
+                  <div className="text-green-500">{item.icon}</div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{item.text}</span>
+                </div>
+              ))}
             </motion.div>
           </div>
 
-          {/* Unique Founder Image Display */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
+            transition={{ duration: 0.8 }}
             className="relative"
           >
-            <div className="relative z-10 rounded-[60px] overflow-hidden border-[12px] border-white shadow-2xl aspect-[4/5] bg-blue-50">
-              <img
-                src="/founder.png"
-                alt="Founder Sampangi"
-                className="w-full h-full object-contain transition-all duration-700"
-              />
-              <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-blue-950/90 to-transparent">
-                <h3 className="text-2xl font-bold text-white">Sampangi</h3>
-                <p className="text-blue-200 text-sm font-medium">Founder & Head Mentor</p>
-              </div>
+            {/* Main Trading Visual */}
+            <div className="relative z-10 bg-gradient-to-br from-green-500/20 to-blue-600/20 p-1 rounded-[48px] backdrop-blur-3xl border border-white/10 shadow-2xl overflow-hidden group">
+               <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
+               <img 
+                src="trading_algo_laptop_mockup_1778916469715.png" 
+                alt="Algo Trading Dashboard" 
+                className="w-full h-auto rounded-[46px] shadow-2xl transform group-hover:scale-[1.02] transition-transform duration-700" 
+               />
+               <div className="absolute top-6 right-6 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 flex flex-col items-end">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Automate Your Trades</span>
+                  <span className="text-lg font-black text-green-500 uppercase">Maximize Your Profits</span>
+               </div>
             </div>
 
             {/* Decorative Elements */}
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-blue-900/10 rounded-full blur-3xl animate-pulse-slow"></div>
-
-            {/* Floating Stats Card */}
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 4, repeat: Infinity }}
-              className="absolute top-1/4 -right-8 z-20 bg-white p-4 rounded-2xl shadow-xl border border-blue-50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-                  <TrendingUp className="text-green-600" size={20} />
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Success Rate</p>
-                  <p className="text-lg font-black text-blue-900">94.8%</p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              animate={{ y: [0, 10, 0] }}
-              transition={{ duration: 5, repeat: Infinity, delay: 1 }}
-              className="absolute bottom-1/4 -left-8 z-20 bg-white p-4 rounded-2xl shadow-xl border border-blue-50"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <Users className="text-blue-600" size={20} />
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Community</p>
-                  <p className="text-lg font-black text-blue-900">Active 24/7</p>
-                </div>
-              </div>
-            </motion.div>
+            <div className="absolute -top-10 -right-10 w-40 h-40 bg-green-500/10 rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute -bottom-10 -left-10 w-60 h-60 bg-blue-600/10 rounded-full blur-3xl animate-pulse-slow"></div>
           </motion.div>
         </div>
       </section>
 
-      {/* About Academy Section */}
-      <section className="py-24 px-6 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
-          <div>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-100 mb-6">
-              <GraduationCap className="text-blue-600" size={16} />
-              <span className="text-xs font-bold tracking-widest uppercase text-blue-900/60">About Lakshita Trading Academy</span>
-            </div>
-            <h2 className="text-4xl font-black mb-6 text-blue-950">A Professional Stock Market Training Institute</h2>
-            <p className="text-slate-600 text-lg mb-8 leading-relaxed">
-              Based in Tirupati, we offer both online and offline programs. We don't teach theory alone&mdash;we train you for real market conditions.
-            </p>
-            <div className="space-y-4 mb-8">
+      {/* How It Works Section */}
+      <section id="how-it-works" className="py-32 px-6 bg-[#0B0C15]">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-6xl font-black mb-6 uppercase tracking-tighter">How It <span className="text-green-500">Works</span></h2>
+            <div className="w-24 h-1.5 bg-green-500 mx-auto rounded-full"></div>
+          </div>
+
+          <div className="relative">
+            {/* Connecting Line */}
+            <div className="hidden lg:block absolute top-10 left-10 right-10 h-0.5 border-t-2 border-dashed border-white/10 z-0"></div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-12 relative z-10">
               {[
-                'Practical Learning, Live Market Understanding, Discipline & Risk Management.',
-                'Transforming existing traders into confident and consistent market participants.'
-              ].map((point, i) => (
-                <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <CheckCircle2 className="text-blue-700" size={18} />
+                { step: '1', title: 'Signals Generated', desc: 'Signals are generated after market opens using our advanced strategy.', icon: <BarChart3 size={32} /> },
+                { step: '2', title: 'Algo Takes Entry', desc: 'Algo automatically takes entry based on the proven rules and conditions.', icon: <Bot size={32} /> },
+                { step: '3', title: 'SL & Target Set', desc: 'Stop Loss and Target are predefined for every trade to manage risk smartly.', icon: <ShieldCheck size={32} /> },
+                { step: '4', title: 'Trade Managed', desc: 'Algo manages the trade automatically without any manual intervention.', icon: <LineChart size={32} /> },
+                { step: '5', title: 'Auto Exit', desc: 'Trade is closed automatically when target is hit or stop loss is triggered.', icon: <CheckCircle2 size={32} /> }
+              ].map((item, idx) => (
+                <motion.div 
+                  key={idx}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="flex flex-col items-center text-center group"
+                >
+                  <div className="w-20 h-20 rounded-[28px] bg-[#151725] border border-white/5 flex items-center justify-center text-green-500 mb-6 group-hover:bg-green-600 group-hover:text-white transition-all duration-500 shadow-xl relative">
+                    <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-green-500 text-[#0B0C15] flex items-center justify-center font-black text-sm border-4 border-[#0B0C15]">{item.step}</div>
+                    {item.icon}
                   </div>
-                  <span className="font-medium text-slate-700 leading-relaxed">{point}</span>
+                  <h3 className="text-xl font-black mb-3 group-hover:text-green-500 transition-colors uppercase tracking-tight">{item.title}</h3>
+                  <p className="text-slate-400 text-sm leading-relaxed font-medium">{item.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Key Features & Who Can Use */}
+      <section id="features" className="py-32 px-6 bg-[#10121D]">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20">
+          <div className="bg-[#151725] rounded-[40px] p-10 md:p-16 border border-white/5 shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-10 text-white/5 group-hover:text-green-500/10 transition-colors duration-700">
+              <Zap size={200} />
+            </div>
+            <h3 className="text-4xl font-black mb-10 uppercase tracking-tighter">Key <span className="text-green-500">Features</span></h3>
+            <div className="grid gap-6">
+              {[
+                'Fully Automated Trading',
+                'High Accuracy Strategy',
+                'Built-in Risk Management',
+                'Works in Nifty & Bank Nifty',
+                'No Emotional Trading',
+                'Easy to Use Setup',
+                'Saves Time & Reduces Stress',
+                'Discipline & Consistency'
+              ].map((feature, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="text-green-500" size={14} />
+                  </div>
+                  <span className="text-lg font-bold text-slate-300">{feature}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setIsEnrollOpen(true)} className="mt-12 px-10 py-4 bg-green-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-green-500 transition-all shadow-xl shadow-green-600/20">
+              Know More
+            </button>
+          </div>
+
+          <div className="flex flex-col justify-center">
+            <h3 className="text-4xl font-black mb-10 uppercase tracking-tighter">Who <span className="text-blue-500">Can Use?</span></h3>
+            <div className="grid gap-8">
+              {[
+                { title: 'Beginners', icon: <Users size={24} />, desc: 'Ready to take the next professional step in trading.' },
+                { title: 'Working Professionals', icon: <MapPin size={24} />, desc: 'Seeking passive income without manual monitoring.' },
+                { title: 'Busy Traders', icon: <Clock size={24} />, desc: 'Save time and reduce emotional stress from markets.' },
+                { title: 'Passive Income Seekers', icon: <BarChart3 size={24} />, desc: 'Grow wealth through disciplined automated trading.' }
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-6 p-6 rounded-3xl bg-[#151725] border border-white/5 hover:border-blue-500/30 transition-all group">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all duration-500">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-black mb-1 uppercase tracking-tight">{item.title}</h4>
+                    <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={() => setIsEnrollOpen(true)} className="mt-12 px-10 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20 self-start">
+              Get Started Now
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-32 px-6 bg-[#0B0C15]">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-6xl font-black mb-6 uppercase tracking-tighter">Pricing & <span className="text-green-500">Plans</span></h2>
+            <div className="w-24 h-1.5 bg-green-500 mx-auto rounded-full"></div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 items-start">
+            {/* Setup Cost */}
+            <div className="bg-[#151725] rounded-[40px] p-10 border border-green-500/30 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-green-500 text-[#0B0C15] px-6 py-2 rounded-bl-2xl text-[10px] font-black uppercase tracking-widest">One-Time Payment</div>
+              <h3 className="text-2xl font-black mb-4 uppercase tracking-tight">Setup Cost</h3>
+              <div className="mb-6">
+                <span className="text-slate-500 line-through text-lg font-bold">₹50,000/-</span>
+                <div className="flex items-center gap-4 mt-1">
+                  <span className="text-4xl font-black text-green-500">₹29,999/-</span>
+                  <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-lg text-xs font-black uppercase">40% OFF</span>
+                </div>
+              </div>
+              <ul className="space-y-4 mb-10">
+                {['Basic Trading Course', '1 Month Algo Subscription', 'Personal Guidance & Support'].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-sm font-bold text-slate-300">
+                    <CheckCircle2 className="text-green-500" size={16} />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => setIsEnrollOpen(true)} className="w-full py-4 bg-green-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-green-500 transition-all shadow-xl shadow-green-600/20">
+                Get This Offer
+              </button>
+            </div>
+
+            {/* Algo Subscription */}
+            <div className="bg-[#151725] rounded-[40px] p-10 border border-blue-500/30 shadow-2xl relative overflow-hidden md:scale-105 z-10">
+              <div className="absolute top-0 right-0 bg-blue-500 text-white px-6 py-2 rounded-bl-2xl text-[10px] font-black uppercase tracking-widest">Monthly Plan</div>
+              <h3 className="text-2xl font-black mb-4 uppercase tracking-tight text-blue-500">Algo Subscription</h3>
+              <div className="mb-10 flex items-center gap-4">
+                 <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500"><MonitorPlay size={28}/></div>
+                 <div>
+                    <span className="text-4xl font-black text-white">₹7,500</span>
+                    <span className="text-slate-400 font-bold ml-1">/month</span>
+                 </div>
+              </div>
+              <p className="text-slate-400 text-sm leading-relaxed font-medium mb-10">Monthly subscription for our advanced algo system with full automation and live tracking.</p>
+              <button onClick={() => setIsEnrollOpen(true)} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20">
+                Subscribe Now
+              </button>
+            </div>
+
+            {/* Additional Charges */}
+            <div className="bg-[#151725] rounded-[40px] p-10 border border-orange-500/30 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-orange-500 text-white px-6 py-2 rounded-bl-2xl text-[10px] font-black uppercase tracking-widest">Additional Charges</div>
+              <h3 className="text-2xl font-black mb-4 uppercase tracking-tight text-orange-500">Usage Charges</h3>
+              <div className="mb-10">
+                  <span className="text-4xl font-black text-white">₹8,500</span>
+                  <span className="text-slate-400 font-bold ml-1">/month</span>
+              </div>
+              <ul className="space-y-3 mb-10 text-xs font-bold text-slate-400">
+                {['Platform Charges', 'Transaction Charges', 'API Charges', 'Cloud / Server Charges', 'Strategy Maintenance', 'Data Subscription Charges'].map((item, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <CheckCircle2 className="text-orange-500" size={14} />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={() => setIsEnrollOpen(true)} className="w-full py-4 bg-orange-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-orange-500 transition-all shadow-xl shadow-orange-600/20">
+                Know More
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 bg-[#10121D] p-8 rounded-[32px] border border-white/5">
+              {[
+                { icon: <LineChart className="text-green-500"/>, title: 'Backtested Results', desc: 'Available for Review' },
+                { icon: <Zap className="text-blue-500"/>, title: 'Live Performance', desc: 'Proof Provided' },
+                { icon: <Clock className="text-orange-500"/>, title: 'Regular Updates', desc: 'Strategy Maintenance' },
+                { icon: <ShieldCheck className="text-green-500"/>, title: 'Dedicated Support', desc: '& Expert Guidance' }
+              ].map((item, i) => (
+                <div key={i} className="flex flex-col items-center text-center gap-2">
+                  <div className="mb-2">{item.icon}</div>
+                  <h4 className="text-[11px] font-black uppercase tracking-widest text-white">{item.title}</h4>
+                  <p className="text-[10px] font-bold text-slate-500">{item.desc}</p>
+                </div>
+              ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Bonus Section */}
+      <section className="py-24 px-6 relative overflow-hidden">
+         <div className="absolute inset-0 bg-green-500/5 backdrop-blur-3xl"></div>
+         <div className="max-w-7xl mx-auto relative z-10">
+            <div className="bg-[#0B0C15] rounded-[48px] border-4 border-yellow-500/20 p-12 overflow-hidden relative group">
+                <div className="absolute top-0 left-0 bg-red-600 text-white px-10 py-3 rounded-br-3xl font-black uppercase tracking-widest shadow-2xl z-20">Special Discount</div>
+                <div className="grid lg:grid-cols-12 gap-12 items-center">
+                    <div className="lg:col-span-4 p-8 bg-[#151725] rounded-[40px] border border-white/5 shadow-2xl relative">
+                        <div className="text-center">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4 block">Algo Setup Worth</span>
+                            <div className="relative inline-block mb-4">
+                                <span className="text-4xl font-black text-slate-600 line-through">₹50,000/-</span>
+                                <div className="absolute -top-4 -right-16 bg-red-600 text-white px-4 py-2 rounded-xl text-xl font-black rotate-12 shadow-xl">40% OFF</div>
+                            </div>
+                            <span className="text-[10px] font-black text-green-500 uppercase tracking-[0.3em] mb-4 block">Special Offer Price</span>
+                            <h4 className="text-6xl font-black text-white mb-6 tracking-tighter">₹29,999/-</h4>
+                            <div className="w-full h-px bg-white/5 mb-6"></div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">One Time Payment • No Hidden Charges</span>
+                        </div>
+                    </div>
+
+                    <div className="lg:col-span-8">
+                        <div className="flex items-center gap-4 mb-10">
+                            <div className="h-0.5 flex-1 bg-yellow-500/30"></div>
+                            <h3 className="text-3xl md:text-5xl font-black text-yellow-500 uppercase tracking-tighter flex items-center gap-4">
+                                <Star size={40} fill="currentColor"/>
+                                Bonus &mdash; Total Worth ₹24,948/-
+                                <Star size={40} fill="currentColor"/>
+                            </h3>
+                            <div className="h-0.5 flex-1 bg-yellow-500/30"></div>
+                        </div>
+
+                        <div className="grid gap-6 mb-10">
+                            {[
+                                { title: 'Basic Course', value: '₹19,999/-', desc: 'Learn Strategy, Risk Management, Trading Psychology & More', tag: 'FREE' },
+                                { title: 'Personal Guidance', value: '₹1,999/-', desc: 'One-to-One Support & Personal Guidance (Per Month)', tag: 'FREE' },
+                                { title: 'Algo First Month Maintenance', value: '₹7,500/-', desc: 'Algo Maintenance Charges (First Month)', tag: 'FREE' }
+                            ].map((item, i) => (
+                                <div key={i} className="bg-white/5 backdrop-blur-md rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 border border-white/5 hover:border-yellow-500/20 transition-all">
+                                    <div className="flex items-center gap-6">
+                                        <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 shrink-0">
+                                            {i === 0 ? <GraduationCap size={32}/> : i === 1 ? <Users size={32}/> : <Zap size={32}/>}
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xl font-black uppercase tracking-tight">{item.title}</h4>
+                                            <p className="text-slate-400 text-xs font-medium leading-relaxed">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-6">
+                                        <div className="text-right">
+                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Worth</span>
+                                            <span className="text-xl font-black text-white">{item.value}</span>
+                                        </div>
+                                        <div className="px-6 py-2 bg-green-500 text-[#0B0C15] rounded-xl font-black text-lg tracking-widest shadow-lg shadow-green-500/20">
+                                            {item.tag}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="bg-yellow-500 p-4 rounded-2xl text-[#0B0C15] text-center">
+                            <h5 className="text-2xl font-black uppercase tracking-tighter">Total Bonus Worth ₹24,948/-</h5>
+                            <p className="text-sm font-bold uppercase tracking-widest">You pay only ₹29,999/- & Get benefits worth ₹24,948/- Absolutely Free!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+         </div>
+      </section>
+
+      {/* Algo Demo Section */}
+      <section id="demo" className="py-32 px-6 bg-[#10121D]">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-20 items-center">
+            <div>
+              <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em] mb-6 block">Experience Before You Invest</span>
+              <h2 className="text-4xl md:text-6xl font-black mb-6 uppercase tracking-tighter">Algo Demo &mdash; <br/><span className="text-blue-500">Live Session</span></h2>
+              <p className="text-xl font-bold text-slate-400 mb-8">One-Day Live Demo</p>
+              
+              <div className="flex items-center gap-8 mb-10">
+                 <div className="text-6xl font-black text-white">₹499<span className="text-2xl font-bold text-slate-500 ml-1">/-</span></div>
+                 <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-black uppercase tracking-widest text-slate-400">Only</div>
+              </div>
+
+              <div className="space-y-6 mb-12">
+                 <p className="text-lg text-slate-400 flex items-center gap-3">
+                    <CheckCircle2 className="text-green-500" size={24}/>
+                    See Live Trading | Understand The Strategy
+                 </p>
+                 <p className="text-lg text-slate-400 flex items-center gap-3">
+                    <CheckCircle2 className="text-green-500" size={24}/>
+                    Clear Your Doubts with Expert Mentors
+                 </p>
+              </div>
+
+              <button onClick={() => setIsEnrollOpen(true)} className="px-10 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20 flex items-center gap-4">
+                 <Clock size={24}/>
+                 Book Your Demo Now
+              </button>
+            </div>
+
+            <div className="bg-[#151725] rounded-[48px] p-12 border border-white/5 shadow-2xl relative overflow-hidden">
+               <div className="absolute top-0 left-0 right-0 h-1.5 bg-green-500"></div>
+               <h3 className="text-3xl font-black text-center mb-10 uppercase tracking-tighter">Book Algo Demo</h3>
+               <form className="grid grid-cols-2 gap-6" onSubmit={handleContactSubmit}>
+                  <div className="col-span-1">
+                     <input type="text" placeholder="Your Name" className="w-full bg-white/5 border border-white/5 rounded-xl py-4 px-6 text-white outline-none focus:border-green-500 transition-all font-bold" required />
+                  </div>
+                  <div className="col-span-1">
+                     <input type="number" placeholder="Your Age" className="w-full bg-white/5 border border-white/5 rounded-xl py-4 px-6 text-white outline-none focus:border-green-500 transition-all font-bold" required />
+                  </div>
+                  <div className="col-span-1">
+                     <input type="text" placeholder="Your Location" className="w-full bg-white/5 border border-white/5 rounded-xl py-4 px-6 text-white outline-none focus:border-green-500 transition-all font-bold" required />
+                  </div>
+                  <div className="col-span-1">
+                     <select className="w-full bg-[#1A1C2E] border border-white/5 rounded-xl py-4 px-6 text-slate-400 outline-none focus:border-green-500 transition-all font-bold" required>
+                        <option value="">Market Experience</option>
+                        <option value="beginner">Beginner</option>
+                        <option value="intermediate">Intermediate</option>
+                        <option value="expert">Expert</option>
+                     </select>
+                  </div>
+                  <div className="col-span-2">
+                     <input type="tel" placeholder="Contact Number" className="w-full bg-white/5 border border-white/5 rounded-xl py-4 px-6 text-white outline-none focus:border-green-500 transition-all font-bold" required />
+                  </div>
+                  <div className="col-span-2 mt-4">
+                     <button type="submit" className="w-full py-5 bg-green-600 text-[#0B0C15] rounded-2xl font-black uppercase tracking-widest hover:bg-green-500 transition-all shadow-xl shadow-green-600/20 text-lg">
+                        Book Now &mdash; ₹499 Only
+                     </button>
+                     <p className="text-center text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-6 flex items-center justify-center gap-2">
+                        <ShieldCheck size={14}/>
+                        Your details are safe with us.
+                     </p>
+                  </div>
+               </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* About Founder Section - Preserved & Re-styled */}
+      <section id="about" className="py-32 px-6 bg-[#0B0C15] relative overflow-hidden">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
+          <div className="order-2 lg:order-1 relative">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 mb-8">
+              <Star className="text-blue-500" size={16} />
+              <span className="text-[10px] font-black tracking-widest uppercase text-blue-500">Founder & Head Mentor</span>
+            </div>
+            <h2 className="text-5xl md:text-7xl font-black mb-6 uppercase tracking-tighter leading-none text-white">K. Y. <span className="text-blue-500">Sampangi</span></h2>
+            <p className="text-2xl font-black text-slate-400 mb-8 leading-tight italic">"Empowering retail traders with institutional-grade discipline and automation."</p>
+            
+            <div className="grid grid-cols-2 gap-8 mb-12">
+               <div className="p-6 bg-white/5 rounded-[32px] border border-white/5">
+                  <h4 className="text-5xl font-black text-blue-500 mb-2">5+</h4>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Years of Real Market Experience</p>
+               </div>
+               <div className="p-6 bg-white/5 rounded-[32px] border border-white/5">
+                  <h4 className="text-5xl font-black text-green-500 mb-2">15k+</h4>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Students Mentored Nationwide</p>
+               </div>
+            </div>
+
+            <div className="space-y-4">
+              {[
+                'Professional Trader & Expert Market Analyst',
+                'Pioneer of Algorithmic Trading Systems in Telugu',
+                'Focus on Emotional Control & Risk Management'
+              ].map((point, i) => (
+                <div key={i} className="flex items-center gap-4 group">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <span className="text-lg font-bold text-slate-300">{point}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="bg-blue-900 rounded-[40px] p-12 text-white relative overflow-hidden shadow-2xl">
-            <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-600 rounded-full blur-[80px] opacity-50"></div>
-            <Target size={48} className="text-blue-400 mb-8" />
-            <h3 className="text-3xl font-black mb-4">Our Mission</h3>
-            <p className="text-xl text-blue-100 leading-relaxed font-medium">
-              To create disciplined Traders who understand risk before profit and consistency before excitement.
-            </p>
-          </div>
-        </div>
-      </section>
 
-      {/* About Founder Section */}
-      <section id="about" className="py-24 px-6 bg-slate-50">
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
-          <div className="order-2 lg:order-1">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 border border-blue-200 mb-6">
-              <Star className="text-blue-700" size={16} />
-              <span className="text-xs font-bold tracking-widest uppercase text-blue-900/80">About the Trainer</span>
-            </div>
-            <h2 className="text-4xl font-black mb-4 text-blue-950">K. Y. Sampangi</h2>
-            <p className="text-lg font-bold text-blue-700 mb-6">Founder &mdash; Lakshita Trading Academy<br/><span className="text-slate-500 font-medium tracking-wide text-sm uppercase mt-1 inline-block">Prof. Trader | Mentor | Market Analyst</span></p>
-            <p className="text-slate-600 text-lg mb-8 leading-relaxed">
-              With practical market experience and a disciplined approach, he focuses on building confident and emotionally strong traders.
-            </p>
-            <div className="space-y-4 mb-8">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 className="text-white" size={14} />
-                </div>
-                <span className="font-medium text-slate-700">Practical Market Experience</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 className="text-white" size={14} />
-                </div>
-                <span className="font-medium text-slate-700">Disciplined Trading Approach</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 className="text-white" size={14} />
-                </div>
-                <span className="font-medium text-slate-700">Focus on Emotional Strength</span>
-              </div>
-            </div>
-          </div>
-          <div className="order-1 lg:order-2 grid grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <img src="/1a.jpg" className="rounded-3xl shadow-lg w-full h-[300px] object-cover" alt="Trading Analysis" />
-              <div className="bg-blue-900 p-8 rounded-3xl text-white">
-                <h4 className="text-4xl font-black mb-2">5+</h4>
-                <p className="text-blue-200 text-sm">Years Experience</p>
-              </div>
-            </div>
-            <div className="space-y-4 pt-8">
-              <div className="bg-white p-8 rounded-3xl border border-slate-200">
-                <h4 className="text-4xl font-black mb-2 text-blue-900">100+</h4>
-                <p className="text-slate-500 text-sm">Live Sessions</p>
-              </div>
-              <img src="/1b.jpg" className="rounded-3xl shadow-lg w-full h-[300px] object-cover" alt="Founder Trading Room" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Why Choose Us Section */}
-      <section id="why-us" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Why Choose Lakshita Trading Academy?</h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">We provide a unique learning environment designed for your success.</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              { icon: <GraduationCap size={32} />, title: 'From Zero to Teaching', desc: 'Complete guidance from the absolute basics up to an advanced teaching level.' },
-              { icon: <Heart size={32} />, title: 'Practical Psychology & Discipline', desc: 'Master your emotions and build the mental framework required for trading.' },
-              { icon: <MonitorPlay size={32} />, title: 'Live Market Analysis Sessions', desc: 'Learn to analyze and trade in real-time during live market sessions.' },
-              { icon: <Users size={32} />, title: 'Limited Batch — Personal Attention', desc: 'We limit our batch sizes to ensure every student gets individual focus.' },
-              { icon: <BookOpen size={32} />, title: 'Step-by-Step Structured Learning', desc: 'A clear, organized curriculum that builds your knowledge systematically.' },
-              { icon: <ShieldCheck size={32} />, title: 'Focus on Risk Management', desc: 'Protect your capital with robust risk management techniques.' }
-            ].map((item, idx) => (
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ y: -5 }} key={idx} className="p-8 rounded-3xl bg-white border border-slate-100 hover:border-blue-200 transition-all shadow-sm hover:shadow-xl">
-                <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center mb-6 text-blue-600">
-                  {item.icon}
-                </div>
-                <h3 className="text-xl font-bold mb-3 text-blue-900">{item.title}</h3>
-                <p className="text-slate-600 leading-relaxed text-sm">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Course Highlights & Who Can Join */}
-      <section id="courses" className="py-24 px-6 bg-slate-50 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Comprehensive Training Programs</h2>
-            <p className="text-slate-600 font-medium">Heikinashi + ADX/DMI + Bollinger Band &mdash; Our Signature Setup</p>
-          </div>
-
-          <div className="grid lg:grid-cols-2 gap-8 mb-16">
-            {/* Basic Course Card */}
-            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-xl hover:border-blue-300 transition-all">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h3 className="text-2xl font-black text-blue-900 mb-1">Basic Trading Course</h3>
-                  <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">Perfect for Beginners & New Traders</p>
-                </div>
-                <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl text-xs font-bold">15 Days + 1 Month Practice</div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 mb-8">
-                {[
-                  "Introduction to Stock Market", "What is SEBI? Role of SEBI", "NSE & BSE Understanding",
-                  "Demat & Trading Account", "Market Behaviour", "Candles Clear Information",
-                  "Types of Orders (Market, Limit, SL)", "LTA Setup (Intraday)", "Basic Risk Management",
-                  "Capital Protection Rules", "Trading Discipline Intro", "Paper Trade",
-                  "Back Test", "Live Market (Orders)", "Emotional Control TIPS"
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
-                    <CheckCircle2 size={14} className="text-blue-500 shrink-0" />
-                    <span>{i + 1}. {item}</span>
+          <div className="order-1 lg:order-2">
+            <div className="relative group">
+                <div className="absolute inset-0 bg-blue-500/20 rounded-[60px] blur-3xl transform rotate-12 -z-10 group-hover:rotate-0 transition-transform duration-700"></div>
+                <div className="relative z-10 rounded-[60px] overflow-hidden border-[12px] border-[#151725] shadow-2xl aspect-[4/5] bg-gradient-to-br from-[#151725] to-[#0B0C15]">
+                  <img
+                    src="/founder.png"
+                    alt="Founder Sampangi"
+                    className="w-full h-full object-contain filter grayscale hover:grayscale-0 transition-all duration-1000 transform hover:scale-[1.05]"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 p-12 bg-gradient-to-t from-[#0B0C15] to-transparent">
+                    <h3 className="text-4xl font-black text-white mb-2 uppercase tracking-tighter">Sampangi</h3>
+                    <p className="text-blue-500 text-lg font-black uppercase tracking-widest">Lakshita Trading Academy</p>
                   </div>
-                ))}
-              </div>
-              <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 font-bold uppercase block">Special Fee</span>
-                  <span className="text-3xl font-black text-blue-900">₹9,999</span>
-                  <span className="text-sm text-slate-400 line-through ml-2">₹19,999</span>
                 </div>
-                <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 transition-all">Enroll Now</button>
-              </div>
-            </div>
-
-            {/* Advance Course Card */}
-            <div className="bg-white rounded-[40px] p-8 border border-blue-200 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-blue-900 text-white px-6 py-2 rounded-bl-3xl text-[10px] font-bold uppercase tracking-widest">Most Popular</div>
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h3 className="text-2xl font-black text-blue-900 mb-1">Advance Training Course</h3>
-                  <p className="text-sm text-slate-500 font-bold uppercase tracking-wider">For Existing Traders Seeking Consistency</p>
-                </div>
-                <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl text-xs font-bold">30 Days + 2 Months Practice</div>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 mb-8">
-                {[
-                  "Price Action", "Understanding Market", "Support and Resistance",
-                  "Moving Averages", "Option Greeks", "Trendline", "CPR",
-                  "Main Setup 9/15 (Scalping)", "Main Setup 9/20", "BTST",
-                  "Gap Up / Gap Down", "Risk Management", "Back Test",
-                  "Live Market Explanation", "Psychology & Emotional Control"
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-slate-600">
-                    <CheckCircle2 size={14} className="text-blue-500 shrink-0" />
-                    <span>{i + 1}. {item}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-slate-400 font-bold uppercase block">Special Fee</span>
-                  <span className="text-3xl font-black text-blue-900">₹19,999</span>
-                  <span className="text-sm text-slate-400 line-through ml-2">₹39,999</span>
-                </div>
-                <button onClick={() => setIsEnrollOpen(true)} className="px-6 py-3 bg-blue-900 text-white rounded-xl font-bold hover:bg-blue-800 transition-all">Enroll Now</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Who Can Join & Monthly Subscription */}
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-sm col-span-1">
-              <h3 className="text-xl font-black text-blue-950 mb-6 flex items-center gap-2">
-                <Users className="text-blue-600" size={24} /> Who Can Join?
-              </h3>
-              <ul className="space-y-4">
-                {[
-                  { title: "Existing Traders", desc: "Refine strategies and discipline." },
-                  { title: "Beginners", desc: "Ready to take the next professional step." },
-                  { title: "Working Professionals", desc: "Seeking secondary income." },
-                  { title: "Business Owners", desc: "Wealth growth through markets." },
-                  { title: "Housewives", desc: "For financial independence." }
-                ].map((person, idx) => (
-                  <li key={idx} className="flex items-start gap-3">
-                    <ArrowRight className="text-blue-700 mt-1 shrink-0" size={14} />
-                    <div>
-                      <h4 className="font-bold text-slate-800 text-sm">{person.title}</h4>
-                      <p className="text-xs text-slate-500">{person.desc}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="bg-blue-900 rounded-[40px] p-8 text-white col-span-2 relative overflow-hidden shadow-2xl">
-              <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-600 rounded-full blur-[80px] opacity-30"></div>
-              <div className="relative z-10">
-                <h3 className="text-2xl font-black mb-6 flex items-center gap-2">
-                  <Star className="text-yellow-400" size={24} /> Monthly Subscription Plans
-                </h3>
-                <div className="grid sm:grid-cols-3 gap-4 mb-8">
-                  {[
-                    { period: "1 Month", price: "₹1,999", tag: "Basic" },
-                    { period: "3 Months", price: "₹3,999", tag: "Popular", highlight: true },
-                    { period: "6 Months", price: "₹6,999", tag: "Best Value" }
-                  ].map((plan, i) => (
-                    <div key={i} className={`p-6 rounded-3xl border ${plan.highlight ? 'bg-white text-blue-900 border-white' : 'bg-blue-950/40 border-blue-800/50 text-white'}`}>
-                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-1">{plan.tag}</p>
-                      <h4 className="text-xl font-black mb-2">{plan.period}</h4>
-                      <p className="text-2xl font-black">{plan.price}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4 text-sm font-medium">
-                  <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-400" /> Weekend Doubt Sessions</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-400" /> After Market Daily Updates</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-400" /> 1-1 Personal Guidance</div>
-                  <div className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-400" /> Weekly Back Test & Paper Trade</div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Broker Partners Section */}
-      <section id="brokers" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-black mb-4 text-blue-950">Our Trusted Broker Partners</h2>
-            <p className="text-slate-600">Open your free Demat account and get exclusive benefits.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                name: 'Alice Blue',
-                benefits: ['Free Demat Account', 'Zero Delivery Charges', 'Personal Support'],
-                color: 'bg-blue-50',
-                textColor: 'text-blue-900',
-                link: 'ALICEBLUE'
-              },
-              {
-                name: 'Upstox',
-                benefits: ['Free AMC for 1 Year', 'User-Friendly Interface', 'SEBI Registered'],
-                color: 'bg-purple-50',
-                textColor: 'text-purple-900'
-              },
-              {
-                name: 'Angel One',
-                benefits: ['Free AMC for 2 Years', 'Fast Fund Settlements', 'Multi-language Support'],
-                color: 'bg-orange-50',
-                textColor: 'text-orange-900'
-              },
-              {
-                name: 'Fyers',
-                benefits: ['Lifetime Free AMC', 'Advanced Trading View', '24/7 Support'],
-                color: 'bg-green-50',
-                textColor: 'text-green-900'
-              }
-            ].map((broker, idx) => (
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ y: -8 }} key={idx} className={`p-6 rounded-3xl ${broker.color} border border-transparent hover:border-slate-200 transition-all shadow-sm hover:shadow-xl flex flex-col justify-between`}>
-                <div>
-                   <h3 className={`text-xl font-black mb-4 ${broker.textColor}`}>{broker.name}</h3>
-                   <ul className="space-y-2 mb-6">
-                     {broker.benefits.map((b, i) => (
-                       <li key={i} className="flex items-center gap-2 text-[11px] font-bold text-slate-600/80">
-                         <div className="w-1 h-1 rounded-full bg-slate-400"></div>
-                         {b}
-                       </li>
-                     ))}
-                   </ul>
-                </div>
-                <button 
-                    onClick={() => {
-                        if (broker.name === 'Alice Blue') setIsAliceBlueOpen(true);
-                        else {
-                           setComingSoon(broker.name);
-                           setTimeout(() => setComingSoon(null), 3000);
-                        }
-                    }}
-                    className="w-full py-2.5 bg-white rounded-xl font-bold text-sm text-slate-900 shadow-sm hover:shadow-md transition-all active:scale-95"
-                >
-                  Open Account
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="faq" className="py-32 px-6 bg-slate-50 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-100/50 blur-[120px] rounded-full pointer-events-none -mr-48 -mt-48"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-red-50/50 blur-[120px] rounded-full pointer-events-none -ml-48 -mb-48"></div>
-        
-        <div className="max-w-4xl mx-auto relative z-10">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest mb-4">Support Center</div>
-            <h2 className="text-4xl md:text-5xl font-black mb-4 text-blue-950">Expert Answers</h2>
-            <p className="text-slate-500 font-medium">Everything you need to know about our trading programs.</p>
+      {/* FAQ Section */}
+      <section id="faq" className="py-32 px-6 bg-[#10121D]">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl md:text-6xl font-black mb-6 uppercase tracking-tighter">Expert <span className="text-green-500">Answers</span></h2>
+            <div className="w-24 h-1.5 bg-green-500 mx-auto rounded-full"></div>
           </div>
 
           <div className="grid gap-4">
             {[
-              { q: "Is this course suitable for complete beginners?", a: "Yes! Our Basic Trading Course is specifically designed to take you from zero understanding to a professional level with 15 days of intensive theory and 1 month of practice." },
-              { q: "In which language are the classes conducted?", a: "We teach exclusively in Telugu to ensure maximum clarity and comfort for our students from Andhra Pradesh and Telangana." },
-              { q: "Do you provide live market support?", a: "Absolutely. We conduct live trading sessions where you can see the strategies being applied in real-time. We also have daily doubt clarification sessions." },
-              { q: "What is the specialized LTA setup?", a: "Our signature setup combines Heikinashi candles with ADX/DMI and Bollinger Bands for high-probability intraday and scalping opportunities." },
-              { q: "How long until I become a profitable trader?", a: "While this varies, our structured 30-day Advanced program combined with 2 months of mandatory practice is designed to instill the discipline required for consistency." },
-              { q: "Do you offer offline classes in Tirupati?", a: "Yes, we have a physical training center in Daminedu, Tirupati, for those who prefer face-to-face mentoring and a classroom environment." }
+              { q: "Is this algo system suitable for beginners?", a: "Yes! Our system is designed for both beginners and busy professionals. We provide a full setup and the initial basic course as a bonus to ensure you understand how it works." },
+              { q: "What is the accuracy of the Smart Algo?", a: "The system is based on high-probability institutional setups including Heikinashi and DMI. While no system is 100%, we focus on consistent profitability through robust risk management." },
+              { q: "Do I need to stay online during market hours?", a: "No. The system is fully automated and runs on a secure cloud server. You can monitor performance from your phone, but manual entry/exit is not required." },
+              { q: "Which brokers are supported?", a: "We currently have seamless integration with Alice Blue. Other major brokers like Upstox, Angel One, and Fyers will be added soon." },
+              { q: "Is there any hidden cost?", a: "All costs are clearly mentioned in our pricing table. The one-time setup covers your initial configuration, and the monthly subscription covers ongoing system usage." }
             ].map((faq, i) => (
-              <motion.div 
+              <div 
                 key={i} 
-                initial={false}
-                className={`group border-2 transition-all duration-500 rounded-[32px] overflow-hidden ${activeFaq === i ? 'bg-white border-blue-200 shadow-xl' : 'bg-slate-100/50 border-transparent hover:border-slate-200'}`}
+                className={`group transition-all duration-500 rounded-[32px] overflow-hidden ${activeFaq === i ? 'bg-[#151725] border border-green-500/20' : 'bg-[#151725]/50 border border-white/5 hover:border-white/10'}`}
               >
                 <button 
                   className="w-full px-8 py-6 text-left flex justify-between items-center"
                   onClick={() => setActiveFaq(activeFaq === i ? null : i)}
                 >
-                  <span className={`text-lg font-black transition-colors ${activeFaq === i ? 'text-blue-900' : 'text-slate-700'}`}>
+                  <span className={`text-lg font-black transition-colors ${activeFaq === i ? 'text-green-500' : 'text-slate-300'}`}>
                     {faq.q}
                   </span>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${activeFaq === i ? 'bg-blue-600 text-white rotate-180' : 'bg-slate-200 text-slate-500'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${activeFaq === i ? 'bg-green-500 text-[#0B0C15] rotate-180' : 'bg-white/5 text-slate-500'}`}>
                     <ChevronDown size={18} />
                   </div>
                 </button>
@@ -601,259 +652,102 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.4, ease: "circOut" }}
                     >
-                      <div className="px-8 pb-8 text-slate-600 leading-relaxed font-medium">
-                        <div className="h-px bg-slate-100 mb-6"></div>
+                      <div className="px-8 pb-8 text-slate-400 leading-relaxed font-medium">
+                        <div className="h-px bg-white/5 mb-6"></div>
                         {faq.a}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.div>
+              </div>
             ))}
-          </div>
-        </div>
-      </section>
-      {/* Our Process Section */}
-      <section className="py-24 px-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Our Trading Process</h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">A systematic approach to help you become an independent trader.</p>
-          </div>
-          <div className="grid md:grid-cols-4 gap-8">
-            {[
-              { step: '01', title: 'Learn the Basics', desc: 'Understand how the market works from scratch.' },
-              { step: '02', title: 'Master Strategy', desc: 'Learn institutional price action and advanced concepts.' },
-              { step: '03', title: 'Live Practice', desc: 'Trade in live markets under our expert guidance.' },
-              { step: '04', title: 'Profit Consistently', desc: 'Apply risk management to achieve consistent returns.' }
-            ].map((s, idx) => (
-              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ scale: 1.05 }} key={idx} className="relative p-8 rounded-3xl bg-blue-50 border border-blue-100 flex flex-col items-center text-center hover:shadow-lg transition-all">
-                <div className="w-16 h-16 rounded-full bg-blue-900 text-white flex items-center justify-center font-black text-2xl mb-6 shadow-lg shadow-blue-900/20">{s.step}</div>
-                <h3 className="text-xl font-bold mb-3 text-blue-900">{s.title}</h3>
-                <p className="text-slate-600 text-sm leading-relaxed">{s.desc}</p>
-                {idx < 3 && <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-[2px] bg-blue-200"></div>}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-24 px-6 bg-slate-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black mb-4 text-blue-950">Success Stories</h2>
-            <p className="text-slate-600 max-w-2xl mx-auto">Hear from our students who transformed their trading journey.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { name: "Ramesh P.", course: "Full Stock Market Course", text: "Joining Lakshita Academy was the best decision. The way Sampangi explains complex concepts in Telugu is outstanding." },
-              { name: "Suresh K.", course: "Advanced Technicals", text: "I struggled with risk management for years. The institutional concepts taught here transformed my approach completely." },
-              { name: "Lakshmi M.", course: "Options Specialization", text: "Sampangi's options buying strategies are a game changer! I am finally trading profitably and understand the market deeply." }
-            ].map((testimonial, i) => (
-              <motion.div whileHover={{ y: -10 }} transition={{ type: "spring", stiffness: 300 }} key={i} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-md hover:shadow-xl transition-shadow relative pt-12">
-                <div className="absolute -top-6 left-8">
-                  <img src={`https://i.pravatar.cc/100?img=${i + 20}`} alt="Student" className="w-16 h-16 rounded-full border-4 border-white shadow-md bg-white" />
-                </div>
-                <div className="flex gap-1 mb-4 text-yellow-400">
-                  <Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" /><Star size={16} fill="currentColor" />
-                </div>
-                <p className="text-slate-600 italic mb-6">"{testimonial.text}"</p>
-                <div>
-                  <h4 className="font-bold text-blue-950">{testimonial.name}</h4>
-                  <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mt-1">{testimonial.course}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Contact Section */}
-      <section id="contact" className="py-24 px-6">
-        <div className="max-w-7xl mx-auto bg-white rounded-[40px] border border-slate-200 shadow-xl overflow-hidden flex flex-col md:flex-row">
-          <div className="md:w-1/2 p-12 lg:p-16 bg-blue-900 text-white flex flex-col justify-center">
-            <h2 className="text-4xl font-black mb-6">Get In Touch</h2>
-            <p className="text-blue-200 mb-10 text-lg leading-relaxed">Have questions about our courses? Reach out to our team, and we'll be happy to help you.</p>
-
-            <div className="space-y-8">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-blue-800 rounded-xl flex items-center justify-center shrink-0">
-                  <MapPin size={24} className="text-blue-300" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-lg mb-1">Office Location</h4>
-                  <p className="text-blue-200 text-sm leading-relaxed">Door no 9-84/15, Advaita Nagar,<br />Near collector office, Daminedu, Tirupati pin 517503</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-blue-800 rounded-xl flex items-center justify-center shrink-0">
-                  <Phone size={24} className="text-blue-300" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-lg mb-1">Phone & WhatsApp</h4>
-                  <p className="text-blue-200 text-sm">+91 9515126201</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-blue-800 rounded-xl flex items-center justify-center shrink-0">
-                  <Mail size={24} className="text-blue-300" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-lg mb-1">Email Address</h4>
-                  <p className="text-blue-200 text-sm">info@lakshitaacademy.in</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="md:w-1/2 p-12 lg:p-16">
-            <h3 className="text-2xl font-black mb-8 text-blue-950">Send us a Message</h3>
-            {contactSuccess ? (
-              <div className="flex flex-col items-center justify-center p-8 text-center bg-green-50 rounded-3xl border border-green-100">
-                <CheckCircle2 size={48} className="text-green-500 mb-4" />
-                <h4 className="text-2xl font-black text-green-900 mb-2">Message Sent!</h4>
-                <p className="text-green-700">Thanks for reaching out. We will get back to you shortly.</p>
-              </div>
-            ) : (
-              <form className="space-y-6" onSubmit={handleContactSubmit}>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Your Name</label>
-                  <input type="text" required value={contactForm.name} onChange={e => setContactForm(p => ({ ...p, name: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="John Doe" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
-                  <input type="email" required value={contactForm.email} onChange={e => setContactForm(p => ({ ...p, email: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="john@example.com" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number</label>
-                  <input type="tel" required value={contactForm.phone} onChange={e => setContactForm(p => ({ ...p, phone: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none" placeholder="+91 9999999999" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Message</label>
-                  <textarea required rows={4} value={contactForm.message} onChange={e => setContactForm(p => ({ ...p, message: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none resize-none" placeholder="How can we help you?"></textarea>
-                </div>
-                <button type="submit" disabled={isSubmittingContact} className="w-full py-4 bg-blue-900 text-white rounded-xl font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed">
-                  {isSubmittingContact ? 'Sending...' : 'Send Message'}
-                </button>
-              </form>
-            )}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-6">
-        <div className="max-w-5xl mx-auto bg-gradient-to-br from-blue-900 to-blue-950 rounded-[48px] p-12 md:p-20 text-center relative overflow-hidden shadow-2xl shadow-blue-900/20">
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+      <section className="py-32 px-6">
+        <div className="max-w-6xl mx-auto bg-gradient-to-br from-green-600 to-blue-700 rounded-[60px] p-12 md:p-24 text-center relative overflow-hidden shadow-2xl shadow-green-600/20">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20"></div>
           <div className="relative z-10">
-            <div className="inline-block px-6 py-2 bg-red-500 text-white font-bold rounded-full text-sm uppercase tracking-widest mb-6 animate-pulse">
-              Limited Seats Available
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black mb-6 text-white">Join Our Offline Batch Now</h2>
-            <p className="text-xl text-white/80 mb-10 max-w-2xl mx-auto leading-relaxed">
-              We accept only serious and committed traders. Personal attention is our priority because your success is our success.
+            <h2 className="text-5xl md:text-8xl font-black mb-8 text-white uppercase tracking-tighter leading-none">Start Your Algo <br/>Journey Today!</h2>
+            <p className="text-xl md:text-2xl text-white/90 mb-12 max-w-2xl mx-auto font-bold tracking-tight">
+              Let automation and discipline take your trading to the next level. Limited slots available for new setup integrations.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-              <button onClick={() => setIsEnrollOpen(true)} className="px-10 py-5 bg-white text-blue-900 rounded-2xl font-black text-lg hover:bg-slate-100 transition-all active:scale-95 shadow-xl flex items-center gap-3 w-full sm:w-auto justify-center">
-                Enroll Now
-              </button>
-              <a href="https://wa.me/919515126201" target="_blank" rel="noopener noreferrer" className="px-10 py-5 bg-blue-900/40 text-white border border-blue-400/30 rounded-2xl font-black text-lg hover:bg-blue-900/60 transition-all active:scale-95 shadow-xl flex items-center gap-3 w-full sm:w-auto justify-center">
-                <Phone size={24} />
-                WhatsApp: 9515126201
-              </a>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-white/80 bg-blue-900/50 inline-flex px-6 py-3 rounded-full border border-blue-800">
-              <MapPin size={20} className="text-red-400" />
-              <span className="font-medium text-lg">Location: Tirupati</span>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+               <a 
+                href="https://wa.me/919515126201" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-12 py-5 bg-[#0B0C15] text-[#25D366] rounded-[32px] font-black text-xl uppercase tracking-widest hover:bg-[#151725] transition-all active:scale-95 flex items-center justify-center gap-3 shadow-2xl"
+               >
+                 <MessageCircle size={28} fill="#25D366" />
+                 WhatsApp Us
+               </a>
+               <button onClick={() => setIsEnrollOpen(true)} className="w-full sm:w-auto px-12 py-5 bg-white text-blue-700 rounded-[32px] font-black text-xl uppercase tracking-widest hover:bg-slate-100 transition-all active:scale-95 flex items-center justify-center gap-3 shadow-2xl">
+                 <Phone size={28} />
+                 Call Now
+               </button>
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-blue-950 pt-20 pb-10 px-6">
+      <footer className="bg-[#0B0C15] pt-32 pb-16 px-6 border-t border-white/5">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-12 mb-16">
+          <div className="grid md:grid-cols-4 gap-16 mb-20">
             <div className="col-span-1 md:col-span-2">
-              <a href="/" className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-lg bg-white overflow-hidden flex items-center justify-center">
+              <a href="/" className="flex items-center gap-4 mb-8 group">
+                <div className="w-12 h-12 rounded-xl bg-white overflow-hidden flex items-center justify-center group-hover:scale-110 transition-transform">
                    <img src="/LTA Logo.png" alt="LTA Logo" className="w-[120%] h-[120%] object-contain" />
                 </div>
-                <span className="font-bold text-xl tracking-tight text-white">Lakshita Trading Academy</span>
+                <div className="flex flex-col">
+                  <span className="font-black text-2xl tracking-tight text-white uppercase leading-none">Smart <span className="text-green-500">Algo</span></span>
+                  <span className="text-[11px] font-bold tracking-[0.3em] text-slate-500 uppercase">Trading System</span>
+                </div>
               </a>
-              <p className="text-blue-200/60 max-w-sm leading-relaxed">
-                Empowering retail traders with institutional-grade education in Telugu. Founded by Sampangi.
+              <p className="text-slate-500 max-w-md leading-relaxed font-medium mb-8">
+                Our mission is to provide smart, automated trading solutions with discipline, transparency and trust. Founded by Sampangi, serving traders nationwide.
               </p>
+              <div className="flex items-center gap-6">
+                 <a href="#" className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all"><Globe size={20}/></a>
+                 <a href="#" className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:bg-[#25D366] hover:text-white transition-all"><MessageCircle size={20}/></a>
+                 <a href="#" className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-400 hover:bg-blue-500 hover:text-white transition-all"><BarChart3 size={20}/></a>
+              </div>
             </div>
 
             <div>
-              <h4 className="font-bold text-white mb-6">Courses</h4>
-              <ul className="space-y-4 text-sm text-blue-200/60">
-                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Full Market Course</a></li>
-                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Advanced Technicals</a></li>
-                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Options Specialization</a></li>
-                <li><button onClick={() => setIsEnrollOpen(true)} className="hover:text-white hover:translate-x-1 inline-block transition-transform">Free Demo Class</button></li>
+              <h4 className="text-[10px] font-black text-white uppercase tracking-[0.4em] mb-10">Quick Links</h4>
+              <ul className="grid grid-cols-2 gap-y-4 gap-x-8 text-sm font-bold text-slate-500">
+                {menuItems.map(item => (
+                  <li key={item.name}><a href={item.href} className="hover:text-green-500 transition-colors">{item.name}</a></li>
+                ))}
               </ul>
             </div>
 
             <div>
-              <h4 className="font-bold text-white mb-6">Support</h4>
-              <ul className="space-y-4 text-sm text-blue-200/60">
-                <li><a href="#contact" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Contact Us</a></li>
-                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">Terms of Use</a></li>
-                <li><a href="#" className="hover:text-white hover:translate-x-1 inline-block transition-transform">SEBI Disclaimer</a></li>
-              </ul>
+              <h4 className="text-[10px] font-black text-white uppercase tracking-[0.4em] mb-10">Disclaimer</h4>
+              <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
+                Stock market investments are subject to market risks. We are not SEBI registered. Please use this system at your own risk. Results may vary based on market conditions. Proper risk management is advised.
+              </p>
             </div>
           </div>
 
-          <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-start gap-8">
-            <div className="max-w-2xl">
-              <h5 className="text-white font-bold mb-3 flex items-center gap-2"><ShieldCheck size={18} className="text-blue-400"/> Disclaimer</h5>
-              <ul className="text-xs text-blue-200/50 space-y-2 list-disc list-inside">
-                <li>Stock market trading involves financial risk.</li>
-                <li>Lakshita Trading Academy provides educational training only.</li>
-                <li>We do not provide any calls/tips, investment advice, or guarantee profit.</li>
-                <li>Participants must consult a registered financial advisor before making investment decisions.</li>
-              </ul>
-              <div className="mt-8">
-                <p className="text-sm text-blue-200/40">© 2024 Lakshita Trading Academy. All rights reserved.</p>
-                <p className="text-sm text-blue-200/40 mt-1">Built with love by <a href="https://www.rajugariventures.com" target="_blank" rel="noopener noreferrer" className="text-blue-200 hover:text-white underline transition-colors">Rajugari Ventures</a></p>
-              </div>
-            </div>
-            <div className="flex items-center gap-6 mt-4 md:mt-0">
-              <a href="#" className="text-blue-200/40 hover:text-white hover:scale-110 transition-all"><Globe size={24} /></a>
-              <a href="#" className="text-blue-200/40 hover:text-[#25D366] hover:scale-110 transition-all"><MessageCircle size={24} /></a>
+          <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
+            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">© 2024 Smart Algo Trading System. All Rights Reserved.</p>
+            <div className="flex items-center gap-8">
+               <a href="#" className="text-[10px] font-black text-slate-600 uppercase tracking-widest hover:text-white transition-colors">Terms & Conditions</a>
+               <a href="#" className="text-[10px] font-black text-slate-600 uppercase tracking-widest hover:text-white transition-colors">Privacy Policy</a>
             </div>
           </div>
         </div>
       </footer>
+
       <RegistrationModal isOpen={isEnrollOpen} onClose={() => setIsEnrollOpen(false)} />
       <AliceBlueModal isOpen={isAliceBlueOpen} onClose={() => setIsAliceBlueOpen(false)} />
-
-      <AnimatePresence>
-        {comingSoon && (
-          <motion.div 
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] w-full max-w-sm px-4"
-          >
-            <div className="bg-slate-900 text-white p-6 rounded-[32px] shadow-2xl border border-white/10 flex items-center gap-4">
-              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center shrink-0">
-                <Zap className="text-samp-primary animate-pulse" size={24} />
-              </div>
-              <div>
-                <h4 className="font-bold text-lg">{comingSoon} Integration</h4>
-                <p className="text-slate-400 text-sm">Feature coming soon! Currently accepting Alice Blue partners.</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
 
 export default LandingPage;
-
