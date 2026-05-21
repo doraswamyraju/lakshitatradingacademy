@@ -565,11 +565,6 @@ app.post(['/api/algo/order', '/algo/order'], authenticateToken, async (req: Requ
 app.post(['/api/algo/order-option', '/algo/order-option'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const kite = await getUserKiteClient(userId);
-    if (!kite) {
-      return res.status(400).json({ error: 'Personal Broker not linked. Please connect Kite first.' });
-    }
-    const { client } = kite;
     const {
       side,       // 'BUY' | 'SELL'
       quantity,
@@ -588,12 +583,29 @@ app.post(['/api/algo/order-option', '/algo/order-option'], authenticateToken, as
     if (isPaper) {
       // Simulate a paper trade — log it but don't call the broker
       const logMsg = `[PAPER] ${side} ${strike} ${optionType} x${quantity} @ ${price ?? 'MARKET'}`;
+      const optionSymbol = `BANKNIFTY ${strike} ${optionType}`;
+      
+      // Save simulated order to DB
+      await prisma.order.create({
+        data: {
+          userId,
+          symbol: optionSymbol,
+          side,
+          price: price ?? 0,
+          qty: Number(quantity),
+          type: type || 'MARKET',
+          product: product || 'MIS',
+          status: 'FILLED',
+          isSimulated: true
+        }
+      });
+
       await prisma.strategyLog.create({
         data: {
           userId,
           strategyId: 'm3_v2',
           action: 'PAPER_ORDER',
-          symbol: `BANKNIFTY ${strike} ${optionType}`,
+          symbol: optionSymbol,
           price: price ?? 0,
           qty: Number(quantity),
           status: 'SUCCESS',
@@ -603,6 +615,12 @@ app.post(['/api/algo/order-option', '/algo/order-option'], authenticateToken, as
       });
       return res.json({ success: true, orderId: `PAPER-${Date.now()}`, isPaper: true });
     }
+
+    const kite = await getUserKiteClient(userId);
+    if (!kite) {
+      return res.status(400).json({ error: 'Personal Broker not linked. Please connect Kite first.' });
+    }
+    const { client } = kite;
 
     // Resolve the trading symbol from option chain
     const spot = await client.fetchLtp('NSE:NIFTY BANK');
@@ -623,6 +641,21 @@ app.post(['/api/algo/order-option', '/algo/order-option'], authenticateToken, as
       price
     });
 
+    // Save live order to DB
+    await prisma.order.create({
+      data: {
+        userId,
+        symbol: `NFO:${tradingsymbol}`,
+        side,
+        price: price ?? spot ?? 0,
+        qty: Number(quantity),
+        type: type || 'MARKET',
+        product: product || 'MIS',
+        status: 'FILLED',
+        isSimulated: false
+      }
+    });
+
     res.json({ success: true, orderId: placed.orderId });
   } catch (error: any) {
     res.status(400).json({ error: error?.message || 'Failed to place option order.' });
@@ -632,6 +665,32 @@ app.post(['/api/algo/order-option', '/algo/order-option'], authenticateToken, as
 app.get(['/api/algo/orders', '/algo/orders'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.isPaperTrading) {
+      // Fetch paper orders from local DB
+      const dbOrders = await prisma.order.findMany({
+        where: { userId, isSimulated: true },
+        orderBy: { createdAt: 'desc' }
+      });
+      const orders = dbOrders.map((o: any) => ({
+        order_id: o.id,
+        symbol: o.symbol,
+        transaction_type: o.side,
+        quantity: o.qty,
+        price: o.price,
+        order_type: o.type,
+        status: o.status,
+        order_timestamp: o.createdAt.toISOString(),
+        product: o.product
+      }));
+      return res.json({ orders });
+    }
+
+    // Live trading: Fetch from Kite broker
     const kite = await getUserKiteClient(userId);
     if (!kite) {
       return res.json({ orders: [], message: 'Personal Broker not linked' });
@@ -732,6 +791,81 @@ app.post(['/api/algo/logs', '/algo/logs'], authenticateToken, async (req: Reques
 app.get(['/api/algo/positions', '/algo/positions'], authenticateToken, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.isPaperTrading) {
+      // Calculate paper positions from DB simulated orders
+      const dbOrders = await prisma.order.findMany({
+        where: { userId, isSimulated: true, status: 'FILLED' },
+        orderBy: { createdAt: 'asc' }
+      });
+
+      // Group orders by symbol
+      const symbolOrders: Record<string, typeof dbOrders> = {};
+      for (const order of dbOrders) {
+        if (!symbolOrders[order.symbol]) {
+          symbolOrders[order.symbol] = [];
+        }
+        symbolOrders[order.symbol].push(order);
+      }
+
+      const positions = [];
+      const livePrice = marketStreamer.getCurrentPrice() || 0;
+
+      for (const symbol of Object.keys(symbolOrders)) {
+        let netQty = 0;
+        let totalBuyQty = 0;
+        let totalBuyVal = 0;
+        let totalSellQty = 0;
+        let totalSellVal = 0;
+
+        for (const o of symbolOrders[symbol]) {
+          if (o.side === 'BUY') {
+            netQty += o.qty;
+            totalBuyQty += o.qty;
+            totalBuyVal += o.price * o.qty;
+          } else if (o.side === 'SELL') {
+            netQty -= o.qty;
+            totalSellQty += o.qty;
+            totalSellVal += o.price * o.qty;
+          }
+        }
+
+        if (netQty !== 0) {
+          const avgPrice = netQty > 0 
+            ? (totalBuyQty > 0 ? (totalBuyVal / totalBuyQty) : 0)
+            : (totalSellQty > 0 ? (totalSellVal / totalSellQty) : 0);
+
+          // Get LTP: if it's the index symbol, we can use marketStreamer livePrice
+          // Otherwise use the last order price as ltp fallback
+          let ltp = livePrice;
+          if (ltp <= 0 || (!symbol.includes('BANKNIFTY') && !symbol.includes('NIFTY BANK'))) {
+            const lastOrder = symbolOrders[symbol][symbolOrders[symbol].length - 1];
+            ltp = lastOrder.price || avgPrice;
+          }
+
+          const pnl = netQty > 0 
+            ? (ltp - avgPrice) * netQty 
+            : (avgPrice - ltp) * Math.abs(netQty);
+
+          positions.push({
+            symbol,
+            quantity: netQty,
+            avgPrice,
+            ltp,
+            pnl,
+            product: symbolOrders[symbol][0].product || 'MIS'
+          });
+        }
+      }
+
+      return res.json({ positions });
+    }
+
+    // Live mode: fetch from Kite broker
     const kite = await getUserKiteClient(userId);
     if (!kite) {
       return res.json({ positions: [], message: 'Personal Broker not linked' });

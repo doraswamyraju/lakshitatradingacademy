@@ -119,6 +119,23 @@ export class UserEngine {
 
     this.addLog(`ENTRY ${side} @ ₹${price.toFixed(2)} | SL: ₹${this.position.sl.toFixed(2)}`);
 
+    // Create database Order record for either Paper or Live trade
+    await prisma.order.create({
+      data: {
+        userId: this.userId,
+        symbol: 'NSE:NIFTY BANK',
+        side,
+        price,
+        qty,
+        type: 'MARKET',
+        product: 'MIS',
+        status: 'FILLED',
+        isSimulated: this.isPaper
+      }
+    }).catch((err: any) => {
+      console.error(`[UserEngine][DB_ERROR] Failed to save DB order on entry:`, err);
+    });
+
     if (!this.isPaper && this.kite) {
       this.kite.placeOrder({
         tradingsymbol: 'NIFTY BANK', exchange: 'NSE',
@@ -163,6 +180,23 @@ export class UserEngine {
   private async close(reason: string, price: number) {
     const side = this.position.side === 'BUY' ? 'SELL' : 'BUY';
     const qty = 15;
+
+    // Create database Order record for either Paper or Live trade close
+    await prisma.order.create({
+      data: {
+        userId: this.userId,
+        symbol: 'NSE:NIFTY BANK',
+        side,
+        price,
+        qty,
+        type: 'MARKET',
+        product: 'MIS',
+        status: 'FILLED',
+        isSimulated: this.isPaper
+      }
+    }).catch((err: any) => {
+      console.error(`[UserEngine][DB_ERROR] Failed to save DB order on exit:`, err);
+    });
 
     if (!this.isPaper && this.kite) {
       this.kite.placeOrder({

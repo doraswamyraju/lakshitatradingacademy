@@ -264,4 +264,8 @@ export class MarketStreamer extends EventEmitter {
         : null
     };
   }
+
+  public getCurrentPrice(): number | null {
+    return this.currentPrice;
+  }
 }
