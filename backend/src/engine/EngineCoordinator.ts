@@ -68,6 +68,13 @@ export class EngineCoordinator {
     this.io.to(userId).emit('automation_change', { enabled });
   }
 
+  public updatePaperMode(userId: string, isPaper: boolean) {
+    const engine = this.engines.get(userId);
+    if (engine) {
+      engine.setPaperMode(isPaper);
+    }
+  }
+
   private async startUserEngine(userId: string) {
     if (this.engines.has(userId)) return;
 
@@ -89,7 +96,8 @@ export class EngineCoordinator {
       user.username, 
       user.isPaperTrading, 
       (msg: string) => this.broadcastLog(user.id, user.username, msg),
-      kite
+      kite,
+      user.engineState
     );
     this.engines.set(userId, engine);
     console.log(`[EngineCoordinator] Started engine for ${user.username}`);

@@ -16,6 +16,22 @@ export interface Candle {
 
 type FeedSource = 'BROKER_WS' | 'DISCONNECTED' | 'ERROR';
 
+function formatKiteDateTime(raw: string): string {
+  const dt = new Date(raw);
+  if (!Number.isNaN(dt.getTime())) {
+    const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+    const ist = new Date(dt.getTime() + IST_OFFSET_MS);
+    const y = ist.getUTCFullYear();
+    const m = String(ist.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(ist.getUTCDate()).padStart(2, '0');
+    const hh = String(ist.getUTCHours()).padStart(2, '0');
+    const mm = String(ist.getUTCMinutes()).padStart(2, '0');
+    const ss = String(ist.getUTCSeconds()).padStart(2, '0');
+    return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+  }
+  return raw;
+}
+
 export class MarketStreamer extends EventEmitter {
   private io: Server;
   private candles: Candle[] = [];
@@ -110,6 +126,31 @@ export class MarketStreamer extends EventEmitter {
       });
       this.accessTokenUpdatedAt = config.accessTokenUpdatedAt || null;
       this.subscribedToken = config.bankNiftyInstrumentToken;
+
+      // Fetch historical 1-minute candles to seed
+      try {
+        const toDate = new Date();
+        const fromDate = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+        const hist = await this.kiteClient.fetchHistoricalCandles({
+          instrumentToken: config.bankNiftyInstrumentToken,
+          interval: 'minute',
+          from: formatKiteDateTime(fromDate.toISOString()),
+          to: formatKiteDateTime(toDate.toISOString())
+        });
+        if (hist && hist.length > 0) {
+          this.candles = hist.map(c => ({
+            time: new Date(c.time).getTime(),
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+            volume: c.volume
+          }));
+          console.log(`[MarketStreamer] Seeded ${this.candles.length} candles from historical data.`);
+        }
+      } catch (err: any) {
+        console.warn('[MarketStreamer] Failed to seed historical candles:', err.message);
+      }
 
       this.feedSource = 'BROKER_WS';
       this.emitFeedStatus('BROKER_WS', 'Kite websocket connecting...');

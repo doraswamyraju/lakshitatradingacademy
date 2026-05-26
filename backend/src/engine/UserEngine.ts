@@ -9,6 +9,36 @@ import { KiteService } from '../services/KiteService';
 
 const prisma = new PrismaClient();
 
+export function aggregateCandles(candles1m: Candle[], intervalMinutes: number = 5): Candle[] {
+  const aggregated: Candle[] = [];
+  const intervalMs = intervalMinutes * 60 * 1000;
+  let currentCandle: Candle | null = null;
+
+  for (const c of candles1m) {
+    const bucketTime = Math.floor(c.time / intervalMs) * intervalMs;
+    if (!currentCandle || currentCandle.time !== bucketTime) {
+      if (currentCandle) aggregated.push(currentCandle);
+      currentCandle = {
+        time: bucketTime,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume
+      };
+    } else {
+      currentCandle.high = Math.max(currentCandle.high, c.high);
+      currentCandle.low = Math.min(currentCandle.low, c.low);
+      currentCandle.close = c.close;
+      if (c.volume !== undefined) {
+        currentCandle.volume = (currentCandle.volume || 0) + c.volume;
+      }
+    }
+  }
+  if (currentCandle) aggregated.push(currentCandle);
+  return aggregated;
+}
+
 export class UserEngine {
   public userId: string;
   public username: string;
@@ -20,12 +50,25 @@ export class UserEngine {
   private lastHeartbeat = 0;
   private logCallback: (msg: string) => void;
 
-  constructor(userId: string, username: string, isPaper: boolean, logCallback: (msg: string) => void, kite?: KiteService) {
+  constructor(userId: string, username: string, isPaper: boolean, logCallback: (msg: string) => void, kite?: KiteService, initialEngineState?: string | null) {
     this.userId = userId;
     this.username = username;
     this.isPaper = isPaper;
     this.logCallback = logCallback;
     if (kite) this.kite = kite;
+
+    if (initialEngineState) {
+      try {
+        const state = JSON.parse(initialEngineState);
+        if (state) {
+          this.position = state.position || null;
+          this.lastSignalBar = typeof state.lastSignalBar === 'number' ? state.lastSignalBar : -1;
+          console.log(`[UserEngine] Restored state for ${this.username}:`, state);
+        }
+      } catch (e: any) {
+        console.error(`[UserEngine] Failed to parse engineState for ${this.username}:`, e.message);
+      }
+    }
 
     this.addLog(`SYSTEM: Engine initialized for user ${this.username}. Waiting for market ticks...`);
   }
@@ -56,6 +99,25 @@ export class UserEngine {
     });
   }
 
+  public setPaperMode(isPaper: boolean) {
+    this.isPaper = isPaper;
+    this.addLog(`SYSTEM: Trading mode dynamically switched to ${isPaper ? 'PAPER' : 'LIVE'}`);
+  }
+
+  private async saveState() {
+    await prisma.user.update({
+      where: { id: this.userId },
+      data: {
+        engineState: JSON.stringify({
+          position: this.position,
+          lastSignalBar: this.lastSignalBar
+        })
+      }
+    }).catch(err => {
+      console.error(`[UserEngine][saveState] Error saving state for ${this.username}:`, err);
+    });
+  }
+
   private isMarketHours(): boolean {
     const now = new Date();
     const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
@@ -67,7 +129,8 @@ export class UserEngine {
     return (cur >= 570 && cur <= 660) || (cur >= 765 && cur <= 890);
   }
 
-  async processTick(candles: Candle[], price: number) {
+  async processTick(candles1m: Candle[], price: number) {
+    const candles = aggregateCandles(candles1m, 5);
     if (candles.length < 25 || price <= 0) return;
     const currentBarIdx = candles.length - 1;
 
@@ -95,11 +158,11 @@ export class UserEngine {
     const prev = candles[currentBarIdx - 1];
 
     if (pattern === 'STRONG_BULLISH' && adxData && adxData.adx > 18 && price > prev.high) {
+      this.lastSignalBar = currentBarIdx;
       await this.enter('BUY', price);
-      this.lastSignalBar = currentBarIdx;
     } else if (pattern === 'STRONG_BEARISH' && adxData && adxData.adx > 18 && price < prev.low) {
-      await this.enter('SELL', price);
       this.lastSignalBar = currentBarIdx;
+      await this.enter('SELL', price);
     }
   }
 
@@ -142,6 +205,8 @@ export class UserEngine {
         transactionType: side, quantity: qty, product: 'MIS', orderType: 'MARKET'
       }).catch(e => this.addLog(`ORDER FAILED: ${e.message}`));
     }
+
+    await this.saveState();
   }
 
   private async managePosition(candles: Candle[], price: number) {
@@ -158,12 +223,14 @@ export class UserEngine {
     } else {
       // Trailing SL
       const step = 30;
+      let stateChanged = false;
       if (pos.side === 'BUY' && price > pos.trailHigh) {
         pos.trailHigh = price;
         const newSL = price - step;
         if (newSL > pos.sl) {
           pos.sl = newSL;
           this.addLog(`TRAIL SL locked @ ₹${newSL.toFixed(2)}`);
+          stateChanged = true;
         }
       }
       if (pos.side === 'SELL' && price < pos.trailLow) {
@@ -172,7 +239,11 @@ export class UserEngine {
         if (newSL < pos.sl) {
           pos.sl = newSL;
           this.addLog(`TRAIL SL locked @ ₹${newSL.toFixed(2)}`);
+          stateChanged = true;
         }
+      }
+      if (stateChanged) {
+        await this.saveState();
       }
     }
   }
@@ -206,5 +277,6 @@ export class UserEngine {
     }
     
     this.position = null;
+    await this.saveState();
   }
 }

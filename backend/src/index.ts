@@ -204,6 +204,8 @@ app.put(['/api/user/mode', '/user/mode'], authenticateToken, async (req: Request
       data: { isPaperTrading }
     });
 
+    engineCoordinator.updatePaperMode(user.id, isPaperTrading);
+
     res.json({ 
       success: true, 
       isPaperTrading: updatedUser.isPaperTrading,
